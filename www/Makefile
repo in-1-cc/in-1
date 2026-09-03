@@ -36,8 +36,11 @@ site: $(DEPS) $(GEN)
 	mkdocs build -d $@
 	touch $@/.nojekyll
 
-serve: $(DEPS) $(GEN)
-	mkdocs serve --livereload
+serve: $(DEPS) $(GEN) $(PERL)
+	$Q port=$${PORT:-$$(perl -MIO::Socket::INET -e \
+	  'print IO::Socket::INET->new( \
+	     Listen => 1, LocalAddr => "127.0.0.1")->sockport')}; \
+	mkdocs serve --livereload -a 127.0.0.1:$$port
 
 publish: site
 	cd $< && \
