@@ -1,0 +1,51 @@
+# shellcheck shell=bash
+# Common test bootstrap; sourced by every test/*.t file.
+
+set -euo pipefail
+
+source "$BPAN_ROOT/lib/bpan.bash" --
+
+bpan:source bashplus +cmd +sys
+bpan:source test-tap --
+
+export BPAN_TEST_RUNNING=1
+
+FILE=$0
+NAME=$(basename "$FILE")
+NAME=${NAME%.t}
+ROOT=$(cd "$(dirname "$FILE")"/.. && pwd -P)
+[[ -f $ROOT/License ]] ||
+  die "Can't find ROOT"
+TEST=$ROOT/test
+
+if [[ $* == *slow* ]]; then
+  if [[ -z ${slow-} ]]; then
+    pass "Use slow=1 to run slow tests"
+    done-testing
+    exit 0
+  fi
+fi
+
+# in-1 test scaffolding:
+#
+# Each test gets its own scratch IN1_ROOT, pre-seeded with a symlink
+# to this working copy so the stub never needs to clone in-1, and a
+# local makes repo so only tool downloads can hit the network.
+# Tool downloads are cached in a dir shared by all tests.
+
+SCRATCH=$ROOT/.cache/test/$NAME
+rm -rf "$SCRATCH"
+mkdir -p "$SCRATCH/root"
+
+export IN1_ROOT=$SCRATCH/root
+export IN1_REPO=$ROOT
+export IN1_CACHE=$ROOT/.cache/test/downloads
+export IN1_MAKES_REPO=${IN1_MAKES_REPO:-$ROOT/.cache/makes}
+unset IN1_VERSION IN1_UPDATE PREFIX
+
+ln -s "$ROOT" "$IN1_ROOT/in-1"
+
+[[ -d $IN1_MAKES_REPO ]] ||
+  die "makes clone not found at '$IN1_MAKES_REPO' (run 'make test')"
+
+cd "$ROOT"

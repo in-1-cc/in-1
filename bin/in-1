@@ -1,0 +1,648 @@
+#!/usr/bin/env bash
+
+# in-1 - install dev tools for the current shell session
+#
+# https://in-1.cc/
+# https://github.com/in-1-cc/in-1
+#
+# Uses https://github.com/makeplus/makes to install each tool.
+
+set -euo pipefail
+
+IN1_FALLBACK_VERSION=0.1.0
+MAKES_REPO_DEFAULT=https://github.com/makeplus/makes
+
+# Vars that make sets for its own use, or that must never leak into an
+# interactive shell (local.mk exports TMPDIR, init.mk exports LANG):
+env_denylist='MAKEFLAGS MFLAGS MAKELEVEL MAKE_TERMOUT MAKE_TERMERR
+GNUMAKEFLAGS MAKEOVERRIDES MAKES_QUIET MAKES_CACHE_DIR MAKES_LOCAL_DIR
+CMD SHLVL PWD OLDPWD _ SHELL SHELLOPTS BASHOPTS TMPDIR LANG LC_ALL
+HOME TERM PS1 COLUMNS LINES'
+
+tool_filter='agents clean claude docker docker-or-podman git help init
+local podman shell'
+
+self_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
+
+main() {
+  local mode=run shell='' arg
+  local -a tools=()
+
+  while [[ $# -gt 0 ]]; do
+    arg=$1; shift
+    case $arg in
+      --env)
+        mode='env'
+        [[ $# -gt 0 ]] || die "--env requires a shell name"
+        shell=$1; shift
+        ;;
+      --local) mode=local;;
+      --list) list-tools; return 0;;
+      --complete)
+        [[ $# -gt 0 ]] || die "--complete requires a shell name"
+        do-complete "$1"; return 0
+        ;;
+      --upgrade) do-upgrade; return 0;;
+      --version) printf 'in-1 %s\n' "$(get-version)"; return 0;;
+      --help|-h) usage; return 0;;
+      -*) die "Unknown option '$arg'. Try: in-1 --help";;
+      *) tools+=("$arg");;
+    esac
+  done
+
+  case $mode in
+    env) do-env "$shell" ${tools[@]+"${tools[@]}"};;
+    local) do-local ${tools[@]+"${tools[@]}"};;
+    run) do-run ${tools[@]+"${tools[@]}"};;
+  esac
+}
+
+usage() {
+  cat <<'...'
+in-1 - instant dev tools for your current shell
+
+Usage:
+  source <(curl -sL in-1.cc) TOOL[=VERSION]...   # bash / zsh
+  curl -sL in-1.cc | source - TOOL[=VERSION]...  # fish
+
+  in-1 TOOL[=VERSION]...    Install tools for this shell session
+  in-1 --local TOOL...      Install tools under PREFIX for keeps
+  in-1 --list               List available tools
+  in-1 --env SHELL TOOL...  Print env setup code for SHELL
+                            (bash, zsh or fish)
+  in-1 --complete SHELL     Print in-1 command completion for SHELL
+  in-1 --upgrade            Update the in-1 repo clone
+  in-1 --version            Print the in-1 version
+  in-1 --help               Show this help
+
+Environment variables:
+  IN1_ROOT        Session install root; default '$TMPDIR/in-1' or
+                  '/tmp/in-1'
+  IN1_CACHE       Download cache dir; default '$IN1_ROOT/.cache'
+  PREFIX          Install prefix; session default '$IN1_ROOT/local',
+                  --local default '~/.local' ('/usr/local' as root)
+  IN1_REPO        in-1 repo URL to clone
+  IN1_MAKES_REPO  makes repo URL to clone
+  IN1_VERSION     in-1 version (git ref) to use
+  IN1_UPDATE      Set to 1 to update the makes clone before install
+
+See 'man in-1' or https://in-1.cc/doc/ for full documentation.
+...
+}
+
+die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }
+warn() { printf 'in-1: %s\n' "$@" >&2; }
+
+get-version() (
+  cd "$self_root"
+  git describe --tags --always 2>/dev/null ||
+    printf '%s\n' "$IN1_FALLBACK_VERSION"
+)
+
+tilde-expand() {
+  # shellcheck disable=SC2088  # literal leading tilde is the point
+  case $1 in
+    '~') printf '%s' "$HOME";;
+    '~/'*) printf '%s/%s' "$HOME" "${1#'~/'}";;
+    *) printf '%s' "$1";;
+  esac
+}
+
+check-prereqs() {
+  local cmd
+  for cmd in git curl make; do
+    command -v "$cmd" >/dev/null 2>&1 ||
+      die "'$cmd' is required but not found in PATH"
+  done
+  case $(make --version 2>/dev/null) in
+    *GNU\ Make*) ;;
+    *) die "GNU make is required";;
+  esac
+}
+
+set-globals() {
+  local tmp=${TMPDIR:-${TEMP:-${TMP:-/tmp}}}
+  tmp=${tmp%/}
+  root=$(tilde-expand "${IN1_ROOT:-$tmp/in-1}")
+  makes=$root/makes
+  cache=$(tilde-expand "${IN1_CACHE:-$root/.cache}")
+}
+
+ensure-makes() {
+  mkdir -p "$root"
+  if [[ ! -d $makes ]]; then
+    warn "Cloning makes into '$makes'"
+    git clone -q "${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}" "$makes" ||
+      die "Failed to clone makes repo"
+  elif [[ ${IN1_UPDATE-} ]]; then
+    git -C "$makes" pull -q ||
+      warn "Warning: failed to update the makes clone"
+  fi
+}
+
+list-tools() {
+  set-globals
+  ensure-makes
+  local file name
+  for file in "$makes"/*.mk; do
+    name=${file##*/}
+    name=${name%.mk}
+    case " $(printf '%s' "$tool_filter" | tr '\n' ' ') " in
+      *" $name "*) continue;;
+    esac
+    printf '%s\n' "$name"
+  done
+}
+
+# Parse TOOL[=VERSION] args into tool_list and pin_lines
+parse-tool-args() {
+  tool_list=()
+  pin_lines=''
+  local arg tool ver uc
+  [[ $# -gt 0 ]] || {
+    usage >&2
+    die "No tools specified"
+  }
+  for arg; do
+    tool=${arg%%=*}
+    ver=''
+    [[ $arg == *=* ]] && ver=${arg#*=}
+    [[ $tool =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
+      die "Invalid tool name '$tool'"
+    if [[ ! -f $makes/$tool.mk ]]; then
+      warn "Unknown tool '$tool'. Available tools:"
+      list-tools | sort | sed 's/^/  /' >&2
+      exit 1
+    fi
+    if [[ -n $ver ]]; then
+      [[ $ver =~ ^[A-Za-z0-9.+_-]+$ ]] ||
+        die "Invalid version '$ver' for tool '$tool'"
+      uc=$(printf '%s' "$tool" | tr '[:lower:]' '[:upper:]')
+      pin_lines="$pin_lines$uc-VERSION := $ver"$'\n'
+    fi
+    tool_list+=("$tool")
+  done
+}
+
+gen-makefile() {  # $1=install-dir $2=makefile-path
+  mkdir -p "${2%/*}"
+  {
+    printf 'MAKES-LOCAL-DIR := %s\n' "$1"
+    printf '%s' "$pin_lines"
+    printf 'include %s/init.mk\n' "$makes"
+    local tool
+    for tool in "${tool_list[@]}"; do
+      printf 'include %s/%s.mk\n' "$makes" "$tool"
+    done
+    printf 'include %s/shell.mk\n' "$makes"
+  } > "$2"
+}
+
+install-tools() {  # $1=makefile-path
+  # Own the environment make runs in: a parent make (or a makes-based
+  # Makefile) may have exported vars that would redirect the install
+  unset MAKEFLAGS MFLAGS MAKELEVEL GNUMAKEFLAGS MAKEOVERRIDES \
+    MAKES_TEE MAKES_SCRIPT MAKES_REPO_DIR 2>/dev/null || true
+  export MAKES_LOCAL_DIR=$install_dir
+  export MAKES_CACHE_DIR=$cache
+  mkdir -p "$cache"
+  # Phase 1: build all tool deps with progress visible on stderr
+  make --no-print-directory -C "$root" -f "$1" shell CMD=: 1>&2 ||
+    die "Tool installation failed"
+}
+
+capture-env() {  # $1=makefile-path $2=out-file
+  # Phase 2: deps are up to date now; dump the recipe environment
+  env_sep='nl'
+  if env -0 >/dev/null 2>&1; then
+    env_sep=nul
+    make -s -C "$root" -f "$1" shell CMD='exec env -0' > "$2" ||
+      die "Environment capture failed"
+  else
+    make -s -C "$root" -f "$1" shell CMD='exec env' > "$2" ||
+      die "Environment capture failed"
+  fi
+}
+
+load-env() {  # $1=env-file; fills env_names/env_values
+  env_names=() env_values=()
+  local entry
+  if [[ $env_sep == nul ]]; then
+    while IFS= read -r -d '' entry; do
+      add-env-entry "$entry"
+    done < "$1"
+  else
+    while IFS= read -r entry; do
+      add-env-entry "$entry"
+    done < "$1"
+  fi
+}
+
+add-env-entry() {
+  local name=${1%%=*}
+  [[ $name =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || return 0
+  env_names+=("$name")
+  env_values+=("${1#*=}")
+}
+
+# Remove every occurrence of entry $2 from colon list $1
+strip-entry() {
+  local rest=$1 out='' dir
+  while [[ -n $rest ]]; do
+    dir=${rest%%:*}
+    if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
+    [[ $dir == "$2" ]] && continue
+    out=$out$dir:
+  done
+  printf '%s' "${out%:}"
+}
+
+# Prepend entries of colon list $1 not already in colon list $2
+path-merge() {
+  local out=$2 i dir
+  local -a parts=()
+  IFS=: read -ra parts <<< "$1"
+  for ((i=${#parts[@]}-1; i>=0; i--)); do
+    dir=${parts[i]}
+    [[ -n $dir ]] || continue
+    case ":$out:" in *":$dir:"*) continue;; esac
+    out=$dir:$out
+  done
+  printf '%s' "$out"
+}
+
+# Diff env_names/env_values against our own environment.
+# Fills out_names/out_values (exports to apply) and added_dirs
+# (new PATH entries).  $makes/util is stripped from PATH.
+compute-exports() {
+  out_names=() out_values=() added_dirs=()
+  new_path=''
+  local i name value cur denied
+  denied=" $(printf '%s' "$env_denylist" | tr '\n' ' ') "
+  for ((i=0; i<${#env_names[@]}; i++)); do
+    name=${env_names[i]}
+    value=${env_values[i]}
+    case $denied in *" $name "*) continue;; esac
+    if [[ $name == PATH ]]; then
+      new_path=$value
+      continue
+    fi
+    if [[ ${!name+x} ]]; then cur=${!name}; else cur=$'\1unset\1'; fi
+    [[ $value == "$cur" ]] && continue
+    if [[ -n $cur && $cur != $'\1unset\1' && $value == *":$cur" ]]; then
+      # Var was prepended to (LD_LIBRARY_PATH etc); merge and dedupe
+      value=$(path-merge "${value%":$cur"}" "$cur")
+      [[ $value == "$cur" ]] && continue
+    fi
+    out_names+=("$name")
+    out_values+=("$value")
+  done
+
+  [[ -n $new_path ]] || return 0
+  new_path=$(strip-entry "$new_path" "$makes/util")
+  local merged rest dir
+  merged=$(path-merge "$new_path" "$PATH")
+  rest=$merged
+  while [[ -n $rest ]]; do
+    dir=${rest%%:*}
+    if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
+    case ":$PATH:" in *":$dir:"*) continue;; esac
+    added_dirs+=("$dir")
+  done
+  if [[ $merged != "$PATH" ]]; then
+    out_names+=(PATH)
+    out_values+=("$merged")
+  fi
+  new_path=$merged
+}
+
+# Derive MANPATH additions from newly added PATH bin dirs
+compute-manpath() {
+  local dir man adds=''
+  for dir in ${added_dirs[@]+"${added_dirs[@]}"}; do
+    for man in "${dir%/*}/share/man" "${dir%/*}/man"; do
+      [[ -d $man ]] || continue
+      case ":$adds:" in *":$man:"*) continue;; esac
+      adds=$adds${adds:+:}$man
+    done
+  done
+  [[ -n $adds ]] || return 0
+  local merged
+  if [[ ${MANPATH+x} ]]; then
+    merged=$(path-merge "$adds" "$MANPATH")
+    [[ $merged == "$MANPATH" ]] && return 0
+  else
+    # Trailing colon keeps the system default man path active
+    merged=$adds:
+  fi
+  out_names+=(MANPATH)
+  out_values+=("$merged")
+}
+
+# Single-quote $1 for bash/zsh eval
+sq() {
+  local s=${1//\'/\'\\\'\'}
+  printf "'%s'" "$s"
+}
+
+# Single-quote $1 for fish eval
+fq() {
+  local s=${1//\\/\\\\}
+  s=${s//\'/\\\'}
+  printf "'%s'" "$s"
+}
+
+emit-sh() {  # $1=bash|zsh
+  local i
+  for ((i=0; i<${#out_names[@]}; i++)); do
+    printf 'export %s=%s\n' "${out_names[i]}" "$(sq "${out_values[i]}")"
+  done
+  emit-tools-var sh
+  emit-extras "$1"
+  emit-completions "$1"
+  printf 'hash -r 2>/dev/null || true\n'
+}
+
+emit-fish() {
+  local i name value rest
+  for ((i=0; i<${#out_names[@]}; i++)); do
+    name=${out_names[i]}
+    value=${out_values[i]}
+    case $name in
+      *PATH)
+        # fish treats *PATH vars as lists; emit one element per entry
+        printf 'set -gx %s' "$name"
+        rest=$value
+        while [[ $rest == *:* ]]; do
+          printf ' %s' "$(fq "${rest%%:*}")"
+          rest=${rest#*:}
+        done
+        printf ' %s\n' "$(fq "$rest")"
+        ;;
+      *)
+        printf 'set -gx %s %s\n' "$name" "$(fq "$value")"
+        ;;
+    esac
+  done
+  emit-tools-var fish
+  emit-extras fish
+  emit-completions fish
+}
+
+emit-tools-var() {  # $1=sh|fish
+  local list=${IN1_TOOLS-} tool
+  for tool in "${tool_list[@]}"; do
+    case " $list " in *" $tool "*) continue;; esac
+    list=$list${list:+ }$tool
+  done
+  if [[ $1 == fish ]]; then
+    printf 'set -gx IN1_TOOLS %s\n' "$(fq "$list")"
+  else
+    printf 'export IN1_TOOLS=%s\n' "$(sq "$list")"
+  fi
+}
+
+# Source share/<tool>.<ext> extras files that exist for the target
+# shell.  These run in the user's shell with IN1_ROOT set.
+emit-extras() {  # $1=bash|zsh|fish
+  local exts tool ext file
+  case $1 in
+    bash) exts='sh bash';;
+    zsh) exts='sh zsh';;
+    fish) exts='fish';;
+  esac
+  for tool in "${tool_list[@]}"; do
+    for ext in $exts; do
+      file=$self_root/share/$tool.$ext
+      [[ -f $file ]] || continue
+      if [[ $1 == fish ]]; then
+        printf 'set -gx IN1_ROOT %s\n' "$(fq "$root")"
+        printf 'source %s\n' "$(fq "$file")"
+      else
+        printf 'export IN1_ROOT=%s\n' "$(sq "$root")"
+        printf 'source %s\n' "$(sq "$file")"
+      fi
+    done
+  done
+}
+
+# Best-effort shell completion setup for the installed tools
+emit-completions() {  # $1=bash|zsh|fish
+  local local_dir=$install_dir dir file
+  case $1 in
+    bash)
+      for dir in "$local_dir/share/bash-completion/completions" \
+                 "$local_dir/etc/bash_completion.d"; do
+        [[ -d $dir ]] || continue
+        for file in "$dir"/*; do
+          [[ -f $file ]] || continue
+          printf 'source %s 2>/dev/null || true\n' "$(sq "$file")"
+        done
+      done
+      ;;
+    zsh)
+      dir=$local_dir/share/zsh/site-functions
+      # shellcheck disable=SC2016  # $fpath expands in the user's zsh
+      [[ -d $dir ]] &&
+        printf 'fpath=(%s $fpath)\n' "$(sq "$dir")"
+      ;;
+    fish)
+      dir=$local_dir/share/fish/vendor_completions.d
+      # shellcheck disable=SC2016  # expands in the user's fish
+      [[ -d $dir ]] &&
+        printf 'set -g fish_complete_path %s $fish_complete_path\n' \
+          "$(fq "$dir")"
+      ;;
+  esac
+  return 0
+}
+
+session-install() {  # sets install_dir, runs install, loads env diff
+  check-prereqs
+  set-globals
+  ensure-makes
+  parse-tool-args "$@"
+  install_dir=${PREFIX:-$root/local}
+  install_dir=$(tilde-expand "$install_dir")
+  gen-makefile "$install_dir" "$root/Makefile"
+  install-tools "$root/Makefile"
+  local env_file
+  env_file=$root/.in-1-env.$$
+  capture-env "$root/Makefile" "$env_file"
+  load-env "$env_file"
+  rm -f "$env_file"
+  compute-exports
+  compute-manpath
+}
+
+do-env() {
+  local shell=$1; shift
+  case $shell in
+    bash|zsh|fish) ;;
+    sh) shell=bash;;
+    *) die "Unsupported shell '$shell' (want bash, zsh or fish)";;
+  esac
+  session-install "$@"
+  if [[ $shell == fish ]]; then
+    emit-fish
+  else
+    emit-sh "$shell"
+  fi
+  warn "Tools ready: ${tool_list[*]}"
+}
+
+do-run() {
+  session-install "$@"
+  warn "Tools installed under '$install_dir'." \
+    "" \
+    "A command can not change its parent shell's environment." \
+    "To activate the tools in your current shell run one of:" \
+    "" \
+    "  eval \"\$(in-1 --env bash ${tool_list[*]})\"  # bash" \
+    "  eval \"\$(in-1 --env zsh ${tool_list[*]})\"   # zsh" \
+    "  in-1 --env fish ${tool_list[*]} | source    # fish" \
+    "" \
+    "Or 'source /path/to/in-1/.rc' first to get an 'in-1' command" \
+    "that does this for you."
+}
+
+do-local() {
+  local prefix=${PREFIX:-}
+  if [[ -z $prefix ]]; then
+    if [[ ${EUID:-$(id -u)} == 0 ]]; then
+      prefix=/usr/local
+    else
+      prefix=$HOME/.local
+    fi
+  fi
+  prefix=$(tilde-expand "$prefix")
+  if [[ $prefix == */bin ]]; then
+    prefix=${prefix%/bin}
+    warn "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
+  fi
+
+  check-prereqs
+  set-globals
+  ensure-makes
+  parse-tool-args "$@"
+  install_dir=$prefix/share/in-1
+  mkdir -p "$install_dir" "$prefix/bin"
+  gen-makefile "$install_dir" "$install_dir/Makefile"
+  install-tools "$install_dir/Makefile"
+  local env_file
+  env_file=$install_dir/.in-1-env.$$
+  capture-env "$install_dir/Makefile" "$env_file"
+  load-env "$env_file"
+  rm -f "$env_file"
+  compute-exports
+
+  local dir file name wrapper count=0
+  for dir in ${added_dirs[@]+"${added_dirs[@]}"}; do
+    for file in "$dir"/*; do
+      [[ -f $file && -x $file ]] || continue
+      name=${file##*/}
+      [[ $name == .* ]] && continue
+      wrapper=$prefix/bin/$name
+      if [[ -e $wrapper ]] &&
+         ! grep -q '^# in-1 wrapper$' "$wrapper" 2>/dev/null; then
+        warn "Skipping existing non-wrapper file '$wrapper'"
+        continue
+      fi
+      write-wrapper "$file" "$wrapper"
+      count=$((count + 1))
+    done
+  done
+
+  warn "Installed ${tool_list[*]} under '$install_dir'" \
+    "Wrote $count command wrappers into '$prefix/bin'"
+  case ":$PATH:" in
+    *":$prefix/bin:"*) ;;
+    *) warn "Note: '$prefix/bin' is not in your PATH";;
+  esac
+}
+
+# Write an env-baking wrapper script for one command
+write-wrapper() {  # $1=real-command $2=wrapper-path
+  local i
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf '# in-1 wrapper\n'
+    printf 'export PATH=%q\n' "$new_path"
+    for ((i=0; i<${#out_names[@]}; i++)); do
+      [[ ${out_names[i]} == PATH ]] && continue
+      printf 'export %s=%q\n' "${out_names[i]}" "${out_values[i]}"
+    done
+    printf 'exec %q "$@"\n' "$1"
+  } > "$2"
+  chmod +x "$2"
+}
+
+do-complete() {
+  case $1 in
+    bash)
+      cat <<'...'
+_in_1_complete() {
+  local cur=${COMP_WORDS[COMP_CWORD]}
+  local opts='--env --local --list --complete --upgrade --version --help'
+  local tools
+  tools=$(command in-1 --list 2>/dev/null || true)
+  COMPREPLY=()
+  while IFS= read -r word; do
+    COMPREPLY+=("$word")
+  done < <(compgen -W "$opts $tools" -- "$cur")
+}
+complete -F _in_1_complete in-1
+...
+      ;;
+    zsh)
+      cat <<'...'
+_in_1_complete() {
+  local -a opts tools
+  opts=(--env --local --list --complete --upgrade --version --help)
+  tools=(${(f)"$(command in-1 --list 2>/dev/null)"})
+  _describe 'in-1' opts -- tools
+}
+if (( $+functions[compdef] )); then
+  compdef _in_1_complete in-1
+fi
+...
+      ;;
+    fish)
+      cat <<'...'
+complete -c in-1 -f
+complete -c in-1 -a '(command in-1 --list 2>/dev/null)'
+complete -c in-1 -l env -d 'Print env setup code for a shell'
+complete -c in-1 -l local -d 'Install tools under PREFIX'
+complete -c in-1 -l list -d 'List available tools'
+complete -c in-1 -l complete -d 'Print command completion for a shell'
+complete -c in-1 -l upgrade -d 'Update the in-1 repo clone'
+complete -c in-1 -l version -d 'Print the in-1 version'
+complete -c in-1 -l help -d 'Show help'
+...
+      ;;
+    *) die "Unsupported shell '$1' (want bash, zsh or fish)";;
+  esac
+}
+
+do-upgrade() {
+  [[ -d $self_root/.git ]] ||
+    die "'$self_root' is not a git clone; can not upgrade"
+  git -C "$self_root" fetch -q --tags origin ||
+    die "Failed to fetch from origin"
+  if [[ ${IN1_VERSION-} ]]; then
+    git -C "$self_root" checkout -q "$IN1_VERSION" ||
+      die "Failed to checkout '$IN1_VERSION'"
+  else
+    local branch
+    branch=$(git -C "$self_root" symbolic-ref -q --short \
+      refs/remotes/origin/HEAD 2>/dev/null) || branch=origin/main
+    branch=${branch#origin/}
+    git -C "$self_root" checkout -q "$branch" ||
+      die "Failed to checkout '$branch'"
+    git -C "$self_root" pull -q ||
+      die "Failed to pull latest changes"
+  fi
+  warn "in-1 is now at version $(get-version)"
+}
+
+main "$@"

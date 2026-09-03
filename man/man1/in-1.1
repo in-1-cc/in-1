@@ -1,0 +1,171 @@
+.nh
+.TH IN-1 1 "September 2026" "in-1" "User Commands"
+
+.SH NAME
+in-1 \- instant dev tools for your current shell
+
+
+.SH SYNOPSIS
+\fBsource <(curl -sL in-1.cc)\fP \fITOOL\fP[\fB=\fP\fIVERSION\fP]...
+
+.PP
+\fBin-1\fP \fITOOL\fP[\fB=\fP\fIVERSION\fP]...
+
+.PP
+\fBin-1\fP \fB--local\fP \fITOOL\fP\&...
+
+.PP
+\fBin-1\fP \fB--list\fP | \fB--upgrade\fP | \fB--version\fP | \fB--help\fP
+
+.PP
+\fBin-1\fP \fB--env\fP \fISHELL\fP \fITOOL\fP\&...
+
+.PP
+\fBin-1\fP \fB--complete\fP \fISHELL\fP
+
+
+.SH DESCRIPTION
+\fBin-1\fP installs development tools and languages into a temp
+location and sets up \fBPATH\fP, \fBMANPATH\fP, shell completion and any
+tool environment variables in the current shell, for the duration of
+the shell session.
+Nothing on the system changes.
+
+.PP
+It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
+and needs only \fBgit\fP(1), \fBcurl\fP(1), GNU \fBmake\fP(1) and
+\fBbash\fP(1) to be installed.
+
+.PP
+Tools are installed by the makes project
+(https://github.com/makeplus/makes); any tool with a \fITOOL\fP\&.mk file
+there is available.
+Run \fBin-1 --list\fP to see them all.
+
+
+.SH OPTIONS
+\fB--local\fP
+  Install the tools under \fIPREFIX\fP (default \fI~/.local\fP, or
+  \fI/usr/local\fP when run as root) and write an environment-wrapping
+  script for each tool command into \fIPREFIX/bin\fP\&.
+  These installs persist across shell sessions.
+
+.PP
+\fB--list\fP
+  List all available tool names.
+
+.PP
+\fB--env\fP \fISHELL\fP
+  Install the tools, then print environment setup code for \fISHELL\fP
+  (\fBbash\fP, \fBzsh\fP or \fBfish\fP) on stdout.
+  This is the plumbing used by the sourced one-liner and by the
+  \fBin-1\fP shell function; you can use it directly:
+  \fBeval "$(in-1 --env bash rust)"\fP
+
+.PP
+\fB--complete\fP \fISHELL\fP
+  Print tab completion code for the \fBin-1\fP command itself.
+
+.PP
+\fB--upgrade\fP
+  Update the in-1 repo clone to the latest version (or to
+  \fIIN1_VERSION\fP if set).
+
+.PP
+\fB--version\fP
+  Print the in-1 version.
+
+.PP
+\fB--help\fP
+  Print usage help.
+
+
+.SH ENVIRONMENT
+\fBIN1_ROOT\fP
+  Session install root.
+  Default: \fI$TMPDIR/in-1\fP, falling back to \fI/tmp/in-1\fP\&.
+
+.PP
+\fBIN1_CACHE\fP
+  Download cache directory.
+  Default: \fI$IN1_ROOT/.cache\fP\&.
+
+.PP
+\fBPREFIX\fP
+  Tool install prefix.
+  Session default: \fI$IN1_ROOT/local\fP; \fB--local\fP default:
+  \fI~/.local\fP, or \fI/usr/local\fP when root.
+
+.PP
+\fBIN1_VERSION\fP
+  The in-1 git ref to use.
+
+.PP
+\fBIN1_REPO\fP
+  The in-1 repo URL to clone.
+  Default: \fIhttps://github.com/in-1-cc/in-1\fP\&.
+
+.PP
+\fBIN1_MAKES_REPO\fP
+  The makes repo URL to clone.
+  Default: \fIhttps://github.com/makeplus/makes\fP\&.
+
+.PP
+\fBIN1_UPDATE\fP
+  Set to 1 to update the makes clone before installing.
+
+.PP
+\fBIN1_TOOLS\fP
+  Set by in-1 in the shell; lists the active tools.
+
+
+.SH EXAMPLES
+Try Rust and Node in the current shell:
+
+.EX
+source <(curl -sL in-1.cc) rust node
+.EE
+
+.PP
+Same, from fish:
+
+.EX
+curl -sL in-1.cc | source - rust node
+.EE
+
+.PP
+Pin a version:
+
+.EX
+source <(curl -sL in-1.cc) go=1.23.4
+.EE
+
+.PP
+Install the in-1 command permanently:
+
+.EX
+git clone https://github.com/in-1-cc/in-1 ~/.in-1
+echo 'source ~/.in-1/.rc' >> ~/.bashrc
+.EE
+
+.PP
+Keep jq around for good:
+
+.EX
+in-1 --local jq
+.EE
+
+
+.SH SEE ALSO
+\fBmake\fP(1)
+
+.PP
+https://in-1.cc/ and https://github.com/in-1-cc/in-1
+
+.PP
+https://github.com/makeplus/makes
+
+
+.SH AUTHOR
+Ingy dot Net ingy@ingy.net
+\[la]mailto:ingy@ingy.net\[ra]

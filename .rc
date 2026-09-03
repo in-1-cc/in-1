@@ -1,0 +1,92 @@
+# shellcheck shell=bash
+#
+# Sets up the in-1 command in your shell.
+#
+# Add this line to your shell rc file (bash, zsh or fish):
+#
+#   source /path/to/in-1/.rc
+#
+# Then:
+#
+#   in-1 rust node    # install tools into this shell session
+#   in-1 --help
+#   man in-1
+
+test -n "$BASH_VERSION$ZSH_VERSION" && eval '
+if [ -n "${BASH_VERSION-}" ]; then
+  IN1_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+  _in1_shell=bash
+else
+  IN1_DIR=$(cd "$(dirname "$0")" && pwd -P)
+  _in1_shell=zsh
+fi
+export IN1_DIR
+
+case ":$PATH:" in
+  *":$IN1_DIR/bin:"*) ;;
+  *) PATH=$IN1_DIR/bin:$PATH;;
+esac
+export PATH
+
+case ":${MANPATH-}:" in
+  *":$IN1_DIR/man:"*) ;;
+  *) MANPATH=$IN1_DIR/man:$(manpath 2>/dev/null);;
+esac
+export MANPATH
+
+eval "$(command in-1 --complete "$_in1_shell" 2>/dev/null)"
+
+# Wrap the in-1 command in a function so that session installs can
+# modify the current shell environment
+in-1() {
+  case ${1-} in
+    ""|-*) command in-1 "$@";;
+    *)
+      if [ -n "${ZSH_VERSION-}" ]; then
+        eval "$(command in-1 --env zsh "$@")"
+      else
+        eval "$(command in-1 --env bash "$@")"
+      fi
+      ;;
+  esac
+}
+
+unset _in1_shell
+return 0
+'
+
+test -n "$FISH_VERSION" && eval '
+set -gx IN1_DIR (cd (dirname (status filename)) && pwd -P)
+
+contains -- $IN1_DIR/bin $PATH
+or set -gx PATH $IN1_DIR/bin $PATH
+
+contains -- $IN1_DIR/man $MANPATH
+or set -gx MANPATH $IN1_DIR/man (manpath 2>/dev/null | string split :)
+
+command in-1 --complete fish 2>/dev/null | source
+
+function in-1
+  if test (count $argv) -eq 0
+    command in-1
+  else if string match -q -- "-*" $argv[1]
+    command in-1 $argv
+  else
+    set -l envfile (mktemp)
+    if command in-1 --env fish $argv > $envfile
+      source $envfile
+      rm -f $envfile
+    else
+      rm -f $envfile
+      return 1
+    end
+  end
+end
+
+return 0
+'
+
+echo "ERROR: in-1/.rc requires bash, zsh or fish" >&2
+false
+
+# vim: ft=sh:
