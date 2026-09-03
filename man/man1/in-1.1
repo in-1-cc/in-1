@@ -6,10 +6,10 @@ in-1 \- instant dev tools for your current shell
 
 
 .SH SYNOPSIS
-\fBsource <(curl -sL in-1.cc)\fP \fITOOL\fP[\fB=\fP\fIVERSION\fP]...
+\fBsource <(curl -sL in-1.cc)\fP \fITOOL\fP\&... [\fIVAR\fP=\fIVALUE\fP]...
 
 .PP
-\fBin-1\fP \fITOOL\fP[\fB=\fP\fIVERSION\fP]...
+\fBin-1\fP \fITOOL\fP\&... [\fIVAR\fP=\fIVALUE\fP]...
 
 .PP
 \fBin-1\fP \fB--local\fP \fITOOL\fP\&...
@@ -53,6 +53,13 @@ Tools are installed by the makes project
 there is available.  A tool may also be requested by an alias command
 name (e.g. \fBcargo\fP installs rust, \fBbb\fP installs babashka).
 Run \fBin-1 --list\fP to see tools and aliases.
+
+.PP
+Any \fIVAR\fP=\fIVALUE\fP argument is passed through to makes as a variable.
+Pin a version with the tool's makes variable, for example
+\fBin-1 perl PERL-VERSION=5.42.0\fP\&.  A pinned version installs
+alongside others and is reachable as both \fIperl\fP and its
+version-specific wrapper.
 
 
 .SH OPTIONS
@@ -156,7 +163,7 @@ curl -sL in-1.cc | source - rust node
 Pin a version (both \fBgo\fR and \fBgo-1.23.4\fR end up on PATH):
 
 .EX
-source <(curl -sL in-1.cc) go=1.23.4
+source <(curl -sL in-1.cc) go GO-VERSION=1.23.4
 .EE
 
 .PP

@@ -23,12 +23,15 @@ or browse the `*.mk` files in the
 ## Versions
 
 Every tool has a default version defined in its `.mk` file.
-Pin a different one per install:
+Pin a different one by passing the tool's makes variable as a
+`NAME=VALUE` argument:
 
 ```bash
-source <(curl -sL in-1.cc) go=1.23.4
+source <(curl -sL in-1.cc) go GO-VERSION=1.23.4
 ```
 
+The variable name is `<TOOL>-VERSION` in upper case (`GO-VERSION`,
+`NODE-VERSION`, `RUST-VERSION`, ...).
 Versions coexist: each installs under
 `<root>/share/<tool>/<version>`, and the pinned example above puts
 both `go` and `go-1.23.4` on your `PATH`.

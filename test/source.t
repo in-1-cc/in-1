@@ -42,10 +42,23 @@ fi
 has "$(cat "$IN1_ROOT/bin/jq")" '# in-1 wrapper' \
   "bin/jq is an in-1 wrapper"
 
-# An explicit version pin lands in the generated per-tool makefile
-bash -c "source ./rc jq=$version >/dev/null 2>&1" || true
-has "$(cat "$IN1_ROOT/log/jq.mk")" "JQ-VERSION := $version" \
-  "pin lands in the generated makefile"
+# A version is pinned by passing the tool's makes variable as an arg
+alt=1.7
+out=$(bash -c "
+  source ./rc jq JQ-VERSION=$alt >/dev/null 2>&1
+  jq --version
+  command -v jq-$alt
+")
+has "$out" "jq-$alt" "make-var arg pins the version"
+if [[ -x $IN1_ROOT/share/jq/$alt/bin/jq ]]; then
+  pass "pinned version installs under share/jq/$alt"
+else
+  fail "pinned version installs under share/jq/$alt"
+fi
+
+# A NAME=VALUE arg with no tool is a friendly error
+out=$(bash -c 'source ./rc JQ-VERSION=1.7 2>&1; echo "rc=$?"')
+has "$out" 'sets a make variable' "bare make-var arg explains itself"
 
 # Quiet progress output (non-tty variant)
 out=$(bash -c 'source ./rc jq >/dev/null' 2>&1)
@@ -61,7 +74,7 @@ mkdir -p "$froot"
 ln -s "$ROOT" "$froot/in-1"
 out=$(
   IN1_ROOT=$froot bash -c '
-    source ./rc jq=9.9.9 >/dev/null
+    source ./rc jq JQ-VERSION=9.9.9 >/dev/null
     echo "status=$? alive"
   ' 2>&1
 )

@@ -4,11 +4,12 @@
 # in-1.cc - instant dev tools for your current shell
 #
 # Usage:
-#   source <(curl -sL in-1.cc) TOOL[=VERSION]...   # bash / zsh
-#   curl -sL in-1.cc | source - TOOL[=VERSION]...  # fish
+#   source <(curl -sL in-1.cc) TOOL... [VAR=VALUE]...   # bash / zsh
+#   curl -sL in-1.cc | source - TOOL... [VAR=VALUE]...  # fish
 #
 # For example:
 #   source <(curl -sL in-1.cc) rust node
+#   source <(curl -sL in-1.cc) perl PERL-VERSION=5.42.0
 #
 # Docs:   https://in-1.cc/home/
 # Source: https://github.com/in-1-cc/in-1

@@ -62,11 +62,11 @@ usage() {
 in-1 - instant dev tools for your current shell
 
 Usage:
-  source <(curl -sL in-1.cc) TOOL[=VERSION]...   # bash / zsh
-  curl -sL in-1.cc | source - TOOL[=VERSION]...  # fish
+  source <(curl -sL in-1.cc) TOOL... [VAR=VALUE]...   # bash / zsh
+  curl -sL in-1.cc | source - TOOL... [VAR=VALUE]...  # fish
 
-  in-1 TOOL[=VERSION]...    Install tools for this shell session
-  in-1 --local TOOL...      Install tools under PREFIX for keeps
+  in-1 TOOL... [VAR=VALUE]... Install tools for this shell session
+  in-1 --local TOOL...        Install tools under PREFIX for keeps
   in-1 --list               List available tools and aliases
   in-1 --env SHELL TOOL...  Print env setup code for SHELL
                             (bash, zsh or fish)
@@ -79,6 +79,10 @@ Each install goes under <root>/share/<tool>/<version> and gets a
 command wrapper in <root>/bin, which is the single dir put on PATH.
 So `which <cmd>` is always <root>/bin/<cmd>.  The primary command of
 a tool also gets a version-specific wrapper, <cmd>-<version>.
+
+A NAME=VALUE argument is passed through to makes as a variable, so
+pin a version with its makes variable, e.g.
+'in-1 perl PERL-VERSION=5.42.0'.
 
 Environment variables:
   IN1_ROOT        Session root; default '$TMPDIR/in-1' or '/tmp/in-1'
@@ -306,19 +310,29 @@ list-tools() {
   list-aliases
 }
 
-# Parse TOOL[=VERSION] args into req_name / req_tool / req_pin.
-# A name is a real tool (has <name>.mk) or an alias (<name>-isa).
+# Parse args into req_name / req_tool (bare tool or alias names) and
+# make_args (any NAME=VALUE argument, passed through to make).  A pin
+# is just the tool's make variable, e.g. `perl PERL-VERSION=5.42.0`.
 parse-tool-args() {
-  req_name=(); req_tool=(); req_pin=()
-  local arg name pin tool
+  req_name=(); req_tool=(); make_args=()
+  local arg name tool
   [[ $# -gt 0 ]] || {
     usage >&2
     die "No tools specified"
   }
   for arg; do
-    name=${arg%%=*}
-    pin=''
-    [[ $arg == *=* ]] && pin=${arg#*=}
+    if [[ $arg == *=* ]]; then
+      name=${arg%%=*}
+      [[ $name =~ ^[A-Za-z_][A-Za-z0-9_-]*$ ]] ||
+        die "Invalid make variable '$name' in '$arg'"
+      case $name in
+        MAKES-LOCAL-DIR|MAKES_LOCAL_DIR|MAKES_CACHE_DIR)
+          die "'$name' is reserved and can not be set";;
+      esac
+      make_args+=("$arg")
+      continue
+    fi
+    name=$arg
     [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
       die "Invalid tool name '$name'"
     if [[ -f $makes/$name.mk ]]; then
@@ -331,14 +345,15 @@ parse-tool-args() {
       [[ -f $makes/$tool.mk ]] ||
         die "Alias '$name' maps to unknown tool '$tool'"
     fi
-    if [[ -n $pin ]]; then
-      [[ $pin =~ ^[A-Za-z0-9.+_-]+$ ]] ||
-        die "Invalid version '$pin' for '$name'"
-    fi
     req_name+=("$name")
     req_tool+=("$tool")
-    req_pin+=("$pin")
   done
+  [[ ${#req_name[@]} -gt 0 ]] || {
+    [[ ${#make_args[@]} -gt 0 ]] &&
+      die "No tool named. A NAME=VALUE arg sets a make variable;" \
+        "add a tool too, e.g. 'perl PERL-VERSION=5.42.0'."
+    die "No tools specified"
+  }
 }
 
 # The primary command shown/versioned for a requested name
@@ -349,11 +364,11 @@ primary-of() {  # $1=name
   printf '%s' "$p"
 }
 
-gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool $4=pin
+gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool
   mkdir -p "${2%/*}"
   {
-    printf 'MAKES-LOCAL-DIR := %s\n' "$1"
-    [[ -n $4 ]] && printf '%s-VERSION := %s\n' "$(uc "$3")" "$4"
+    # override so a NAME=VALUE make arg can not redirect the install
+    printf 'override MAKES-LOCAL-DIR := %s\n' "$1"
     printf 'include %s/init.mk\n' "$makes"
     printf 'include %s/%s.mk\n' "$makes" "$3"
     printf 'include %s/shell.mk\n' "$makes"
@@ -364,16 +379,13 @@ gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool $4=pin
   } > "$2"
 }
 
-# Resolve the version to install for a tool (the pin, or the makes
-# default from <TOOL>-VERSION)
-tool-version() {  # $1=tool $2=pin
-  if [[ -n $2 ]]; then
-    printf '%s' "$2"
-    return
-  fi
+# Resolve the version to install for a tool: <TOOL>-VERSION, after
+# any NAME=VALUE make args are applied
+tool-version() {  # $1=tool
   local qf=$root/log/$1.ver.mk
-  gen-makefile "$root/.meta" "$qf" "$1" ''
-  make -s -C "$root" -f "$qf" in1-ver 2>/dev/null || true
+  gen-makefile "$root/.meta" "$qf" "$1"
+  make -s -C "$root" -f "$qf" ${make_args[@]+"${make_args[@]}"} \
+    in1-ver 2>/dev/null || true
 }
 
 setup-make-env() {
@@ -393,10 +405,12 @@ capture-env() {  # $1=makefile-path $2=out-file
   env_sep='nl'
   if env -0 >/dev/null 2>&1; then
     env_sep=nul
-    make -s -C "$root" -f "$1" shell CMD='exec env -0' > "$2" ||
+    make -s -C "$root" -f "$1" ${make_args[@]+"${make_args[@]}"} \
+      shell CMD='exec env -0' > "$2" ||
       die "Environment capture failed"
   else
-    make -s -C "$root" -f "$1" shell CMD='exec env' > "$2" ||
+    make -s -C "$root" -f "$1" ${make_args[@]+"${make_args[@]}"} \
+      shell CMD='exec env' > "$2" ||
       die "Environment capture failed"
   fi
 }
@@ -566,24 +580,25 @@ install-all() {  # $1=install-root
   man_adds=''
   comp_dirs=()
   wrap_count=0
-  local i name tool pin version idir mf bindir primary disp note
+  local i name tool version idir mf bindir primary disp note
   local envfile=$root/.in-1-env.$$
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}
     tool=${req_tool[i]}
-    pin=${req_pin[i]}
-    version=$(tool-version "$tool" "$pin")
+    version=$(tool-version "$tool")
     [[ -n $version ]] || version=current
     idir=$install_root/share/$tool/$version
     mf=$root/log/$tool.mk
-    gen-makefile "$idir" "$mf" "$tool" "$pin"
-    bindir=$(make -s -C "$root" -f "$mf" in1-bindir 2>/dev/null || true)
+    gen-makefile "$idir" "$mf" "$tool"
+    bindir=$(make -s -C "$root" -f "$mf" \
+      ${make_args[@]+"${make_args[@]}"} in1-bindir 2>/dev/null || true)
     primary=$(primary-of "$name")
     disp=$bindir/$primary
     note=$(meta "$name-also")
     progress-run "$name v$version" "$root/log/$tool.log" \
       "$disp" "$note" \
-      make --no-print-directory -C "$root" -f "$mf" shell CMD=: ||
+      make --no-print-directory -C "$root" -f "$mf" \
+      ${make_args[@]+"${make_args[@]}"} shell CMD=: ||
       exit 1
     capture-env "$mf" "$envfile"
     load-env "$envfile"

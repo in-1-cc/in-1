@@ -6,9 +6,9 @@ in-1 - instant dev tools for your current shell
 
 # SYNOPSIS
 
-**source <(curl -sL in-1.cc)** *TOOL*[**=***VERSION*]...
+**source <(curl -sL in-1.cc)** *TOOL*... [*VAR*=*VALUE*]...
 
-**in-1** *TOOL*[**=***VERSION*]...
+**in-1** *TOOL*... [*VAR*=*VALUE*]...
 
 **in-1** **--local** *TOOL*...
 
@@ -44,6 +44,12 @@ Tools are installed by the makes project
 there is available.  A tool may also be requested by an alias command
 name (e.g. **cargo** installs rust, **bb** installs babashka).
 Run **in-1 --list** to see tools and aliases.
+
+Any *VAR*=*VALUE* argument is passed through to makes as a variable.
+Pin a version with the tool's makes variable, for example
+**in-1 perl PERL-VERSION=5.42.0**.  A pinned version installs
+alongside others and is reachable as both *perl* and its
+version-specific wrapper.
 
 # OPTIONS
 
@@ -126,7 +132,7 @@ Same, from fish:
 
 Pin a version (both `go` and `go-1.23.4` end up on PATH):
 
-    source <(curl -sL in-1.cc) go=1.23.4
+    source <(curl -sL in-1.cc) go GO-VERSION=1.23.4
 
 Install a tool by an alias command name:
 

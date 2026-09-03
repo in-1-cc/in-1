@@ -16,11 +16,12 @@ Install tools into your current shell session:
     curl -sL in-1.cc | source - rust node
     ```
 
-Each argument is a tool name (or an [alias](#aliases)), optionally
-pinned to a version:
+Each bare argument is a tool name (or an [alias](#aliases)).  A
+`NAME=VALUE` argument is passed through to makes as a variable, so you
+pin a version with the tool's makes variable:
 
 ```bash
-source <(curl -sL in-1.cc) go=1.23.4 jq
+source <(curl -sL in-1.cc) go GO-VERSION=1.23.4 jq
 ```
 
 Each tool version installs under
@@ -32,8 +33,8 @@ your shell itself stays clean.  Your shell also gets `MANPATH`
 entries and completions.
 
 Multiple versions coexist.  The primary command of a tool also gets a
-version-specific wrapper, so `go=1.23.4` gives you both `go` and
-`go-1.23.4` on `PATH`.
+version-specific wrapper, so `go GO-VERSION=1.23.4` gives you both
+`go` and `go-1.23.4` on `PATH`.
 
 Sourcing again is idempotent; `PATH` never collects duplicates.
 `IN1_TOOLS` in the environment lists what is active.
