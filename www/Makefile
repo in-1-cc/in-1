@@ -50,6 +50,11 @@ publish: site
 	  git push -f $(REPO) HEAD:gh-pages
 	$(RM) -r $<
 
-$(GEN): ../rc $(PERL)
+# FORCE so the pin is restamped on every build: IN1-VERSION tracks
+# git HEAD, which changes on commits that never touch ../rc, so an
+# mtime dependency alone would keep shipping a stale version pin
+FORCE:
+
+$(GEN): ../rc $(PERL) FORCE
 	IN1_PIN='$(IN1-VERSION)' \
 	  perl -pe 's/\@IN1_VERSION\@/$$ENV{IN1_PIN}/g' $< > $@
