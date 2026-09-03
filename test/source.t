@@ -43,7 +43,8 @@ has "$(cat "$IN1_ROOT/Makefile")" "JQ-VERSION := $version" \
 out=$(bash -c 'source ./rc jq >/dev/null' 2>&1)
 has "$out" '… jq v' "progress: installing line shown"
 has "$out" '√ jq v' "progress: success line shown"
-has "$out" 'installed' "progress: success verb shown"
+has "$out" "installed to $IN1_ROOT/local/bin" "progress: reports bin dir"
+has "$out" 's)' "progress: reports elapsed time"
 
 # A failed install shows an X line and the shell survives
 froot=$SCRATCH/fail
@@ -58,6 +59,13 @@ out=$(
 has "$out" 'X jq v9.9.9 NOT installed' "progress: failure line shown"
 has "$out" 'Full log:' "progress: failure points at the log"
 has "$out" 'status=1 alive' "failed install returns 1, shell survives"
+
+# A relative PREFIX anchors to the caller's cwd, not the makes root
+out=$(
+  cd "$SCRATCH" &&
+  PREFIX=relpfx bash -c "source $ROOT/rc jq >/dev/null 2>&1; command -v jq"
+)
+has "$out" "$SCRATCH/relpfx/bin/jq" "relative PREFIX anchors to cwd"
 
 # eval interface works directly too
 out=$(bash -c '

@@ -132,6 +132,32 @@ tilde-expand() {
   esac
 }
 
+# Absolute path, tilde-expanded, with relative paths anchored to the
+# caller's current directory (not the internal makes root)
+abs-path() {
+  local p
+  p=$(tilde-expand "$1")
+  case $p in
+    /*) printf '%s' "$p";;
+    *) printf '%s/%s' "$PWD" "$p";;
+  esac
+}
+
+# Current time in seconds with a fractional part when available
+now() {
+  if [[ -n ${EPOCHREALTIME:-} ]]; then
+    printf '%s' "${EPOCHREALTIME/,/.}"
+  else
+    date +%s.%N 2>/dev/null || date +%s
+  fi
+}
+
+# Elapsed seconds between two now() readings, as N.NN
+elapsed() {  # $1=start $2=end
+  awk -v a="$1" -v b="$2" 'BEGIN { d = b - a; if (d < 0) d = 0
+    printf "%.2f", d }'
+}
+
 check-prereqs() {
   local cmd
   for cmd in git curl make; do
@@ -155,7 +181,7 @@ set-globals() {
 ensure-makes() {
   mkdir -p "$root/log"
   if [[ ! -d $makes ]]; then
-    progress-run makes "$root/log/makes.log" \
+    progress-run makes "$root/log/makes.log" '' \
       git clone -q "${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}" "$makes" ||
       die "Failed to clone the makes repo"
   elif [[ ${IN1_UPDATE-} ]]; then
@@ -167,15 +193,17 @@ ensure-makes() {
 # Run a command quietly with a progress line:
 #   … LABEL installing....
 # erased on completion and replaced by a green check or red X
-# result line.  All command output goes to the log file, shown only
-# on failure.  IN1_VERBOSE=1 streams everything instead.
-progress-run() {  # $1=label $2=logfile; rest=command
-  local label=$1 log=$2 rc=0 pid tick=0
-  shift 2
+# result line reporting where it installed and how long it took.
+# All command output goes to the log file, shown only on failure.
+# IN1_VERBOSE=1 streams everything instead.
+progress-run() {  # $1=label $2=logfile $3=bindir; rest=command
+  local label=$1 log=$2 bindir=$3 rc=0 pid tick=0 start end
+  shift 3
   if [[ ${IN1_VERBOSE-} ]]; then
     "$@" 1>&2 || rc=$?
     return $rc
   fi
+  start=$(now)
   if [[ -t 2 ]]; then
     printf '… %s installing' "$label" >&2
     "$@" &> "$log" &
@@ -189,26 +217,35 @@ progress-run() {  # $1=label $2=logfile; rest=command
       fi
     done
     wait "$pid" || rc=$?
+    end=$(now)
     printf '\r\033[K' >&2
-    if [[ $rc -eq 0 ]]; then
-      printf '\033[32m√\033[0m %s installed\n' "$label" >&2
-    else
-      printf '\033[31mX\033[0m %s NOT installed\n' "$label" >&2
-    fi
   else
     printf '… %s installing\n' "$label" >&2
     "$@" &> "$log" || rc=$?
-    if [[ $rc -eq 0 ]]; then
-      printf '√ %s installed\n' "$label" >&2
-    else
-      printf 'X %s NOT installed\n' "$label" >&2
-    fi
+    end=$(now)
   fi
+  progress-line "$rc" "$label" "$bindir" "$(elapsed "$start" "$end")"
   if [[ $rc -ne 0 ]]; then
     tail -20 "$log" >&2
     warn "Full log: $log"
   fi
   return $rc
+}
+
+# Print the result line, colored when stderr is a terminal
+progress-line() {  # $1=rc $2=label $3=bindir $4=timing
+  local rc=$1 label=$2 bindir=$3 timing=$4 to='' g='' r='' z=''
+  [[ -n $bindir ]] && to=" to $bindir"
+  if [[ -t 2 ]]; then
+    g=$'\033[32m'; r=$'\033[31m'; z=$'\033[0m'
+  fi
+  if [[ $rc -eq 0 ]]; then
+    printf '%s√%s %s installed%s (%ss)\n' \
+      "$g" "$z" "$label" "$to" "$timing" >&2
+  else
+    printf '%sX%s %s NOT installed (%ss)\n' \
+      "$r" "$z" "$label" "$timing" >&2
+  fi
 }
 
 list-tools() {
@@ -265,11 +302,20 @@ gen-makefile() {  # $1=install-dir $2=makefile-path; rest=tools
       printf 'include %s/%s.mk\n' "$makes" "$tool"
     done
     printf 'include %s/shell.mk\n' "$makes"
+    # The tool's install dir defaults to the bin dir of its primary
+    # SHELL-DEPS target; share/install.mk may override IN1-BIN for
+    # special cases, keyed on IN1-TOOL
+    printf 'IN1-TOOL := %s\n' "$1"
+    # shellcheck disable=SC2016  # make syntax, expanded by make
+    printf 'IN1-BIN := $(patsubst %%/,%%,$(dir $(lastword $(SHELL-DEPS))))\n'
+    printf -- '-include %s/share/install.mk\n' "$self_root"
     printf 'in1-versions:\n'
     for tool in "$@"; do
       # shellcheck disable=SC2016  # $(...) here is make syntax
       printf '\t@echo %s $(%s-VERSION)\n' "$tool" "$(uc "$tool")"
     done
+    # shellcheck disable=SC2016  # make syntax, expanded by make
+    printf 'in1-bindir:\n\t@echo $(IN1-BIN)\n'
   } > "$path"
 }
 
@@ -310,12 +356,13 @@ install-all() {  # $1=install-dir $2=combined-makefile-path
   gen-makefile "$1" "$2" "${tool_list[@]}"
   get-versions "$2"
   mkdir -p "$root/log"
-  local tool mf log
+  local tool mf log bindir
   for tool in "${tool_list[@]}"; do
     mf=$root/log/$tool.mk
     log=$root/log/$tool.log
     gen-makefile "$1" "$mf" "$tool"
-    progress-run "$(tool-label "$tool")" "$log" \
+    bindir=$(make -s -C "$root" -f "$mf" in1-bindir 2>/dev/null || true)
+    progress-run "$(tool-label "$tool")" "$log" "$bindir" \
       make --no-print-directory -C "$root" -f "$mf" shell CMD=: ||
       exit 1
   done
@@ -578,8 +625,7 @@ session-install() {  # sets install_dir, runs install, loads env diff
   set-globals
   ensure-makes
   parse-tool-args "$@"
-  install_dir=${PREFIX:-$root/local}
-  install_dir=$(tilde-expand "$install_dir")
+  install_dir=$(abs-path "${PREFIX:-$root/local}")
   install-all "$install_dir" "$root/Makefile"
   local env_file
   env_file=$root/.in-1-env.$$
@@ -629,7 +675,7 @@ do-local() {
       prefix=$HOME/.local
     fi
   fi
-  prefix=$(tilde-expand "$prefix")
+  prefix=$(abs-path "$prefix")
   if [[ $prefix == */bin ]]; then
     prefix=${prefix%/bin}
     warn "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
