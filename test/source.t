@@ -39,6 +39,26 @@ has "$out" "$IN1_ROOT/local/bin/jq" "pinned install works"
 has "$(cat "$IN1_ROOT/Makefile")" "JQ-VERSION := $version" \
   "pin lands in the generated Makefile"
 
+# Quiet progress output (non-tty variant)
+out=$(bash -c 'source ./rc jq >/dev/null' 2>&1)
+has "$out" '… jq v' "progress: installing line shown"
+has "$out" '√ jq v' "progress: success line shown"
+has "$out" 'installed' "progress: success verb shown"
+
+# A failed install shows an X line and the shell survives
+froot=$SCRATCH/fail
+mkdir -p "$froot"
+ln -s "$ROOT" "$froot/in-1"
+out=$(
+  IN1_ROOT=$froot bash -c '
+    source ./rc jq=9.9.9 >/dev/null
+    echo "status=$? alive"
+  ' 2>&1
+)
+has "$out" 'X jq v9.9.9 NOT installed' "progress: failure line shown"
+has "$out" 'Full log:' "progress: failure points at the log"
+has "$out" 'status=1 alive' "failed install returns 1, shell survives"
+
 # eval interface works directly too
 out=$(bash -c '
   eval "$(bin/in-1 --env bash jq 2>/dev/null)"

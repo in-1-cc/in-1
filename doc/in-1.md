@@ -95,6 +95,10 @@ Run **in-1 --list** to see them all.
 **IN1_UPDATE**
   Set to 1 to update the makes clone before installing.
 
+**IN1_VERBOSE**
+  Set to 1 to stream the full install output instead of the quiet
+  per-tool progress lines.
+
 **IN1_TOOLS**
   Set by in-1 in the shell; lists the active tools.
 

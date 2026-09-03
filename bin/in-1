@@ -85,6 +85,8 @@ Environment variables:
   IN1_MAKES_REPO  makes repo URL to clone
   IN1_VERSION     in-1 version (git ref) to use
   IN1_UPDATE      Set to 1 to update the makes clone before install
+  IN1_VERBOSE     Set to 1 to stream full install output instead of
+                  the quiet progress lines
 
 See 'man in-1' or https://in-1.cc/doc/ for full documentation.
 ...
@@ -98,6 +100,8 @@ get-version() (
   git describe --tags --always 2>/dev/null ||
     printf '%s\n' "$IN1_FALLBACK_VERSION"
 )
+
+uc() { printf '%s' "$1" | tr '[:lower:]' '[:upper:]'; }
 
 tilde-expand() {
   # shellcheck disable=SC2088  # literal leading tilde is the point
@@ -129,15 +133,62 @@ set-globals() {
 }
 
 ensure-makes() {
-  mkdir -p "$root"
+  mkdir -p "$root/log"
   if [[ ! -d $makes ]]; then
-    warn "Cloning makes into '$makes'"
-    git clone -q "${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}" "$makes" ||
-      die "Failed to clone makes repo"
+    progress-run makes "$root/log/makes.log" \
+      git clone -q "${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}" "$makes" ||
+      die "Failed to clone the makes repo"
   elif [[ ${IN1_UPDATE-} ]]; then
     git -C "$makes" pull -q ||
       warn "Warning: failed to update the makes clone"
   fi
+}
+
+# Run a command quietly with a progress line:
+#   … LABEL installing....
+# erased on completion and replaced by a green check or red X
+# result line.  All command output goes to the log file, shown only
+# on failure.  IN1_VERBOSE=1 streams everything instead.
+progress-run() {  # $1=label $2=logfile; rest=command
+  local label=$1 log=$2 rc=0 pid tick=0
+  shift 2
+  if [[ ${IN1_VERBOSE-} ]]; then
+    "$@" 1>&2 || rc=$?
+    return $rc
+  fi
+  if [[ -t 2 ]]; then
+    printf '… %s installing' "$label" >&2
+    "$@" &> "$log" &
+    pid=$!
+    while kill -0 "$pid" 2>/dev/null; do
+      sleep 0.1
+      tick=$((tick + 1))
+      if [[ $((tick % 10)) -eq 0 ]] && kill -0 "$pid" 2>/dev/null
+      then
+        printf '.' >&2
+      fi
+    done
+    wait "$pid" || rc=$?
+    printf '\r\033[K' >&2
+    if [[ $rc -eq 0 ]]; then
+      printf '\033[32m√\033[0m %s installed\n' "$label" >&2
+    else
+      printf '\033[31mX\033[0m %s NOT installed\n' "$label" >&2
+    fi
+  else
+    printf '… %s installing\n' "$label" >&2
+    "$@" &> "$log" || rc=$?
+    if [[ $rc -eq 0 ]]; then
+      printf '√ %s installed\n' "$label" >&2
+    else
+      printf 'X %s NOT installed\n' "$label" >&2
+    fi
+  fi
+  if [[ $rc -ne 0 ]]; then
+    tail -20 "$log" >&2
+    warn "Full log: $log"
+  fi
+  return $rc
 }
 
 list-tools() {
@@ -177,38 +228,85 @@ parse-tool-args() {
     if [[ -n $ver ]]; then
       [[ $ver =~ ^[A-Za-z0-9.+_-]+$ ]] ||
         die "Invalid version '$ver' for tool '$tool'"
-      uc=$(printf '%s' "$tool" | tr '[:lower:]' '[:upper:]')
+      uc=$(uc "$tool")
       pin_lines="$pin_lines$uc-VERSION := $ver"$'\n'
     fi
     tool_list+=("$tool")
   done
 }
 
-gen-makefile() {  # $1=install-dir $2=makefile-path
-  mkdir -p "${2%/*}"
+gen-makefile() {  # $1=install-dir $2=makefile-path; rest=tools
+  local dir=$1 path=$2 tool
+  shift 2
+  mkdir -p "${path%/*}"
   {
-    printf 'MAKES-LOCAL-DIR := %s\n' "$1"
+    printf 'MAKES-LOCAL-DIR := %s\n' "$dir"
     printf '%s' "$pin_lines"
     printf 'include %s/init.mk\n' "$makes"
-    local tool
-    for tool in "${tool_list[@]}"; do
+    for tool in "$@"; do
       printf 'include %s/%s.mk\n' "$makes" "$tool"
     done
     printf 'include %s/shell.mk\n' "$makes"
-  } > "$2"
+    printf 'in1-versions:\n'
+    for tool in "$@"; do
+      # shellcheck disable=SC2016  # $(...) here is make syntax
+      printf '\t@echo %s $(%s-VERSION)\n' "$tool" "$(uc "$tool")"
+    done
+  } > "$path"
 }
 
-install-tools() {  # $1=makefile-path
+setup-make-env() {  # $1=install-dir
   # Own the environment make runs in: a parent make (or a makes-based
   # Makefile) may have exported vars that would redirect the install
   unset MAKEFLAGS MFLAGS MAKELEVEL GNUMAKEFLAGS MAKEOVERRIDES \
     MAKES_TEE MAKES_SCRIPT MAKES_REPO_DIR 2>/dev/null || true
-  export MAKES_LOCAL_DIR=$install_dir
+  export MAKES_LOCAL_DIR=$1
   export MAKES_CACHE_DIR=$cache
   mkdir -p "$cache"
-  # Phase 1: build all tool deps with progress visible on stderr
-  make --no-print-directory -C "$root" -f "$1" shell CMD=: 1>&2 ||
-    die "Tool installation failed"
+}
+
+get-versions() {  # $1=makefile-path; sets versions_str
+  versions_str=$(
+    make -s -C "$root" -f "$1" in1-versions 2>/dev/null || true
+  )
+}
+
+tool-label() {  # $1=tool; echoes "tool vVERSION" or "tool"
+  local line ver=''
+  while IFS= read -r line; do
+    case $line in
+      "$1 "*) ver=${line#"$1 "}; break;;
+    esac
+  done <<< "$versions_str"
+  if [[ -n $ver ]]; then
+    printf '%s v%s' "$1" "$ver"
+  else
+    printf '%s' "$1"
+  fi
+}
+
+# Phase 1: install each tool with its own quiet progress line, then
+# run the combined makefile once as a silent no-op sanity pass
+install-all() {  # $1=install-dir $2=combined-makefile-path
+  setup-make-env "$1"
+  gen-makefile "$1" "$2" "${tool_list[@]}"
+  get-versions "$2"
+  mkdir -p "$root/log"
+  local tool mf log
+  for tool in "${tool_list[@]}"; do
+    mf=$root/log/$tool.mk
+    log=$root/log/$tool.log
+    gen-makefile "$1" "$mf" "$tool"
+    progress-run "$(tool-label "$tool")" "$log" \
+      make --no-print-directory -C "$root" -f "$mf" shell CMD=: ||
+      exit 1
+  done
+  log=$root/log/all.log
+  make --no-print-directory -C "$root" -f "$2" shell CMD=: \
+    &> "$log" || {
+    tail -20 "$log" >&2
+    die "Tool installation failed (log: $log)"
+  }
 }
 
 capture-env() {  # $1=makefile-path $2=out-file
@@ -464,8 +562,7 @@ session-install() {  # sets install_dir, runs install, loads env diff
   parse-tool-args "$@"
   install_dir=${PREFIX:-$root/local}
   install_dir=$(tilde-expand "$install_dir")
-  gen-makefile "$install_dir" "$root/Makefile"
-  install-tools "$root/Makefile"
+  install-all "$install_dir" "$root/Makefile"
   local env_file
   env_file=$root/.in-1-env.$$
   capture-env "$root/Makefile" "$env_file"
@@ -488,7 +585,6 @@ do-env() {
   else
     emit-sh "$shell"
   fi
-  warn "Tools ready: ${tool_list[*]}"
 }
 
 do-run() {
@@ -527,8 +623,7 @@ do-local() {
   parse-tool-args "$@"
   install_dir=$prefix/share/in-1
   mkdir -p "$install_dir" "$prefix/bin"
-  gen-makefile "$install_dir" "$install_dir/Makefile"
-  install-tools "$install_dir/Makefile"
+  install-all "$install_dir" "$install_dir/Makefile"
   local env_file
   env_file=$install_dir/.in-1-env.$$
   capture-env "$install_dir/Makefile" "$env_file"

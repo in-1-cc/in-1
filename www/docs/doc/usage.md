@@ -123,6 +123,10 @@ in-1 --env fish rust | source      # fish
 `IN1_UPDATE`
 :   Set to `1` to `git pull` the makes clone before installing.
 
+`IN1_VERBOSE`
+:   Set to `1` to stream the full install output instead of the
+    quiet per-tool progress lines.
+
 Any makes version variable can also be passed in the environment,
 e.g. `NODE-VERSION` is what `node=22.11.0` sets for you.
 
