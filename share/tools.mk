@@ -9,10 +9,16 @@
 #   <name>-isa   make `in-1 <name>` install this tool (an alias)
 #   <name>-bin   the command shown for that alias
 
-rust-bin  := rustc
-rust-also := cargo* and rust* commands
+bb-isa := babashka
 
 cargo-isa := rust
 cargo-bin := cargo
 
-bb-isa    := babashka
+rust-bin := rustc
+rust-also := cargo* and rust* commands
+
+yaml-isa := yamlstar
+
+yamlstar-bin := yaml
+
+ys-isa := yamlscript
