@@ -12,6 +12,9 @@ else
   pass "--list filters out makes infrastructure files"
 fi
 
+has "$out" 'cargo' "--list includes the cargo alias"
+has "$out" 'bb' "--list includes the bb alias"
+
 out=$(bin/in-1 --version)
 has "$out" 'in-1 ' "--version prints a version"
 

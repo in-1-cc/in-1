@@ -14,15 +14,24 @@ order, if they exist:
 They run in the user's interactive shell with `IN1_ROOT` set, so keep
 them small, idempotent and side-effect free beyond env, aliases and
 completion.
-Most tools need no extras file at all; the generic environment diff
-in `bin/in-1` covers PATH, MANPATH, tool env vars and installed
-completion files.
+Most tools need no extras file at all; each installed command already
+gets a wrapper on PATH that carries the tool's environment.
 
-## install.mk
+## tools.mk
 
-`install.mk` is a makes fragment included into the generated
-per-tool Makefile.
-It lets you override `IN1-BIN`, the install directory in-1 reports on
-its success line, for tools where the default (the bin directory of
-the tool's primary makes target) is wrong.
-Overrides are keyed on `IN1-TOOL`; see the comments in the file.
+`tools.mk` is a file of flat `make :=` variables that in-1 reads
+directly (values are literal, so `*` and friends are never
+expanded).  Keys:
+
+- `<tool>-bin` - the primary command shown on the success line and
+  given a version-specific wrapper (`<cmd>-<version>`).
+  Defaults to the tool name.
+- `<tool>-also` - literal text shown after `also: ` on the success
+  line.
+- `<name>-isa` - makes `<name>` an alias: `in-1 <name>` installs the
+  named tool.
+- `<name>-bin` - the command shown for an alias.
+
+Example: `rust-bin := rustc` makes `in-1 rust` report rustc and write
+`rustc` and `rustc-1.98.0`; `cargo-isa := rust` makes `in-1 cargo`
+install rust.

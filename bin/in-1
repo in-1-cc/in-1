@@ -67,7 +67,7 @@ Usage:
 
   in-1 TOOL[=VERSION]...    Install tools for this shell session
   in-1 --local TOOL...      Install tools under PREFIX for keeps
-  in-1 --list               List available tools
+  in-1 --list               List available tools and aliases
   in-1 --env SHELL TOOL...  Print env setup code for SHELL
                             (bash, zsh or fish)
   in-1 --complete SHELL     Print in-1 command completion for SHELL
@@ -75,12 +75,16 @@ Usage:
   in-1 --version            Print the in-1 version
   in-1 --help               Show this help
 
+Each install goes under <root>/share/<tool>/<version> and gets a
+command wrapper in <root>/bin, which is the single dir put on PATH.
+So `which <cmd>` is always <root>/bin/<cmd>.  The primary command of
+a tool also gets a version-specific wrapper, <cmd>-<version>.
+
 Environment variables:
-  IN1_ROOT        Session install root; default '$TMPDIR/in-1' or
-                  '/tmp/in-1'
+  IN1_ROOT        Session root; default '$TMPDIR/in-1' or '/tmp/in-1'
   IN1_CACHE       Download cache dir; default '$IN1_ROOT/.cache'
-  PREFIX          Install prefix; session default '$IN1_ROOT/local',
-                  --local default '~/.local' ('/usr/local' as root)
+  PREFIX          Install root override; --local default '~/.local'
+                  ('/usr/local' as root)
   IN1_REPO        in-1 repo URL to clone
   IN1_MAKES_REPO  makes repo URL to clone
   IN1_VERSION     in-1 version (git ref) to use
@@ -123,6 +127,8 @@ get-version() (
 
 uc() { printf '%s' "$1" | tr '[:lower:]' '[:upper:]'; }
 
+join-colon() { local IFS=:; printf '%s' "$*"; }
+
 tilde-expand() {
   # shellcheck disable=SC2088  # literal leading tilde is the point
   case $1 in
@@ -158,6 +164,41 @@ elapsed() {  # $1=start $2=end
     printf "%.2f", d }'
 }
 
+# Look up a variable from share/tools.mk (flat "key := value" lines).
+# Values are literal; make is not involved so '*' etc. do not expand.
+meta() {  # $1=key -> value ('' if unset)
+  local f=$self_root/share/tools.mk line key=$1 v
+  [[ -f $f ]] || return 0
+  while IFS= read -r line; do
+    line=${line%%#*}
+    case $line in
+      "$key"[[:space:]]*:=*|"$key":=*) ;;
+      *) continue;;
+    esac
+    v=${line#*:=}
+    v=${v#"${v%%[![:space:]]*}"}
+    v=${v%"${v##*[![:space:]]}"}
+    printf '%s' "$v"
+    return 0
+  done < "$f"
+}
+
+# Alias names declared in share/tools.mk via "<name>-isa := <tool>"
+list-aliases() {
+  local f=$self_root/share/tools.mk line k
+  [[ -f $f ]] || return 0
+  while IFS= read -r line; do
+    line=${line%%#*}
+    case $line in
+      *-isa[[:space:]]*:=*|*-isa:=*) ;;
+      *) continue;;
+    esac
+    k=${line%%:=*}
+    k=${k//[[:space:]]/}
+    printf '%s\n' "${k%-isa}"
+  done < "$f"
+}
+
 check-prereqs() {
   local cmd
   for cmd in git curl make; do
@@ -181,7 +222,7 @@ set-globals() {
 ensure-makes() {
   mkdir -p "$root/log"
   if [[ ! -d $makes ]]; then
-    progress-run makes "$root/log/makes.log" '' \
+    progress-run makes "$root/log/makes.log" '' '' \
       git clone -q "${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}" "$makes" ||
       die "Failed to clone the makes repo"
   elif [[ ${IN1_UPDATE-} ]]; then
@@ -192,13 +233,13 @@ ensure-makes() {
 
 # Run a command quietly with a progress line:
 #   … LABEL installing....
-# erased on completion and replaced by a green check or red X
-# result line reporting where it installed and how long it took.
-# All command output goes to the log file, shown only on failure.
-# IN1_VERBOSE=1 streams everything instead.
-progress-run() {  # $1=label $2=logfile $3=bindir; rest=command
-  local label=$1 log=$2 bindir=$3 rc=0 pid tick=0 start end
-  shift 3
+# erased on completion and replaced by a green check or red X result
+# line reporting where it installed and how long it took.  All output
+# goes to the log file, shown only on failure.  IN1_VERBOSE=1 streams
+# everything instead.
+progress-run() {  # $1=label $2=logfile $3=disp $4=note; rest=command
+  local label=$1 log=$2 disp=$3 note=$4 rc=0 pid tick=0 start end
+  shift 4
   if [[ ${IN1_VERBOSE-} ]]; then
     "$@" 1>&2 || rc=$?
     return $rc
@@ -224,7 +265,8 @@ progress-run() {  # $1=label $2=logfile $3=bindir; rest=command
     "$@" &> "$log" || rc=$?
     end=$(now)
   fi
-  progress-line "$rc" "$label" "$bindir" "$(elapsed "$start" "$end")"
+  progress-line "$rc" "$label" "$disp" "$note" \
+    "$(elapsed "$start" "$end")"
   if [[ $rc -ne 0 ]]; then
     tail -20 "$log" >&2
     warn "Full log: $log"
@@ -233,15 +275,17 @@ progress-run() {  # $1=label $2=logfile $3=bindir; rest=command
 }
 
 # Print the result line, colored when stderr is a terminal
-progress-line() {  # $1=rc $2=label $3=bindir $4=timing
-  local rc=$1 label=$2 bindir=$3 timing=$4 to='' g='' r='' z=''
-  [[ -n $bindir ]] && to=" to $bindir"
+progress-line() {  # $1=rc $2=label $3=disp $4=note $5=timing
+  local rc=$1 label=$2 disp=$3 note=$4 timing=$5
+  local to='' also='' g='' r='' z=''
+  [[ -n $disp ]] && to=" to $disp"
+  [[ -n $note ]] && also=" also: $note"
   if [[ -t 2 ]]; then
     g=$'\033[32m'; r=$'\033[31m'; z=$'\033[0m'
   fi
   if [[ $rc -eq 0 ]]; then
-    printf '%s√%s %s installed%s (%ss)\n' \
-      "$g" "$z" "$label" "$to" "$timing" >&2
+    printf '%s√%s %s installed%s (%ss)%s\n' \
+      "$g" "$z" "$label" "$to" "$timing" "$also" >&2
   else
     printf '%sX%s %s NOT installed (%ss)\n' \
       "$r" "$z" "$label" "$timing" >&2
@@ -251,131 +295,101 @@ progress-line() {  # $1=rc $2=label $3=bindir $4=timing
 list-tools() {
   set-globals
   ensure-makes
-  local file name
+  local file name filter
+  filter=" $(printf '%s' "$tool_filter" | tr '\n' ' ') "
   for file in "$makes"/*.mk; do
     name=${file##*/}
     name=${name%.mk}
-    case " $(printf '%s' "$tool_filter" | tr '\n' ' ') " in
-      *" $name "*) continue;;
-    esac
+    case $filter in *" $name "*) continue;; esac
     printf '%s\n' "$name"
   done
+  list-aliases
 }
 
-# Parse TOOL[=VERSION] args into tool_list and pin_lines
+# Parse TOOL[=VERSION] args into req_name / req_tool / req_pin.
+# A name is a real tool (has <name>.mk) or an alias (<name>-isa).
 parse-tool-args() {
-  tool_list=()
-  pin_lines=''
-  local arg tool ver uc
+  req_name=(); req_tool=(); req_pin=()
+  local arg name pin tool
   [[ $# -gt 0 ]] || {
     usage >&2
     die "No tools specified"
   }
   for arg; do
-    tool=${arg%%=*}
-    ver=''
-    [[ $arg == *=* ]] && ver=${arg#*=}
-    [[ $tool =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
-      die "Invalid tool name '$tool'"
-    if [[ ! -f $makes/$tool.mk ]]; then
-      die "Unknown tool '$tool'. Run \`in-1 --list\` to see available tools."
+    name=${arg%%=*}
+    pin=''
+    [[ $arg == *=* ]] && pin=${arg#*=}
+    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
+      die "Invalid tool name '$name'"
+    if [[ -f $makes/$name.mk ]]; then
+      tool=$name
+    else
+      tool=$(meta "$name-isa")
+      [[ -n $tool ]] ||
+        die "Unknown tool '$name'." \
+          "Run \`in-1 --list\` to see available tools."
+      [[ -f $makes/$tool.mk ]] ||
+        die "Alias '$name' maps to unknown tool '$tool'"
     fi
-    if [[ -n $ver ]]; then
-      [[ $ver =~ ^[A-Za-z0-9.+_-]+$ ]] ||
-        die "Invalid version '$ver' for tool '$tool'"
-      uc=$(uc "$tool")
-      pin_lines="$pin_lines$uc-VERSION := $ver"$'\n'
+    if [[ -n $pin ]]; then
+      [[ $pin =~ ^[A-Za-z0-9.+_-]+$ ]] ||
+        die "Invalid version '$pin' for '$name'"
     fi
-    tool_list+=("$tool")
+    req_name+=("$name")
+    req_tool+=("$tool")
+    req_pin+=("$pin")
   done
 }
 
-gen-makefile() {  # $1=install-dir $2=makefile-path; rest=tools
-  local dir=$1 path=$2 tool
-  shift 2
-  mkdir -p "${path%/*}"
-  {
-    printf 'MAKES-LOCAL-DIR := %s\n' "$dir"
-    printf '%s' "$pin_lines"
-    printf 'include %s/init.mk\n' "$makes"
-    for tool in "$@"; do
-      printf 'include %s/%s.mk\n' "$makes" "$tool"
-    done
-    printf 'include %s/shell.mk\n' "$makes"
-    # The tool's install dir defaults to the bin dir of its primary
-    # SHELL-DEPS target; share/install.mk may override IN1-BIN for
-    # special cases, keyed on IN1-TOOL
-    printf 'IN1-TOOL := %s\n' "$1"
-    # shellcheck disable=SC2016  # make syntax, expanded by make
-    printf 'IN1-BIN := $(patsubst %%/,%%,$(dir $(lastword $(SHELL-DEPS))))\n'
-    printf -- '-include %s/share/install.mk\n' "$self_root"
-    printf 'in1-versions:\n'
-    for tool in "$@"; do
-      # shellcheck disable=SC2016  # $(...) here is make syntax
-      printf '\t@echo %s $(%s-VERSION)\n' "$tool" "$(uc "$tool")"
-    done
-    # shellcheck disable=SC2016  # make syntax, expanded by make
-    printf 'in1-bindir:\n\t@echo $(IN1-BIN)\n'
-  } > "$path"
+# The primary command shown/versioned for a requested name
+primary-of() {  # $1=name
+  local p
+  p=$(meta "$1-bin")
+  [[ -n $p ]] || p=$1
+  printf '%s' "$p"
 }
 
-setup-make-env() {  # $1=install-dir
+gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool $4=pin
+  mkdir -p "${2%/*}"
+  {
+    printf 'MAKES-LOCAL-DIR := %s\n' "$1"
+    [[ -n $4 ]] && printf '%s-VERSION := %s\n' "$(uc "$3")" "$4"
+    printf 'include %s/init.mk\n' "$makes"
+    printf 'include %s/%s.mk\n' "$makes" "$3"
+    printf 'include %s/shell.mk\n' "$makes"
+    # shellcheck disable=SC2016  # make syntax, expanded by make
+    printf 'in1-ver:\n\t@echo $(%s-VERSION)\n' "$(uc "$3")"
+    # shellcheck disable=SC2016  # make syntax, expanded by make
+    printf 'in1-bindir:\n\t@echo $(patsubst %%/,%%,$(dir $(lastword $(SHELL-DEPS))))\n'
+  } > "$2"
+}
+
+# Resolve the version to install for a tool (the pin, or the makes
+# default from <TOOL>-VERSION)
+tool-version() {  # $1=tool $2=pin
+  if [[ -n $2 ]]; then
+    printf '%s' "$2"
+    return
+  fi
+  local qf=$root/log/$1.ver.mk
+  gen-makefile "$root/.meta" "$qf" "$1" ''
+  make -s -C "$root" -f "$qf" in1-ver 2>/dev/null || true
+}
+
+setup-make-env() {
   # Own the environment make runs in: a parent make (or a makes-based
-  # Makefile) may have exported vars that would redirect the install
+  # Makefile) may have exported vars that would redirect the install.
+  # MAKES_LOCAL_DIR must be unset so each makefile's own
+  # MAKES-LOCAL-DIR (one per tool+version) takes effect.
   unset MAKEFLAGS MFLAGS MAKELEVEL GNUMAKEFLAGS MAKEOVERRIDES \
-    MAKES_TEE MAKES_SCRIPT MAKES_REPO_DIR 2>/dev/null || true
-  export MAKES_LOCAL_DIR=$1
+    MAKES_TEE MAKES_SCRIPT MAKES_REPO_DIR MAKES_LOCAL_DIR \
+    2>/dev/null || true
   export MAKES_CACHE_DIR=$cache
   mkdir -p "$cache"
 }
 
-get-versions() {  # $1=makefile-path; sets versions_str
-  versions_str=$(
-    make -s -C "$root" -f "$1" in1-versions 2>/dev/null || true
-  )
-}
-
-tool-label() {  # $1=tool; echoes "tool vVERSION" or "tool"
-  local line ver=''
-  while IFS= read -r line; do
-    case $line in
-      "$1 "*) ver=${line#"$1 "}; break;;
-    esac
-  done <<< "$versions_str"
-  if [[ -n $ver ]]; then
-    printf '%s v%s' "$1" "$ver"
-  else
-    printf '%s' "$1"
-  fi
-}
-
-# Phase 1: install each tool with its own quiet progress line, then
-# run the combined makefile once as a silent no-op sanity pass
-install-all() {  # $1=install-dir $2=combined-makefile-path
-  setup-make-env "$1"
-  gen-makefile "$1" "$2" "${tool_list[@]}"
-  get-versions "$2"
-  mkdir -p "$root/log"
-  local tool mf log bindir
-  for tool in "${tool_list[@]}"; do
-    mf=$root/log/$tool.mk
-    log=$root/log/$tool.log
-    gen-makefile "$1" "$mf" "$tool"
-    bindir=$(make -s -C "$root" -f "$mf" in1-bindir 2>/dev/null || true)
-    progress-run "$(tool-label "$tool")" "$log" "$bindir" \
-      make --no-print-directory -C "$root" -f "$mf" shell CMD=: ||
-      exit 1
-  done
-  log=$root/log/all.log
-  make --no-print-directory -C "$root" -f "$2" shell CMD=: \
-    &> "$log" || {
-    tail -20 "$log" >&2
-    die "Tool installation failed (log: $log)"
-  }
-}
-
 capture-env() {  # $1=makefile-path $2=out-file
-  # Phase 2: deps are up to date now; dump the recipe environment
+  # deps are up to date now; dump the recipe environment
   env_sep='nl'
   if env -0 >/dev/null 2>&1; then
     env_sep=nul
@@ -434,13 +448,12 @@ path-merge() {
   printf '%s' "$out"
 }
 
-# Diff env_names/env_values against our own environment.
-# Fills out_names/out_values (exports to apply) and added_dirs
-# (new PATH entries).  $makes/util is stripped from PATH.
+# Diff env_names/env_values (a tool's install env) against our own.
+# Fills out_names/out_values (tool vars) and added_dirs (the tool's
+# new PATH dirs).  $makes/util is stripped.
 compute-exports() {
   out_names=() out_values=() added_dirs=()
-  new_path=''
-  local i name value cur denied
+  local i name value cur denied new_path=''
   denied=" $(printf '%s' "$env_denylist" | tr '\n' ' ') "
   for ((i=0; i<${#env_names[@]}; i++)); do
     name=${env_names[i]}
@@ -452,8 +465,8 @@ compute-exports() {
     fi
     if [[ ${!name+x} ]]; then cur=${!name}; else cur=$'\1unset\1'; fi
     [[ $value == "$cur" ]] && continue
-    if [[ -n $cur && $cur != $'\1unset\1' && $value == *":$cur" ]]; then
-      # Var was prepended to (LD_LIBRARY_PATH etc); merge and dedupe
+    if [[ -n $cur && $cur != $'\1unset\1' && $value == *":$cur" ]]
+    then
       value=$(path-merge "${value%":$cur"}" "$cur")
       [[ $value == "$cur" ]] && continue
     fi
@@ -463,43 +476,28 @@ compute-exports() {
 
   [[ -n $new_path ]] || return 0
   new_path=$(strip-entry "$new_path" "$makes/util")
-  local merged rest dir
-  merged=$(path-merge "$new_path" "$PATH")
-  rest=$merged
+  local rest dir
+  rest=$new_path
   while [[ -n $rest ]]; do
     dir=${rest%%:*}
     if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
+    [[ -n $dir ]] || continue
     case ":$PATH:" in *":$dir:"*) continue;; esac
+    case " ${added_dirs[*]-} " in *" $dir "*) continue;; esac
     added_dirs+=("$dir")
   done
-  if [[ $merged != "$PATH" ]]; then
-    out_names+=(PATH)
-    out_values+=("$merged")
-  fi
-  new_path=$merged
 }
 
-# Derive MANPATH additions from newly added PATH bin dirs
-compute-manpath() {
-  local dir man adds=''
+# Append this tool's man dirs (siblings of its bin dirs) to man_adds
+collect-manpath() {
+  local dir man
   for dir in ${added_dirs[@]+"${added_dirs[@]}"}; do
     for man in "${dir%/*}/share/man" "${dir%/*}/man"; do
       [[ -d $man ]] || continue
-      case ":$adds:" in *":$man:"*) continue;; esac
-      adds=$adds${adds:+:}$man
+      case ":$man_adds:" in *":$man:"*) continue;; esac
+      man_adds=$man_adds${man_adds:+:}$man
     done
   done
-  [[ -n $adds ]] || return 0
-  local merged
-  if [[ ${MANPATH+x} ]]; then
-    merged=$(path-merge "$adds" "$MANPATH")
-    [[ $merged == "$MANPATH" ]] && return 0
-  else
-    # Trailing colon keeps the system default man path active
-    merged=$adds:
-  fi
-  out_names+=(MANPATH)
-  out_values+=("$merged")
 }
 
 # Single-quote $1 for bash/zsh eval
@@ -515,48 +513,139 @@ fq() {
   printf "'%s'" "$s"
 }
 
-emit-sh() {  # $1=bash|zsh
+# Write one env-baking wrapper (live PATH prepend).  Uses the current
+# out_names/out_values for the tool's env vars.
+write-one-wrapper() {  # $1=real-cmd $2=wrapper-path $3=path-prefix
   local i
-  for ((i=0; i<${#out_names[@]}; i++)); do
-    printf 'export %s=%s\n' "${out_names[i]}" "$(sq "${out_values[i]}")"
+  if [[ -e $2 ]] &&
+     ! grep -q '^# in-1 wrapper$' "$2" 2>/dev/null; then
+    warn "Skipping existing non-wrapper file '$2'"
+    return 0
+  fi
+  {
+    printf '#!/usr/bin/env bash\n'
+    printf '# in-1 wrapper\n'
+    for ((i=0; i<${#out_names[@]}; i++)); do
+      case ${out_names[i]} in PATH|MANPATH) continue;; esac
+      printf 'export %s=%q\n' "${out_names[i]}" "${out_values[i]}"
+    done
+    # shellcheck disable=SC2016  # $PATH expands when the wrapper runs
+    printf 'export PATH=%q${PATH:+:$PATH}\n' "$3"
+    printf 'exec %q "$@"\n' "$1"
+  } > "$2"
+  chmod +x "$2"
+  wrap_count=$((wrap_count + 1))
+}
+
+# Write wrappers into $install_root/bin for every command a tool
+# installed; the primary command also gets a <primary>-<version> one.
+write-wrappers() {  # $1=version $2=primary
+  local pfx dir f cmd primary_real=''
+  pfx=$(join-colon ${added_dirs[@]+"${added_dirs[@]}"})
+  for dir in ${added_dirs[@]+"${added_dirs[@]}"}; do
+    for f in "$dir"/*; do
+      [[ -f $f && -x $f ]] || continue
+      cmd=${f##*/}
+      [[ $cmd == .* ]] && continue
+      write-one-wrapper "$f" "$install_root/bin/$cmd" "$pfx"
+      [[ $cmd == "$2" ]] && primary_real=$f
+    done
   done
-  emit-tools-var sh
-  emit-extras "$1"
+  if [[ -n $primary_real ]]; then
+    write-one-wrapper "$primary_real" \
+      "$install_root/bin/$2-$1" "$pfx"
+  fi
+}
+
+# Install every requested tool into its own share/<tool>/<version>
+# tree and write command wrappers into $install_root/bin.
+install-all() {  # $1=install-root
+  install_root=$1
+  setup-make-env
+  mkdir -p "$root/log" "$install_root/bin"
+  man_adds=''
+  comp_dirs=()
+  wrap_count=0
+  local i name tool pin version idir mf bindir primary disp note
+  local envfile=$root/.in-1-env.$$
+  for ((i=0; i<${#req_name[@]}; i++)); do
+    name=${req_name[i]}
+    tool=${req_tool[i]}
+    pin=${req_pin[i]}
+    version=$(tool-version "$tool" "$pin")
+    [[ -n $version ]] || version=current
+    idir=$install_root/share/$tool/$version
+    mf=$root/log/$tool.mk
+    gen-makefile "$idir" "$mf" "$tool" "$pin"
+    bindir=$(make -s -C "$root" -f "$mf" in1-bindir 2>/dev/null || true)
+    primary=$(primary-of "$name")
+    disp=$bindir/$primary
+    note=$(meta "$name-also")
+    progress-run "$name v$version" "$root/log/$tool.log" \
+      "$disp" "$note" \
+      make --no-print-directory -C "$root" -f "$mf" shell CMD=: ||
+      exit 1
+    capture-env "$mf" "$envfile"
+    load-env "$envfile"
+    rm -f "$envfile"
+    compute-exports
+    write-wrappers "$version" "$primary"
+    collect-manpath
+    comp_dirs+=("$idir")
+  done
+}
+
+# --- shell emit (session mode) ---------------------------------------
+
+emit-prepend-sh() {  # $1=var $2=dir
+  # shellcheck disable=SC2016  # $var expands in the emitted user shell
+  printf 'case ":${%s-}:" in *":%s:"*) ;; *) export %s=%s${%s:+:$%s};; esac\n' \
+    "$1" "$2" "$1" "$(sq "$2")" "$1" "$1"
+}
+
+emit-manpath-sh() {
+  [[ -n $man_adds ]] || return 0
+  local first=${man_adds%%:*}
+  # shellcheck disable=SC2016  # $MANPATH expands in the emitted shell
+  printf 'case ":${MANPATH-}:" in *":%s:"*) ;; *) if [ -n "${MANPATH-}" ]; then export MANPATH=%s:$MANPATH; else export MANPATH=%s:; fi;; esac\n' \
+    "$first" "$(sq "$man_adds")" "$(sq "$man_adds")"
+}
+
+emit-session-sh() {  # $1=bash|zsh
+  emit-prepend-sh PATH "$install_root/bin"
+  emit-manpath-sh
   emit-completions "$1"
+  emit-extras "$1"
+  emit-tools-var sh
   printf 'hash -r 2>/dev/null || true\n'
 }
 
-emit-fish() {
-  local i name value rest
-  for ((i=0; i<${#out_names[@]}; i++)); do
-    name=${out_names[i]}
-    value=${out_values[i]}
-    case $name in
-      *PATH)
-        # fish treats *PATH vars as lists; emit one element per entry
-        printf 'set -gx %s' "$name"
-        rest=$value
-        while [[ $rest == *:* ]]; do
-          printf ' %s' "$(fq "${rest%%:*}")"
-          rest=${rest#*:}
-        done
-        printf ' %s\n' "$(fq "$rest")"
-        ;;
-      *)
-        printf 'set -gx %s %s\n' "$name" "$(fq "$value")"
-        ;;
-    esac
-  done
-  emit-tools-var fish
-  emit-extras fish
+emit-session-fish() {
+  local bindir=$install_root/bin dir
+  # shellcheck disable=SC2016  # $PATH expands in the user's fish
+  printf 'contains -- %s $PATH; or set -gx PATH %s $PATH\n' \
+    "$(fq "$bindir")" "$(fq "$bindir")"
+  if [[ -n $man_adds ]]; then
+    printf 'set -q MANPATH; or set -gx MANPATH ""\n'
+    local rest=$man_adds
+    while [[ -n $rest ]]; do
+      dir=${rest%%:*}
+      if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
+      # shellcheck disable=SC2016  # $MANPATH expands in the user's fish
+      printf 'contains -- %s $MANPATH; or set -gx MANPATH %s $MANPATH\n' \
+        "$(fq "$dir")" "$(fq "$dir")"
+    done
+  fi
   emit-completions fish
+  emit-extras fish
+  emit-tools-var fish
 }
 
 emit-tools-var() {  # $1=sh|fish
-  local list=${IN1_TOOLS-} tool
-  for tool in "${tool_list[@]}"; do
-    case " $list " in *" $tool "*) continue;; esac
-    list=$list${list:+ }$tool
+  local list=${IN1_TOOLS-} n
+  for n in ${req_name[@]+"${req_name[@]}"}; do
+    case " $list " in *" $n "*) continue;; esac
+    list=$list${list:+ }$n
   done
   if [[ $1 == fish ]]; then
     printf 'set -gx IN1_TOOLS %s\n' "$(fq "$list")"
@@ -565,18 +654,17 @@ emit-tools-var() {  # $1=sh|fish
   fi
 }
 
-# Source share/<tool>.<ext> extras files that exist for the target
-# shell.  These run in the user's shell with IN1_ROOT set.
+# Source share/<name>.<ext> extras for the target shell, if present
 emit-extras() {  # $1=bash|zsh|fish
-  local exts tool ext file
+  local exts n ext file
   case $1 in
     bash) exts='sh bash';;
     zsh) exts='sh zsh';;
     fish) exts='fish';;
   esac
-  for tool in "${tool_list[@]}"; do
+  for n in ${req_name[@]+"${req_name[@]}"}; do
     for ext in $exts; do
-      file=$self_root/share/$tool.$ext
+      file=$self_root/share/$n.$ext
       [[ -f $file ]] || continue
       if [[ $1 == fish ]]; then
         printf 'set -gx IN1_ROOT %s\n' "$(fq "$root")"
@@ -589,51 +677,47 @@ emit-extras() {  # $1=bash|zsh|fish
   done
 }
 
-# Best-effort shell completion setup for the installed tools
+# Best-effort completion setup from each installed tool tree
 emit-completions() {  # $1=bash|zsh|fish
-  local local_dir=$install_dir dir file
-  case $1 in
-    bash)
-      for dir in "$local_dir/share/bash-completion/completions" \
-                 "$local_dir/etc/bash_completion.d"; do
-        [[ -d $dir ]] || continue
-        for file in "$dir"/*; do
-          [[ -f $file ]] || continue
-          printf 'source %s 2>/dev/null || true\n' "$(sq "$file")"
+  local d dir file
+  for d in ${comp_dirs[@]+"${comp_dirs[@]}"}; do
+    case $1 in
+      bash)
+        for dir in "$d/share/bash-completion/completions" \
+                   "$d/etc/bash_completion.d"; do
+          [[ -d $dir ]] || continue
+          for file in "$dir"/*; do
+            [[ -f $file ]] || continue
+            printf 'source %s 2>/dev/null || true\n' "$(sq "$file")"
+          done
         done
-      done
-      ;;
-    zsh)
-      dir=$local_dir/share/zsh/site-functions
-      # shellcheck disable=SC2016  # $fpath expands in the user's zsh
-      [[ -d $dir ]] &&
-        printf 'fpath=(%s $fpath)\n' "$(sq "$dir")"
-      ;;
-    fish)
-      dir=$local_dir/share/fish/vendor_completions.d
-      # shellcheck disable=SC2016  # expands in the user's fish
-      [[ -d $dir ]] &&
-        printf 'set -g fish_complete_path %s $fish_complete_path\n' \
-          "$(fq "$dir")"
-      ;;
-  esac
+        ;;
+      zsh)
+        dir=$d/share/zsh/site-functions
+        # shellcheck disable=SC2016  # $fpath expands in the user's zsh
+        [[ -d $dir ]] &&
+          printf 'fpath=(%s $fpath)\n' "$(sq "$dir")"
+        ;;
+      fish)
+        dir=$d/share/fish/vendor_completions.d
+        # shellcheck disable=SC2016  # expands in the user's fish
+        [[ -d $dir ]] &&
+          printf 'set -g fish_complete_path %s $fish_complete_path\n' \
+            "$(fq "$dir")"
+        ;;
+    esac
+  done
   return 0
 }
 
-session-install() {  # sets install_dir, runs install, loads env diff
+# --- modes -----------------------------------------------------------
+
+session-prepare() {  # sets install_root, installs, writes wrappers
   check-prereqs
   set-globals
   ensure-makes
   parse-tool-args "$@"
-  install_dir=$(abs-path "${PREFIX:-$root/local}")
-  install-all "$install_dir" "$root/Makefile"
-  local env_file
-  env_file=$root/.in-1-env.$$
-  capture-env "$root/Makefile" "$env_file"
-  load-env "$env_file"
-  rm -f "$env_file"
-  compute-exports
-  compute-manpath
+  install-all "$(abs-path "${PREFIX:-$root}")"
 }
 
 do-env() {
@@ -643,24 +727,24 @@ do-env() {
     sh) shell=bash;;
     *) die "Unsupported shell '$shell' (want bash, zsh or fish)";;
   esac
-  session-install "$@"
+  session-prepare "$@"
   if [[ $shell == fish ]]; then
-    emit-fish
+    emit-session-fish
   else
-    emit-sh "$shell"
+    emit-session-sh "$shell"
   fi
 }
 
 do-run() {
-  session-install "$@"
-  warn "Tools installed under '$install_dir'." \
+  session-prepare "$@"
+  warn "Tools installed; wrappers are in '$install_root/bin'." \
     "" \
     "A command can not change its parent shell's environment." \
-    "To activate the tools in your current shell run one of:" \
+    "To put them on PATH in your current shell run one of:" \
     "" \
-    "  eval \"\$(in-1 --env bash ${tool_list[*]})\"  # bash" \
-    "  eval \"\$(in-1 --env zsh ${tool_list[*]})\"   # zsh" \
-    "  in-1 --env fish ${tool_list[*]} | source    # fish" \
+    "  eval \"\$(in-1 --env bash ${req_name[*]})\"  # bash" \
+    "  eval \"\$(in-1 --env zsh ${req_name[*]})\"   # zsh" \
+    "  in-1 --env fish ${req_name[*]} | source    # fish" \
     "" \
     "Or 'source /path/to/in-1/.rc' first to get an 'in-1' command" \
     "that does this for you."
@@ -685,55 +769,14 @@ do-local() {
   set-globals
   ensure-makes
   parse-tool-args "$@"
-  install_dir=$prefix/share/in-1
-  mkdir -p "$install_dir" "$prefix/bin"
-  install-all "$install_dir" "$install_dir/Makefile"
-  local env_file
-  env_file=$install_dir/.in-1-env.$$
-  capture-env "$install_dir/Makefile" "$env_file"
-  load-env "$env_file"
-  rm -f "$env_file"
-  compute-exports
+  install-all "$prefix"
 
-  local dir file name wrapper count=0
-  for dir in ${added_dirs[@]+"${added_dirs[@]}"}; do
-    for file in "$dir"/*; do
-      [[ -f $file && -x $file ]] || continue
-      name=${file##*/}
-      [[ $name == .* ]] && continue
-      wrapper=$prefix/bin/$name
-      if [[ -e $wrapper ]] &&
-         ! grep -q '^# in-1 wrapper$' "$wrapper" 2>/dev/null; then
-        warn "Skipping existing non-wrapper file '$wrapper'"
-        continue
-      fi
-      write-wrapper "$file" "$wrapper"
-      count=$((count + 1))
-    done
-  done
-
-  warn "Installed ${tool_list[*]} under '$install_dir'" \
-    "Wrote $count command wrappers into '$prefix/bin'"
+  warn "Installed ${req_name[*]}:" \
+    "$wrap_count command wrappers in '$prefix/bin'"
   case ":$PATH:" in
     *":$prefix/bin:"*) ;;
     *) warn "Note: '$prefix/bin' is not in your PATH";;
   esac
-}
-
-# Write an env-baking wrapper script for one command
-write-wrapper() {  # $1=real-command $2=wrapper-path
-  local i
-  {
-    printf '#!/usr/bin/env bash\n'
-    printf '# in-1 wrapper\n'
-    printf 'export PATH=%q\n' "$new_path"
-    for ((i=0; i<${#out_names[@]}; i++)); do
-      [[ ${out_names[i]} == PATH ]] && continue
-      printf 'export %s=%q\n' "${out_names[i]}" "${out_values[i]}"
-    done
-    printf 'exec %q "$@"\n' "$1"
-  } > "$2"
-  chmod +x "$2"
 }
 
 do-complete() {

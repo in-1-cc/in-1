@@ -29,8 +29,20 @@ Pin a different one per install:
 source <(curl -sL in-1.cc) go=1.23.4
 ```
 
+Versions coexist: each installs under
+`<root>/share/<tool>/<version>`, and the pinned example above puts
+both `go` and `go-1.23.4` on your `PATH`.
+
+## Aliases
+
+A tool can also be requested by a command name it provides, for
+example `cargo` (installs rust) or `bb` (installs babashka).
+`in-1 --list` shows the aliases along with the tools.
+
 ## Adding a tool
 
 Add a `<tool>.mk` to the
 [makes repo](https://github.com/makeplus/makes); in-1 picks it up
 automatically.
+Command aliases and a tool's primary command live in
+[`share/tools.mk`](https://github.com/in-1-cc/in-1/blob/main/share/tools.mk).

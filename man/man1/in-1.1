@@ -25,11 +25,22 @@ in-1 \- instant dev tools for your current shell
 
 
 .SH DESCRIPTION
-\fBin-1\fP installs development tools and languages into a temp
-location and sets up \fBPATH\fP, \fBMANPATH\fP, shell completion and any
-tool environment variables in the current shell, for the duration of
-the shell session.
-Nothing on the system changes.
+\fBin-1\fP installs development tools and languages under a temp root
+and puts a single directory, \fI/bin\fP, on \fBPATH\fP for the
+current shell session (plus \fBMANPATH\fP and completions).
+Nothing else on the system changes.
+
+.PP
+Each tool version installs into \fI/share//\fP, and
+in-1 writes a small wrapper for every command it provides into
+\fI/bin\fP\&.  The wrapper carries the tool's own environment
+(CARGO_HOME, ...), so \fBwhich <cmd>\fR is always \fI/bin/\fP and
+the shell itself stays clean.  Multiple versions coexist: the primary
+command of a tool also gets a version-specific wrapper,
+\fI-\fP\&.
+
+.PP
+For a session the root is \fIIN1_ROOT\fP; for \fB--local\fP it is \fIPREFIX\fP\&.
 
 .PP
 It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
@@ -39,20 +50,22 @@ and needs only \fBgit\fP(1), \fBcurl\fP(1), GNU \fBmake\fP(1) and
 .PP
 Tools are installed by the makes project
 (https://github.com/makeplus/makes); any tool with a \fITOOL\fP\&.mk file
-there is available.
-Run \fBin-1 --list\fP to see them all.
+there is available.  A tool may also be requested by an alias command
+name (e.g. \fBcargo\fP installs rust, \fBbb\fP installs babashka).
+Run \fBin-1 --list\fP to see tools and aliases.
 
 
 .SH OPTIONS
 \fB--local\fP
   Install the tools under \fIPREFIX\fP (default \fI~/.local\fP, or
-  \fI/usr/local\fP when run as root) and write an environment-wrapping
-  script for each tool command into \fIPREFIX/bin\fP\&.
-  These installs persist across shell sessions.
+  \fI/usr/local\fP when run as root) and write a wrapper for each tool
+  command into \fIPREFIX/bin\fP\&.
+  These installs persist across shell sessions and need no shell
+  setup, since the wrappers carry the tools' environment.
 
 .PP
 \fB--list\fP
-  List all available tool names.
+  List all available tool names and command aliases.
 
 .PP
 \fB--env\fP \fISHELL\fP
@@ -92,9 +105,10 @@ Run \fBin-1 --list\fP to see them all.
 
 .PP
 \fBPREFIX\fP
-  Tool install prefix.
-  Session default: \fI$IN1_ROOT/local\fP; \fB--local\fP default:
-  \fI~/.local\fP, or \fI/usr/local\fP when root.
+  Install root override.
+  Session default: \fIIN1_ROOT\fP; \fB--local\fP default: \fI~/.local\fP, or
+  \fI/usr/local\fP when root.  A relative path is anchored to the current
+  directory.
 
 .PP
 \fBIN1_VERSION\fP
@@ -139,10 +153,17 @@ curl -sL in-1.cc | source - rust node
 .EE
 
 .PP
-Pin a version:
+Pin a version (both \fBgo\fR and \fBgo-1.23.4\fR end up on PATH):
 
 .EX
 source <(curl -sL in-1.cc) go=1.23.4
+.EE
+
+.PP
+Install a tool by an alias command name:
+
+.EX
+source <(curl -sL in-1.cc) cargo
 .EE
 
 .PP

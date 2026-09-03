@@ -23,64 +23,76 @@ library where every tool has a `<tool>.mk` file that knows how to
 download and locally install that tool (and its host language) on
 Linux or macOS.
 
-For `in-1 rust node`, bin/in-1 writes a Makefile like:
+For each requested tool, bin/in-1 resolves the version, then writes a
+Makefile like:
 
 ```make
-MAKES-LOCAL-DIR := $IN1_ROOT/local
+MAKES-LOCAL-DIR := $IN1_ROOT/share/rust/1.98.0
 include $IN1_ROOT/makes/init.mk
 include $IN1_ROOT/makes/rust.mk
-include $IN1_ROOT/makes/node.mk
 include $IN1_ROOT/makes/shell.mk
 ```
 
-and runs it twice:
+so every `(tool, version)` installs into its own tree and versions
+never collide.  It runs `make shell CMD=:` to install (progress on
+stderr), then `make -s shell CMD='exec env -0'` to capture the
+environment make set up for that tool.
 
-1. `make shell CMD=:` installs everything, with progress on stderr.
-2. `make -s shell CMD='exec env -0'` dumps the environment that make
-   sets up for the tools.
+## Wrappers
 
-## The env diff
+The captured environment is diffed against in-1's own, isolating the
+`PATH` dirs and variables (like `CARGO_HOME`) the tool needs.  in-1
+then writes a wrapper into `<root>/bin` for every command the tool
+provides:
 
-The captured environment is diffed against your shell's environment.
-Variables that make added or changed become `export` statements
-(bash/zsh) or `set -gx` statements (fish) on stdout, with some rules:
+```bash
+#!/usr/bin/env bash
+# in-1 wrapper
+export CARGO_HOME=$IN1_ROOT/share/rust/1.98.0/cargo
+export RUSTUP_HOME=$IN1_ROOT/share/rust/1.98.0/rustup
+export PATH=$IN1_ROOT/share/rust/1.98.0/cargo/bin:$PATH
+exec $IN1_ROOT/share/rust/1.98.0/cargo/bin/rustc "$@"
+```
 
-* Make's own noise (`MAKEFLAGS`, ...) and vars that must not leak
-  (`TMPDIR`, `LANG`) are dropped
-* `PATH`-like variables are merged and deduped, never overwritten,
-  so re-sourcing never grows them
-* `MANPATH` additions are derived from the man dirs next to each new
-  bin dir
-* Completion files installed by the tools get sourced, best-effort
+The wrapper prepends to the live `$PATH` (never a frozen snapshot),
+so it works from any future shell.  The tool's primary command also
+gets a `<cmd>-<version>` wrapper, so pinned versions stay reachable.
 
-Because the output of `--env` is just text evaluated by your shell,
-the same mechanism serves bash, zsh and fish, the sourced one-liner,
-the `in-1` shell function from `.rc`, and your own
-`eval "$(in-1 --env ...)"`.
+`<root>/bin` is the single directory in-1 puts on your `PATH`, so
+`which <cmd>` is always `<root>/bin/<cmd>` and none of the tool's own
+environment leaks into your interactive shell.
 
-## Wrappers for --local
+## Session vs --local
 
-A session install changes your current shell, which a normal command
-cannot do.
-`in-1 --local` instead writes one wrapper script per tool command
-into `$PREFIX/bin`; each wrapper exports the tool's environment and
-execs the real binary.
-That is what makes the install survive into any future shell without
-touching your dotfiles.
+Both modes use the exact same install-and-wrap machinery; only the
+root differs:
+
+* A **session** install uses `$IN1_ROOT` and emits a tiny bit of
+  shell code to put `$IN1_ROOT/bin` on `PATH` (plus `MANPATH` and
+  completions).  This is what the sourced one-liner and the `in-1`
+  shell function from `.rc` evaluate.
+* **`in-1 --local`** uses `$PREFIX` (default `~/.local`), which is
+  normally already on `PATH`, so it needs no shell setup at all.
+
+in-1 never overwrites a file in `<root>/bin` it did not create.
 
 ## Caching
 
-Everything lives under `$IN1_ROOT` (default `/tmp/in-1`):
-the makes clone, the in-1 clone, the installed tools and the download
-cache.
-Re-sourcing reuses all of it, so only the first request for a tool is
-slow.
-Set `IN1_CACHE` somewhere persistent if you want downloads to survive
+Everything lives under `$IN1_ROOT` (default `/tmp/in-1`): the makes
+clone, the in-1 clone, `bin/` (wrappers), `share/<tool>/<version>`
+(installs) and the download cache.
+Re-running reuses all of it, so only the first request for a tool and
+version is slow.
+Set `IN1_CACHE` somewhere persistent to keep downloads across
 reboots.
 
-## Extras
+## Metadata
 
-Some tools need setup that cannot be derived from the environment
-diff.
-For those, an optional `share/<tool>.{sh,bash,zsh,fish}` file in the
-in-1 repo is sourced in your shell after the env is applied.
+A tool's primary command, a human "also:" note, and command aliases
+(so `in-1 cargo` installs rust) live in `share/tools.mk`, a file of
+flat make variables in-1 reads directly.
+
+Some tools also need shell-side setup (an alias, a completion hook)
+that the wrappers cannot provide.  For those, an optional
+`share/<tool>.{sh,bash,zsh,fish}` file is sourced in your shell after
+a session install.

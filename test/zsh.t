@@ -18,7 +18,7 @@ out=$(zsh -c '
   echo "TOOLS=$IN1_TOOLS"
 ')
 
-has "$out" "$IN1_ROOT/local/bin/jq" "zsh: jq resolves under IN1_ROOT"
+has "$out" "$IN1_ROOT/bin/jq" "zsh: jq resolves under IN1_ROOT"
 has "$out" 'jq-1.' "zsh: jq runs"
 has "$out" 'PATH-IDEMPOTENT' "zsh: re-sourcing does not grow PATH"
 has "$out" 'TOOLS=jq' "zsh: IN1_TOOLS is set"
@@ -31,6 +31,6 @@ out=$(zsh -c '
   command -v jq
 ')
 has "$out" 'in-1: function' "zsh: .rc defines the in-1 function"
-has "$out" "$IN1_ROOT/local/bin/jq" "zsh: in-1 function installs jq"
+has "$out" "$IN1_ROOT/bin/jq" "zsh: in-1 function installs jq"
 
 done-testing

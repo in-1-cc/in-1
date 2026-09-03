@@ -16,23 +16,38 @@ Install tools into your current shell session:
     curl -sL in-1.cc | source - rust node
     ```
 
-Each argument is a tool name, optionally pinned to a version:
+Each argument is a tool name (or an [alias](#aliases)), optionally
+pinned to a version:
 
 ```bash
 source <(curl -sL in-1.cc) go=1.23.4 jq
 ```
 
-The tools are installed under a temp directory (see `IN1_ROOT` below)
-and your current shell gets:
+Each tool version installs under
+`$IN1_ROOT/share/<tool>/<version>`, and in-1 writes a wrapper for
+every command it provides into `$IN1_ROOT/bin` (the one directory put
+on your `PATH`).  So `which node` is always `$IN1_ROOT/bin/node`, the
+wrapper carries the tool's own environment (`CARGO_HOME`, ...), and
+your shell itself stays clean.  Your shell also gets `MANPATH`
+entries and completions.
 
-* `PATH` entries for each tool's commands
-* `MANPATH` entries for their man pages
-* Tool environment variables (`CARGO_HOME`, `RUSTUP_HOME`,
-  `JAVA_HOME`, ...)
-* Shell completion, where the tools provide it
+Multiple versions coexist.  The primary command of a tool also gets a
+version-specific wrapper, so `go=1.23.4` gives you both `go` and
+`go-1.23.4` on `PATH`.
 
 Sourcing again is idempotent; `PATH` never collects duplicates.
 `IN1_TOOLS` in the environment lists what is active.
+
+## Aliases
+
+Some tools can be requested by a command name they provide:
+
+```bash
+source <(curl -sL in-1.cc) cargo   # installs rust
+source <(curl -sL in-1.cc) bb      # installs babashka
+```
+
+`in-1 --list` shows the available aliases along with the tools.
 
 ## Installed mode
 
@@ -61,10 +76,12 @@ in-1 --local rust node
 ```
 
 Installs the tools under `PREFIX` (default `~/.local`, or
-`/usr/local` when run as root) and writes a small wrapper script into
-`$PREFIX/bin` for each tool command.
+`/usr/local` when run as root), into
+`$PREFIX/share/<tool>/<version>`, and writes a wrapper for each
+command into `$PREFIX/bin`.
 The wrappers bake in the environment the tools need, so they work
-from any shell with no setup.
+from any shell with no setup, and `$PREFIX/bin/<cmd>` is what `which`
+resolves.
 
 in-1 never overwrites a file in `$PREFIX/bin` that it did not create.
 
@@ -92,10 +109,10 @@ in-1 --env fish rust | source      # fish
 ## Environment variables
 
 `IN1_ROOT`
-:   Session install root.
+:   Session root.
     Default: `$TMPDIR/in-1`, falling back to `/tmp/in-1`.
-    Holds the makes clone, the in-1 clone, the generated Makefile and
-    the installed tools (`$IN1_ROOT/local`).
+    Holds the makes clone, the in-1 clone, `bin/` (the wrappers) and
+    `share/<tool>/<version>` (the installs).
 
 `IN1_CACHE`
 :   Download cache directory.
@@ -103,9 +120,9 @@ in-1 --env fish rust | source      # fish
     Point this somewhere persistent to keep downloads across reboots.
 
 `PREFIX`
-:   Where tools install.
-    Session default: `$IN1_ROOT/local`.
-    With `--local`: `~/.local`, or `/usr/local` when root.
+:   Install root override.
+    `--local` default: `~/.local`, or `/usr/local` when root.
+    A relative path is anchored to the current directory.
 
 `IN1_VERSION`
 :   The in-1 git ref to use.
