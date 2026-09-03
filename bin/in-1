@@ -37,14 +37,14 @@ main() {
         shell=$1; shift
         ;;
       --local) mode=local;;
-      --list) list-tools; return 0;;
+      --list) list-tools | run-pager || true; return 0;;
       --complete)
         [[ $# -gt 0 ]] || die "--complete requires a shell name"
         do-complete "$1"; return 0
         ;;
       --upgrade) do-upgrade; return 0;;
       --version) printf 'in-1 %s\n' "$(get-version)"; return 0;;
-      --help|-h) usage; return 0;;
+      --help|-h) usage | run-pager || true; return 0;;
       -*) die "Unknown option '$arg'. Try: in-1 --help";;
       *) tools+=("$arg");;
     esac
@@ -94,6 +94,26 @@ See 'man in-1' or https://in-1.cc/doc/ for full documentation.
 
 die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }
 warn() { printf 'in-1: %s\n' "$@" >&2; }
+
+# Page stdin when writing to a terminal.  Honor PAGER; use
+# 'less -FRX' when PAGER is unset or exactly 'less'.
+run-pager() {
+  if [[ ! -t 1 ]]; then
+    cat
+    return
+  fi
+  local pager=${PAGER-}
+  if [[ -z $pager || $pager == less ]]; then
+    if command -v less >/dev/null 2>&1; then
+      less -FRX
+    else
+      cat
+    fi
+  else
+    # shellcheck disable=SC2086  # PAGER may carry its own arguments
+    $pager
+  fi
+}
 
 get-version() (
   cd "$self_root"
@@ -221,9 +241,7 @@ parse-tool-args() {
     [[ $tool =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
       die "Invalid tool name '$tool'"
     if [[ ! -f $makes/$tool.mk ]]; then
-      warn "Unknown tool '$tool'. Available tools:"
-      list-tools | sort | sed 's/^/  /' >&2
-      exit 1
+      die "Unknown tool '$tool'. Run \`in-1 --list\` to see available tools."
     fi
     if [[ -n $ver ]]; then
       [[ $ver =~ ^[A-Za-z0-9.+_-]+$ ]] ||

@@ -35,10 +35,10 @@ has "$out" 'status=1 alive' "no args: returns 1, shell survives"
 has "$out" 'No tools specified' "no args: prints an error"
 has "$out" 'Usage' "no args: prints usage"
 
-# Unknown tool lists the available tools
+# Unknown tool points at --list without dumping every tool
 out=$(bash -c 'source ./rc no-such-tool 2>&1; echo "status=$?"')
 has "$out" "Unknown tool 'no-such-tool'" "unknown tool: error message"
-has "$out" 'rust' "unknown tool: available tools listed"
+has "$out" 'in-1 --list' "unknown tool: points at --list"
 has "$out" 'status=1' "unknown tool: returns 1"
 
 # No _in1* variables or functions may remain after sourcing
