@@ -35,7 +35,8 @@ for a tool named `<tool>` (the makes module name, not an alias):
   normally to let the exec happen.
 
 Example: `clojure.mk` keeps `~/.clojure` and `~/.m2` inside the
-install; `jolt.wrap` starts the REPL under `rlwrap` when it is found.
+install; `gloat.mk` exports `GLOAT_ROOT` so gloat knows it is set up;
+`jolt.wrap` starts the REPL under `rlwrap` when it is found.
 
 ## tools.mk
 
