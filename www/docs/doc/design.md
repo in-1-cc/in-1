@@ -112,3 +112,11 @@ Some tools also need shell-side setup (an alias, a completion hook)
 that the wrappers cannot provide.  For those, an optional
 `share/<tool>.{sh,bash,zsh,fish}` file is sourced in your shell after
 a session install.
+
+A few tools want more in their wrappers than makes provides.
+An optional `share/<tool>.mk` is included in the generated makefile,
+so whatever it exports is captured into the wrappers (clojure keeps
+`~/.clojure` and `~/.m2` inside its install this way).
+An optional `share/<tool>.wrap` is a bash snippet copied into the
+primary command's wrappers before the `exec` (jolt and phel start
+their REPL under `rlwrap` when it is available).

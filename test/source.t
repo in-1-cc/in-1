@@ -101,6 +101,32 @@ has "$out" '√ bb v' "alias 'bb' reports itself, not babashka"
 has "$out" "$IN1_ROOT/local/bin/bb" \
   "alias 'bb' installs and wraps babashka"
 
+# A share/<tool>.wrap snippet goes into the primary's wrappers
+out=$(bash -c 'source ./rc jolt >/dev/null 2>&1; jolt --version')
+has "$out" 'jolt' "jolt installs and runs through its wrapper"
+version=$(
+  grep '^JOLT-VERSION ?=' "$IN1_MAKES_REPO/jolt.mk" | head -1
+)
+version=${version##* }
+for w in jolt jolt-$version; do
+  has "$(cat "$IN1_ROOT/local/bin/$w")" 'exec rlwrap "$cmd" "$@"' \
+    "local/bin/$w carries the jolt.wrap snippet"
+done
+if grep -q rlwrap "$IN1_ROOT/local/bin/jq"; then
+  fail "the jolt snippet stays out of other wrappers"
+else
+  pass "the jolt snippet stays out of other wrappers"
+fi
+if command -v shellcheck >/dev/null 2>&1; then
+  if shellcheck "$IN1_ROOT/local/bin/jolt" "$IN1_ROOT/local/bin/jq"; then
+    pass "generated wrappers pass shellcheck"
+  else
+    fail "generated wrappers pass shellcheck"
+  fi
+else
+  pass "shellcheck not available; check skipped"
+fi
+
 # Installed mode: the in-1 function from .rc, with and without -U
 out=$(bash -c '
   source "$IN1_ROOT/.rc"

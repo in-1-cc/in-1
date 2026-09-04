@@ -465,8 +465,14 @@ gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool
   {
     # override so a NAME=VALUE make arg can not redirect the install
     printf 'override MAKES-LOCAL-DIR := %s\n' "$1"
+    printf 'IN1-SHARE := %s/share\n' "$self_root"
     printf 'include %s/init.mk\n' "$makes"
     printf 'include %s/%s.mk\n' "$makes" "$3"
+    # in-1's own per-tool additions (exported vars land in wrappers)
+    if [[ -f $self_root/share/$3.mk ]]; then
+      # shellcheck disable=SC2016  # make syntax, expanded by make
+      printf 'include $(IN1-SHARE)/%s.mk\n' "$3"
+    fi
     printf 'include %s/shell.mk\n' "$makes"
     # shellcheck disable=SC2016  # make syntax, expanded by make
     printf 'in1-ver:\n\t@echo $(or $($(PRIMARY)-VERSION),$(%s-VERSION))\n' \
@@ -626,7 +632,8 @@ fq() {
 }
 
 # Write one env-baking wrapper (live PATH prepend).  Uses the current
-# out_names/out_values for the tool's env vars.
+# out_names/out_values for the tool's env vars.  $4, if given, is a
+# bash snippet run before the exec; $cmd holds the real command.
 write-one-wrapper() {  # $1=real-cmd $2=wrapper-path $3=path-prefix
   local i
   if [[ -e $2 ]] &&
@@ -643,7 +650,10 @@ write-one-wrapper() {  # $1=real-cmd $2=wrapper-path $3=path-prefix
     done
     # shellcheck disable=SC2016  # $PATH expands when the wrapper runs
     printf 'export PATH=%q${PATH:+:$PATH}\n' "$3"
-    printf 'exec %q "$@"\n' "$1"
+    printf 'cmd=%q\n' "$1"
+    [[ -n ${4-} ]] && cat "$4"
+    # shellcheck disable=SC2016  # $cmd expands when the wrapper runs
+    printf 'exec "$cmd" "$@"\n'
   } > "$2"
   chmod +x "$2"
   wrap_count=$((wrap_count + 1))
@@ -651,21 +661,27 @@ write-one-wrapper() {  # $1=real-cmd $2=wrapper-path $3=path-prefix
 
 # Write wrappers into $install_root/bin for every command a tool
 # installed; the primary command also gets a <primary>-<version> one.
-write-wrappers() {  # $1=version $2=primary
-  local pfx dir f cmd primary_real=''
+# The primary's wrappers include share/<tool>.wrap when it exists.
+write-wrappers() {  # $1=version $2=primary $3=tool
+  local pfx dir f cmd primary_real='' snip=''
   pfx=$(join-colon ${added_dirs[@]+"${added_dirs[@]}"})
+  [[ -f $self_root/share/$3.wrap ]] && snip=$self_root/share/$3.wrap
   for dir in ${added_dirs[@]+"${added_dirs[@]}"}; do
     for f in "$dir"/*; do
       [[ -f $f && -x $f ]] || continue
       cmd=${f##*/}
       [[ $cmd == .* ]] && continue
-      write-one-wrapper "$f" "$install_root/bin/$cmd" "$pfx"
-      [[ $cmd == "$2" ]] && primary_real=$f
+      if [[ $cmd == "$2" ]]; then
+        primary_real=$f
+        write-one-wrapper "$f" "$install_root/bin/$cmd" "$pfx" "$snip"
+      else
+        write-one-wrapper "$f" "$install_root/bin/$cmd" "$pfx"
+      fi
     done
   done
   if [[ -n $primary_real ]]; then
     write-one-wrapper "$primary_real" \
-      "$install_root/bin/$2-$1" "$pfx"
+      "$install_root/bin/$2-$1" "$pfx" "$snip"
   fi
 }
 
@@ -700,7 +716,7 @@ install-all() {  # $1=install-root
     load-env "$envfile"
     rm -f "$envfile"
     compute-exports
-    write-wrappers "$version" "$primary"
+    write-wrappers "$version" "$primary" "$tool"
     collect-manpath
     comp_dirs+=("$idir")
   done

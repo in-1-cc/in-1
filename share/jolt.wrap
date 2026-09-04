@@ -1,0 +1,5 @@
+# shellcheck shell=bash disable=SC2154
+# Line editing and history for the REPL (no args) when rlwrap exists
+if [ $# -eq 0 ] && command -v rlwrap >/dev/null 2>&1; then
+  exec rlwrap "$cmd" "$@"
+fi

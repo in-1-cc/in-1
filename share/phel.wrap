@@ -1,0 +1,5 @@
+# shellcheck shell=bash disable=SC2154
+# Line editing and history for `phel repl` when rlwrap exists
+if [ "${1-}" = repl ] && command -v rlwrap >/dev/null 2>&1; then
+  exec rlwrap "$cmd" "$@"
+fi

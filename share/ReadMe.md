@@ -18,6 +18,25 @@ completion.
 Most tools need no extras file at all; each installed command already
 gets a wrapper on PATH that carries the tool's environment.
 
+## Wrapper hooks
+
+Two more optional files customize what goes into a tool's wrappers,
+for a tool named `<tool>` (the makes module name, not an alias):
+
+- `<tool>.mk` is included by the generated makefile right after
+  makes' `<tool>.mk`.
+  Anything it exports is captured into the wrappers, so it is the
+  place for environment the tool needs at run time that makes does
+  not set.
+  `IN1-SHARE` is this directory, so one hook can include another.
+- `<tool>.wrap` is a bash snippet copied into the primary command's
+  wrappers (`<cmd>` and `<cmd>-<version>`) just before the `exec`.
+  `$cmd` holds the real command and `"$@"` the arguments; return
+  normally to let the exec happen.
+
+Example: `clojure.mk` keeps `~/.clojure` and `~/.m2` inside the
+install; `jolt.wrap` starts the REPL under `rlwrap` when it is found.
+
 ## tools.mk
 
 `tools.mk` is a file of flat `make :=` variables that in-1 reads

@@ -14,6 +14,13 @@ fi
 
 has "$out" 'cargo' "--list includes the cargo alias"
 has "$out" 'bb' "--list includes the bb alias"
+for alias in clj glj lg; do
+  if grep -qx "$alias" <<< "$out"; then
+    pass "--list includes the $alias alias"
+  else
+    fail "--list includes the $alias alias"
+  fi
+done
 
 out=$(bin/in-1 --version)
 has "$out" 'in-1 ' "--version prints a version"
