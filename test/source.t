@@ -88,6 +88,12 @@ out=$(
 )
 has "$out" "$SCRATCH/relpfx/bin/jq" "relative PREFIX anchors to cwd"
 
+# A PREFIX=DIR argument sets the prefix instead of a make variable
+out=$(bash -c "
+  source ./rc jq PREFIX=$SCRATCH/argpfx >/dev/null 2>&1; command -v jq
+")
+has "$out" "$SCRATCH/argpfx/bin/jq" "PREFIX=DIR argument sets the prefix"
+
 # eval interface works directly too
 out=$(bash -c '
   eval "$(bin/in-1 --env bash jq 2>/dev/null)"

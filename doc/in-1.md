@@ -58,7 +58,8 @@ Any *VAR*=*VALUE* argument is passed through to makes as a variable.
 Pin a version with the tool's makes variable, for example
 **in-1 perl PERL-VERSION=5.42.0**.  A pinned version installs
 alongside others and is reachable as both *perl* and its
-version-specific wrapper.
+version-specific wrapper.  *PREFIX*=*DIR* is the exception: it sets
+the install prefix, like the *PREFIX* environment variable.
 
 # OPTIONS
 
@@ -116,7 +117,7 @@ version-specific wrapper.
   Install prefix.
   Session default: *$IN1_ROOT/local*; **--local** default:
   *~/.local*, or */usr/local* when root.  A relative path is anchored
-  to the current directory.
+  to the current directory.  A *PREFIX*=*DIR* argument sets it too.
 
 **IN1_VERSION**
   The in-1 git ref to use.

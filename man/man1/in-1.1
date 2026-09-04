@@ -70,7 +70,8 @@ Any \fIVAR\fP=\fIVALUE\fP argument is passed through to makes as a variable.
 Pin a version with the tool's makes variable, for example
 \fBin-1 perl PERL-VERSION=5.42.0\fP\&.  A pinned version installs
 alongside others and is reachable as both \fIperl\fP and its
-version-specific wrapper.
+version-specific wrapper.  \fIPREFIX\fP=\fIDIR\fP is the exception: it sets
+the install prefix, like the \fIPREFIX\fP environment variable.
 
 
 .SH OPTIONS
@@ -136,7 +137,7 @@ version-specific wrapper.
   Install prefix.
   Session default: \fI$IN1_ROOT/local\fP; \fB--local\fP default:
   \fI~/.local\fP, or \fI/usr/local\fP when root.  A relative path is anchored
-  to the current directory.
+  to the current directory.  A \fIPREFIX\fP=\fIDIR\fP argument sets it too.
 
 .PP
 \fBIN1_VERSION\fP

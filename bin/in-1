@@ -93,7 +93,8 @@ of a tool also gets a version-specific wrapper, <cmd>-<version>.
 
 A NAME=VALUE argument is passed through to makes as a variable, so
 pin a version with its makes variable, e.g.
-'in-1 perl PERL-VERSION=5.42.0'.
+'in-1 perl PERL-VERSION=5.42.0'.  PREFIX=DIR is the exception: it
+sets the install prefix, like the PREFIX environment variable.
 
 An install checks whether in-1 or makes is behind its origin and
 says so; nothing updates unless you pass -U.
@@ -424,6 +425,9 @@ parse-tool-args() {
       case $name in
         MAKES-LOCAL-DIR|MAKES_LOCAL_DIR|MAKES_CACHE_DIR)
           die "'$name' is reserved and can not be set";;
+        PREFIX)  # the install prefix, same as the env var
+          PREFIX=${arg#*=}
+          continue;;
       esac
       make_args+=("$arg")
       continue
@@ -876,6 +880,8 @@ do-run() {
 }
 
 do-local() {
+  prepare-root
+  parse-tool-args "$@"
   local prefix=${PREFIX:-}
   if [[ -z $prefix ]]; then
     if [[ ${EUID:-$(id -u)} == 0 ]]; then
@@ -890,8 +896,6 @@ do-local() {
     warn "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
   fi
 
-  prepare-root
-  parse-tool-args "$@"
   install-all "$prefix"
 
   warn "Installed ${req_name[*]}:" \

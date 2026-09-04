@@ -24,6 +24,9 @@ pin a version with the tool's makes variable:
 source <(curl -sL in-1.cc) go GO-VERSION=1.23.4 jq
 ```
 
+`PREFIX=DIR` is the exception: it sets the
+[install prefix](#environment-variables) instead of going to makes.
+
 The one-liner clones in-1 to `$IN1_ROOT` (default `/tmp/in-1`) and
 everything else lives under that clone.  Each tool version installs
 under `$IN1_ROOT/local/share/<tool>/<version>`, and in-1 writes a
@@ -154,6 +157,8 @@ in-1 --env fish rust | source      # fish
     Session default: `$IN1_ROOT/local`; `--local` default: `~/.local`,
     or `/usr/local` when root.
     A relative path is anchored to the current directory.
+    A `PREFIX=DIR` argument sets it too, so the one-liner can pick a
+    prefix: `source <(curl -sL in-1.cc) jq PREFIX=/opt/tools`.
 
 `IN1_VERSION`
 :   The in-1 git ref to use.
