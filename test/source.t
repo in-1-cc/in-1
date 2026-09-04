@@ -64,8 +64,8 @@ has "$out" 'sets a make variable' "bare make-var arg explains itself"
 out=$(bash -c 'source ./rc jq >/dev/null' 2>&1)
 has "$out" '… jq v' "progress: installing line shown"
 has "$out" '√ jq v' "progress: success line shown"
-has "$out" "installed to $IN1_ROOT/share/jq/$version/bin/jq" \
-  "progress: reports the primary binary path"
+has "$out" "installed to $IN1_ROOT/bin/jq" \
+  "progress: reports the wrapper path"
 has "$out" 's)' "progress: reports elapsed time"
 
 # A failed install shows an X line and the shell survives

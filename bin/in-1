@@ -373,19 +373,21 @@ gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool
     printf 'include %s/%s.mk\n' "$makes" "$3"
     printf 'include %s/shell.mk\n' "$makes"
     # shellcheck disable=SC2016  # make syntax, expanded by make
-    printf 'in1-ver:\n\t@echo $(%s-VERSION)\n' "$(uc "$3")"
-    # shellcheck disable=SC2016  # make syntax, expanded by make
-    printf 'in1-bindir:\n\t@echo $(patsubst %%/,%%,$(dir $(lastword $(SHELL-DEPS))))\n'
+    printf 'in1-ver:\n\t@echo $(or $($(PRIMARY)-VERSION),$(%s-VERSION))\n' \
+      "$(uc "$3")"
   } > "$2"
 }
 
-# Resolve the version to install for a tool: <TOOL>-VERSION, after
-# any NAME=VALUE make args are applied
-tool-version() {  # $1=tool
+# Resolve the version to install: the primary command's makes version
+# variable (<PRIMARY>-VERSION), falling back to the tool's
+# (<TOOL>-VERSION), after any NAME=VALUE make args are applied.  This
+# handles tools whose file name differs from their command, like
+# fortran.mk providing fpm (FPM-VERSION).
+tool-version() {  # $1=tool $2=primary
   local qf=$root/log/$1.ver.mk
   gen-makefile "$root/.meta" "$qf" "$1"
   make -s -C "$root" -f "$qf" ${make_args[@]+"${make_args[@]}"} \
-    in1-ver 2>/dev/null || true
+    in1-ver PRIMARY="$(uc "$2")" 2>/dev/null || true
 }
 
 setup-make-env() {
@@ -580,22 +582,20 @@ install-all() {  # $1=install-root
   man_adds=''
   comp_dirs=()
   wrap_count=0
-  local i name tool version idir mf bindir primary disp note
+  local i name tool version idir mf primary disp note
   local envfile=$root/.in-1-env.$$
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}
     tool=${req_tool[i]}
-    version=$(tool-version "$tool")
+    primary=$(primary-of "$name")
+    version=$(tool-version "$tool" "$primary")
     [[ -n $version ]] || version=current
     idir=$install_root/share/$tool/$version
     mf=$root/log/$tool.mk
     gen-makefile "$idir" "$mf" "$tool"
-    bindir=$(make -s -C "$root" -f "$mf" \
-      ${make_args[@]+"${make_args[@]}"} in1-bindir 2>/dev/null || true)
-    primary=$(primary-of "$name")
-    disp=$bindir/$primary
+    disp=$install_root/bin/$primary
     note=$(meta "$name-also")
-    progress-run "$name v$version" "$root/log/$tool.log" \
+    progress-run "$primary v$version" "$root/log/$tool.log" \
       "$disp" "$note" \
       make --no-print-directory -C "$root" -f "$mf" \
       ${make_args[@]+"${make_args[@]}"} shell CMD=: ||

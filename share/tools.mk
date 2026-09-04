@@ -14,6 +14,9 @@ bb-isa := babashka
 cargo-isa := rust
 cargo-bin := cargo
 
+fortran-bin := fpm
+fortran-also := gfortran
+
 rust-bin := rustc
 rust-also := cargo* and rust* commands
 
