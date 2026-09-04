@@ -1,3 +1,8 @@
+---
+hide:
+- navigation
+---
+
 # Install
 
 There are three ways to use in-1, from nothing-to-install to
