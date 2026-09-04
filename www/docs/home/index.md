@@ -65,6 +65,8 @@ installs it under `~/.local` (or `/usr/local` when root).
 
 ## Learn more
 
+* [Install](../install/index.md) walks through all three ways to use
+  in-1, and how to update or remove it
 * [Usage](../doc/usage.md) covers every option and environment
   variable
 * [Design](../doc/design.md) explains how it works under the hood

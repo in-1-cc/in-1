@@ -42,6 +42,7 @@ theme:
 
 nav:
 - in-1: home/index.md
+- Install: install/index.md
 - Documentation:
   - doc/index.md
   - Usage: doc/usage.md
