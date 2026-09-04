@@ -10,6 +10,7 @@ edit_uri: ""
 
 theme:
   name: material
+  custom_dir: overrides
   features:
   - navigation.instant
   - navigation.tracking
@@ -40,8 +41,9 @@ theme:
   icon:
     repo: fontawesome/brands/github
 
+# The home page is not in the nav on purpose: it gets no tab and no
+# sidebar entry; the header title and logo link to it (extra.homepage)
 nav:
-- in-1: home/index.md
 - Install: install/index.md
 - Documentation:
   - doc/index.md
@@ -71,6 +73,7 @@ plugins:
 - search
 
 extra:
+  homepage: /home/
   social:
   - icon: fontawesome/brands/github
     link: https://github.com/in-1-cc/in-1

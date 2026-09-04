@@ -1,6 +1,9 @@
-# in-1
+---
+hide:
+- navigation
+---
 
-**Instant dev tools for your current shell.**
+# Instant dev tools for your current shell
 
 Want Rust and Node for a bit, without installing anything on your
 system?
