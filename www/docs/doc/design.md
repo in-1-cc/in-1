@@ -88,7 +88,7 @@ makes/                   the makes clone
 local/bin/               session wrappers
 local/share/<tool>/<v>/  session installs
 log/                     install logs and generated Makefiles
-.cache/                  the download cache (IN1_CACHE)
+cache/                   the download cache (IN1_CACHE)
 ```
 
 All of it is gitignored, so the clone stays clean and `git pull`

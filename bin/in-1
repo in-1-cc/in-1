@@ -100,9 +100,9 @@ says so; nothing updates unless you pass -U.
 
 Environment variables:
   IN1_ROOT        The in-1 clone; holds makes/, local/, log/ and
-                  .cache/.  Default: the dir this command runs from
+                  cache/.  Default: the dir this command runs from
                   ('/tmp/in-1' for the one-liner)
-  IN1_CACHE       Download cache dir; default '$IN1_ROOT/.cache'
+  IN1_CACHE       Download cache dir; default '$IN1_ROOT/cache'
   PREFIX          Install prefix; session default '$IN1_ROOT/local',
                   --local default '~/.local' ('/usr/local' as root)
   IN1_REPO        in-1 repo URL to clone
@@ -241,7 +241,7 @@ check-prereqs() {
 set-globals() {
   root=$(tilde-expand "${IN1_ROOT:-$self_root}")
   makes=$root/makes
-  cache=$(tilde-expand "${IN1_CACHE:-$root/.cache}")
+  cache=$(tilde-expand "${IN1_CACHE:-$root/cache}")
 }
 
 ensure-makes() {

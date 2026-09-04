@@ -103,14 +103,14 @@ version-specific wrapper.
 **IN1_ROOT**
   The in-1 clone.
   It holds the makes clone (*makes/*), the session installs
-  (*local/*), logs (*log/*) and the download cache (*.cache/*).
+  (*local/*), logs (*log/*) and the download cache (*cache/*).
   Default: the clone the **in-1** command runs from; the one-liner
   uses */tmp/in-1* (*$TMPDIR/in-1* when *TMPDIR* is set).
   Sourcing *.rc* exports it.
 
 **IN1_CACHE**
   Download cache directory.
-  Default: *$IN1_ROOT/.cache*.
+  Default: *$IN1_ROOT/cache*.
 
 **PREFIX**
   Install prefix.
