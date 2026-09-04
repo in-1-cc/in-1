@@ -20,6 +20,8 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **-U** | **--update** [*OPTIONS*] [*TOOL*...]
 
+**in-1** **-R** | **--reset** [*OPTIONS*] [*TOOL*...]
+
 # DESCRIPTION
 
 **in-1** installs development tools and languages under a prefix and
@@ -43,6 +45,8 @@ Before an install, in-1 checks whether its own clone or its makes
 clone is behind its origin and prints one line per repo if so.
 Nothing is updated unless you ask with **-U**; set *IN1_OFFLINE* to
 skip the check.
+**-R** starts over: it removes everything in-1 put under *IN1_ROOT*
+before doing anything else.
 
 It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
 and needs only **git**(1), **curl**(1), GNU **make**(1) and
@@ -92,6 +96,16 @@ the install prefix, like the *PREFIX* environment variable.
   The in-1 clone moves to the latest default branch (or to
   *IN1_VERSION* if set) and the one-liner leaves it there from then
   on.
+
+**-R**, **--reset**
+  Remove *makes/*, *log/*, *local/* and *cache/* from *IN1_ROOT*
+  before doing anything else: the makes clone, every session install,
+  the logs and the download cache.
+  The in-1 clone itself stays, as does a cache placed elsewhere with
+  *IN1_CACHE*.
+  Alone, that is all it does; with tools or other options it then
+  continues with them, so **in-1 -R rust** installs rust from
+  scratch and **in-1 -R -U** resets and then updates.
 
 **--version**
   Print the in-1 version.
@@ -173,6 +187,10 @@ Keep jq around for good:
 Update in-1 and makes, then install the newest node:
 
     in-1 -U node
+
+Throw away every install and start over with node:
+
+    in-1 -R node
 
 # SEE ALSO
 

@@ -101,4 +101,27 @@ has "$out" 'makes is now at' "in-1 -U: updates makes"
 has "$out" 'status=0' "in-1 -U: returns 0"
 has "$out" '1' "in-1 -U --list: lists tools"
 
+# The in-1 function sends -R to the command too
+out=$(bash -c '
+  source "$IN1_ROOT/.rc"
+  in-1 -R 2>&1; echo "status=$?"
+  in-1 -R --list 2>/dev/null | grep -c ^rust$
+')
+has "$out" 'reset: removed' "in-1 -R: resets the root"
+has "$out" 'status=0' "in-1 -R: returns 0"
+has "$out" '1' "in-1 -R --list: resets, then lists tools"
+
+if command -v fish >/dev/null 2>&1; then
+  out=$(fish -c '
+    source "$IN1_ROOT/.rc"
+    in-1 -R 2>&1; echo "status=$status"
+    in-1 -R --list 2>/dev/null | grep -cx rust
+  ')
+  has "$out" 'reset: removed' "fish: in-1 -R resets the root"
+  has "$out" 'status=0' "fish: in-1 -R returns 0"
+  has "$out" '1' "fish: in-1 -R --list lists tools"
+else
+  pass "fish not available; check skipped"
+fi
+
 done-testing

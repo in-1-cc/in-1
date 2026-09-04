@@ -29,6 +29,10 @@ out=$(bin/in-1 --help)
 has "$out" 'Usage' "--help prints usage"
 has "$out" 'IN1_ROOT' "--help documents IN1_ROOT"
 has "$out" '-U, --update' "--help documents -U"
+has "$out" '-R, --reset' "--help documents -R"
+
+out=$(bin/in-1 --complete bash)
+has "$out" '--reset' "--complete bash offers --reset"
 
 out=$(bin/in-1 --no-such-option 2>&1 || true)
 has "$out" "Unknown option '--no-such-option'" "bad option error"

@@ -133,6 +133,23 @@ else
   pass "shellcheck not available; check skipped"
 fi
 
+# -R wipes the root first, then installs; IN1_TOOLS starts over
+out=$(bash -c '
+  source ./rc jq bb >/dev/null 2>&1
+  source ./rc -R jq >/dev/null 2>&1 || echo "status=$?"
+  command -v jq
+  jq --version
+  echo "TOOLS=$IN1_TOOLS"
+' 2>&1)
+has "$out" "$IN1_ROOT/local/bin/jq" "-R jq: jq is back on PATH"
+has "$out" 'jq-1.' "-R jq: jq runs after the reset"
+has "$out" 'TOOLS=jq' "-R jq: IN1_TOOLS lists only jq"
+if [[ -e $IN1_ROOT/local/bin/bb ]]; then
+  fail "-R jq: the bb wrapper is gone"
+else
+  pass "-R jq: the bb wrapper is gone"
+fi
+
 # Installed mode: the in-1 function from .rc, with and without -U
 out=$(bash -c '
   source "$IN1_ROOT/.rc"

@@ -116,6 +116,23 @@ a branch alone, so an update sticks.
 Set `IN1_OFFLINE=1` to skip the check, for instance on a flaky
 connection.
 
+## Resetting
+
+`-R` (or `--reset`) removes everything in-1 put under `IN1_ROOT`:
+`makes/`, `local/`, `log/` and `cache/`.  The in-1 clone itself
+stays, as does a cache placed elsewhere with `IN1_CACHE`.  Alone it
+does just that; with anything else it resets first and then carries
+on:
+
+```bash
+in-1 -R                              # just reset
+in-1 -R node                         # reset, then install node
+in-1 -R -U node                      # reset, update, then install
+source <(curl -sL in-1.cc) -R node   # same, from the one-liner
+```
+
+After a reset `IN1_TOOLS` lists only the tools installed since.
+
 ## Command reference
 
 ```text
@@ -125,6 +142,8 @@ in-1 --list               List available tools
 in-1 --env SHELL TOOL...  Print env setup code for SHELL
 in-1 --complete SHELL     Print in-1 command completion for SHELL
 in-1 -U, --update [ARGS]  Update in-1 and makes, then continue
+in-1 -R, --reset [ARGS]   Remove makes/, log/, local/ and cache/
+                          from IN1_ROOT, then continue
 in-1 --version            Print the in-1 version
 in-1 --help               Show help
 ```

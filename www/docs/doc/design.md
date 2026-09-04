@@ -95,7 +95,8 @@ All of it is gitignored, so the clone stays clean and `git pull`
 (which is what `in-1 -U` does, for both clones) always works.
 Re-running reuses all of it, so only the first request for a tool and
 version is slow.  Set `IN1_CACHE` somewhere persistent to keep
-downloads across reboots.
+downloads across reboots.  `in-1 -R` removes all four directories and
+leaves just the clone, so starting over never needs an `rm -rf`.
 
 Before an install, in-1 fetches both clones and reports if either is
 behind its origin; it never updates on its own.  The one-liner pins a

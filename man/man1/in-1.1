@@ -26,6 +26,9 @@ in-1 \- instant dev tools for your current shell
 .PP
 \fBin-1\fP \fB-U\fP | \fB--update\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
 
+.PP
+\fBin-1\fP \fB-R\fP | \fB--reset\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
+
 
 .SH DESCRIPTION
 \fBin-1\fP installs development tools and languages under a prefix and
@@ -52,6 +55,8 @@ Before an install, in-1 checks whether its own clone or its makes
 clone is behind its origin and prints one line per repo if so.
 Nothing is updated unless you ask with \fB-U\fP; set \fIIN1_OFFLINE\fP to
 skip the check.
+\fB-R\fP starts over: it removes everything in-1 put under \fIIN1_ROOT\fP
+before doing anything else.
 
 .PP
 It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
@@ -108,6 +113,17 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   The in-1 clone moves to the latest default branch (or to
   \fIIN1_VERSION\fP if set) and the one-liner leaves it there from then
   on.
+
+.PP
+\fB-R\fP, \fB--reset\fP
+  Remove \fImakes/\fP, \fIlog/\fP, \fIlocal/\fP and \fIcache/\fP from \fIIN1_ROOT\fP
+  before doing anything else: the makes clone, every session install,
+  the logs and the download cache.
+  The in-1 clone itself stays, as does a cache placed elsewhere with
+  \fIIN1_CACHE\fP\&.
+  Alone, that is all it does; with tools or other options it then
+  continues with them, so \fBin-1 -R rust\fP installs rust from
+  scratch and \fBin-1 -R -U\fP resets and then updates.
 
 .PP
 \fB--version\fP
@@ -219,6 +235,13 @@ Update in-1 and makes, then install the newest node:
 
 .EX
 in-1 -U node
+.EE
+
+.PP
+Throw away every install and start over with node:
+
+.EX
+in-1 -R node
 .EE
 
 

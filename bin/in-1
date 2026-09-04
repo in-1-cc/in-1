@@ -27,6 +27,10 @@ self_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 # Set by -U/--update (or IN1_UPDATE); update in-1 and makes first
 update=''
 
+# Set by -R/--reset; remove makes/, log/, local/ and cache/ from the
+# root first
+reset=''
+
 main() {
   local mode=run shell='' arg
   local -a tools=()
@@ -48,6 +52,7 @@ main() {
         do-complete "$1"; return 0
         ;;
       -U|--update) update=1;;
+      -R|--reset) reset=1;;
       --version) printf 'in-1 %s\n' "$(get-version)"; return 0;;
       --help|-h) usage | run-pager || true; return 0;;
       -*) die "Unknown option '$arg'. Try: in-1 --help";;
@@ -55,9 +60,16 @@ main() {
     esac
   done
 
-  # A bare update (no tools) just refreshes in-1 and makes
-  if [[ $update && ${#tools[@]} -eq 0 ]]; then
-    prepare-root
+  # A bare update or reset (no tools) does just that; a bare reset
+  # does not clone makes again
+  if [[ ${#tools[@]} -eq 0 && ($update || $reset) ]]; then
+    if [[ $update ]]; then
+      prepare-root
+    else
+      check-prereqs
+      set-globals
+      do-reset
+    fi
     return 0
   fi
 
@@ -83,6 +95,8 @@ Usage:
                             (bash, zsh or fish)
   in-1 --complete SHELL     Print in-1 command completion for SHELL
   in-1 -U, --update [ARGS]  Update in-1 and makes, then continue
+  in-1 -R, --reset [ARGS]   Remove makes/, log/, local/ and cache/
+                            from IN1_ROOT, then continue
   in-1 --version            Print the in-1 version
   in-1 --help               Show this help
 
@@ -97,7 +111,9 @@ pin a version with its makes variable, e.g.
 sets the install prefix, like the PREFIX environment variable.
 
 An install checks whether in-1 or makes is behind its origin and
-says so; nothing updates unless you pass -U.
+says so; nothing updates unless you pass -U.  -R starts over: it
+removes everything in-1 put under IN1_ROOT (the makes clone, all
+session installs, logs and downloads) before doing anything else.
 
 Environment variables:
   IN1_ROOT        The in-1 clone; holds makes/, local/, log/ and
@@ -254,13 +270,14 @@ ensure-makes() {
   fi
 }
 
-# Everything an install needs in place: prereqs, globals, the makes
-# clone; then either update in-1 and makes (-U) or just say whether
-# they are behind.  Runs before tool args are parsed so an update can
-# bring in a newly added tool.
+# Everything an install needs in place: prereqs, globals, a reset if
+# asked (-R), the makes clone; then either update in-1 and makes (-U)
+# or just say whether they are behind.  Runs before tool args are
+# parsed so an update can bring in a newly added tool.
 prepare-root() {
   check-prereqs
   set-globals
+  [[ $reset ]] && do-reset
   ensure-makes
   if [[ $update ]]; then
     do-update
@@ -311,6 +328,20 @@ update-in1() {
 update-makes() {
   git -C "$makes" pull -q || die "Failed to pull latest makes"
   warn "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
+}
+
+# Remove everything in-1 put under the root: the makes clone, the
+# session installs, the logs and the download cache.  The clone itself
+# stays.  A cache placed elsewhere by IN1_CACHE is left alone.
+do-reset() {
+  local dir
+  [[ -x $root/bin/in-1 ]] ||
+    die "'$root' is not an in-1 clone; not resetting"
+  for dir in makes log local cache; do
+    [[ -e $root/$dir ]] || continue
+    rm -rf "${root:?}/$dir" || die "Failed to remove '$root/$dir'"
+  done
+  warn "reset: removed makes/, log/, local/ and cache/ from '$root'"
 }
 
 check-stale() {
@@ -394,6 +425,7 @@ progress-line() {  # $1=rc $2=label $3=disp $4=note $5=timing
 
 list-tools() {
   set-globals
+  [[ $reset ]] && do-reset
   ensure-makes
   [[ $update ]] && do-update
   local file name filter
@@ -774,6 +806,8 @@ emit-session-fish() {
 
 emit-tools-var() {  # $1=sh|fish
   local list=${IN1_TOOLS-} n
+  # After a reset only the tools just installed are active
+  [[ $reset ]] && list=''
   for n in ${req_name[@]+"${req_name[@]}"}; do
     case " $list " in *" $n "*) continue;; esac
     list=$list${list:+ }$n
@@ -912,7 +946,8 @@ do-complete() {
       cat <<'...'
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
-  local opts='--env --local --list --complete -U --update --version --help'
+  local opts='--env --local --list --complete -U --update -R --reset
+    --version --help'
   local tools
   tools=$(command in-1 --list 2>/dev/null || true)
   COMPREPLY=()
@@ -927,7 +962,8 @@ complete -F _in_1_complete in-1
       cat <<'...'
 _in_1_complete() {
   local -a opts tools
-  opts=(--env --local --list --complete -U --update --version --help)
+  opts=(--env --local --list --complete -U --update -R --reset
+    --version --help)
   tools=(${(f)"$(command in-1 --list 2>/dev/null)"})
   _describe 'in-1' opts -- tools
 }
@@ -945,6 +981,7 @@ complete -c in-1 -l local -d 'Install tools under PREFIX'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l complete -d 'Print command completion for a shell'
 complete -c in-1 -s U -l update -d 'Update in-1 and makes first'
+complete -c in-1 -s R -l reset -d 'Remove makes, log, local and cache first'
 complete -c in-1 -l version -d 'Print the in-1 version'
 complete -c in-1 -l help -d 'Show help'
 ...
