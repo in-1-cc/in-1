@@ -11,7 +11,8 @@ order, if they exist:
 - zsh: `<name>.sh` then `<name>.zsh`
 - fish: `<name>.fish`
 
-They run in the user's interactive shell with `IN1_ROOT` set, so keep
+They run in the user's interactive shell with `IN1_ROOT` (the in-1
+clone) set, so keep
 them small, idempotent and side-effect free beyond env, aliases and
 completion.
 Most tools need no extras file at all; each installed command already

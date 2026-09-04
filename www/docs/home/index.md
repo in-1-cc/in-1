@@ -18,9 +18,10 @@ Run this in your shell:
     curl -sL in-1.cc | source - rust node
     ```
 
-That installs the tools under a temp directory and sets up `PATH`,
-`MANPATH`, shell completion and any tool environment variables in your
-**current shell**, for the duration of the shell session.
+That clones in-1 to `/tmp/in-1`, installs the tools under it and sets
+up `PATH`, `MANPATH`, shell completion and any tool environment
+variables in your **current shell**, for the duration of the shell
+session.
 
 Nothing on your system changes.
 Open a new shell and the tools are gone; the downloads stay cached, so
@@ -49,6 +50,7 @@ Then you have:
 ```bash
 in-1 rust node    # install tools into this shell session
 in-1 --list       # see all available tools
+in-1 -U           # update in-1 and makes
 in-1 --help       # or: man in-1
 in-1 <TAB><TAB>   # tab completion
 ```

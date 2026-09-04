@@ -12,28 +12,37 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--local** *TOOL*...
 
-**in-1** **--list** | **--upgrade** | **--version** | **--help**
+**in-1** **--list** | **--version** | **--help**
 
 **in-1** **--env** *SHELL* *TOOL*...
 
 **in-1** **--complete** *SHELL*
 
+**in-1** **-U** | **--update** [*OPTIONS*] [*TOOL*...]
+
 # DESCRIPTION
 
-**in-1** installs development tools and languages under a temp root
-and puts a single directory, *<root>/bin*, on **PATH** for the
-current shell session (plus **MANPATH** and completions).
+**in-1** installs development tools and languages under a prefix and
+puts a single directory, *<prefix>/bin*, on **PATH** for the current
+shell session (plus **MANPATH** and completions).
 Nothing else on the system changes.
 
-Each tool version installs into *<root>/share/<tool>/<version>*, and
-in-1 writes a small wrapper for every command it provides into
-*<root>/bin*.  The wrapper carries the tool's own environment
-(CARGO_HOME, ...), so `which <cmd>` is always *<root>/bin/<cmd>* and
-the shell itself stays clean.  Multiple versions coexist: the primary
-command of a tool also gets a version-specific wrapper,
+Each tool version installs into *<prefix>/share/<tool>/<version>*,
+and in-1 writes a small wrapper for every command it provides into
+*<prefix>/bin*.  The wrapper carries the tool's own environment
+(CARGO_HOME, ...), so `which <cmd>` is always *<prefix>/bin/<cmd>*
+and the shell itself stays clean.  Multiple versions coexist: the
+primary command of a tool also gets a version-specific wrapper,
 *<cmd>-<version>*.
 
-For a session the root is *IN1_ROOT*; for **--local** it is *PREFIX*.
+For a session the prefix is *$IN1_ROOT/local*, where *IN1_ROOT* is
+the in-1 clone itself (*/tmp/in-1* for the one-liner); for **--local**
+it is *PREFIX* (default *~/.local*).
+
+Before an install, in-1 checks whether its own clone or its makes
+clone is behind its origin and prints one line per repo if so.
+Nothing is updated unless you ask with **-U**; set *IN1_OFFLINE* to
+skip the check.
 
 It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
 and needs only **git**(1), **curl**(1), GNU **make**(1) and
@@ -73,9 +82,15 @@ version-specific wrapper.
 **--complete** *SHELL*
   Print tab completion code for the **in-1** command itself.
 
-**--upgrade**
-  Update the in-1 repo clone to the latest version (or to
-  *IN1_VERSION* if set).
+**-U**, **--update**
+  Update the in-1 clone (*IN1_ROOT*) and its makes clone before
+  doing anything else.
+  Alone, that is all it does; with tools or other options it then
+  continues with them, so **in-1 -U rust** gets the newest in-1 and
+  makes and then installs rust.
+  The in-1 clone moves to the latest default branch (or to
+  *IN1_VERSION* if set) and the one-liner leaves it there from then
+  on.
 
 **--version**
   Print the in-1 version.
@@ -86,18 +101,22 @@ version-specific wrapper.
 # ENVIRONMENT
 
 **IN1_ROOT**
-  Session install root.
-  Default: *$TMPDIR/in-1*, falling back to */tmp/in-1*.
+  The in-1 clone.
+  It holds the makes clone (*makes/*), the session installs
+  (*local/*), logs (*log/*) and the download cache (*.cache/*).
+  Default: the clone the **in-1** command runs from; the one-liner
+  uses */tmp/in-1* (*$TMPDIR/in-1* when *TMPDIR* is set).
+  Sourcing *.rc* exports it.
 
 **IN1_CACHE**
   Download cache directory.
   Default: *$IN1_ROOT/.cache*.
 
 **PREFIX**
-  Install root override.
-  Session default: *IN1_ROOT*; **--local** default: *~/.local*, or
-  */usr/local* when root.  A relative path is anchored to the current
-  directory.
+  Install prefix.
+  Session default: *$IN1_ROOT/local*; **--local** default:
+  *~/.local*, or */usr/local* when root.  A relative path is anchored
+  to the current directory.
 
 **IN1_VERSION**
   The in-1 git ref to use.
@@ -111,7 +130,10 @@ version-specific wrapper.
   Default: *https://github.com/makeplus/makes*.
 
 **IN1_UPDATE**
-  Set to 1 to update the makes clone before installing.
+  Set to 1 for the same effect as **-U**.
+
+**IN1_OFFLINE**
+  Set to 1 to skip the is-it-behind check before installs.
 
 **IN1_VERBOSE**
   Set to 1 to stream the full install output instead of the quiet
@@ -146,6 +168,10 @@ Install the in-1 command permanently:
 Keep jq around for good:
 
     in-1 --local jq
+
+Update in-1 and makes, then install the newest node:
+
+    in-1 -U node
 
 # SEE ALSO
 

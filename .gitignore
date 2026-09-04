@@ -1,4 +1,7 @@
 /.cache/
+/makes/
+/local/
+/log/
 /repos/
 /www/site/
 /www/venv/

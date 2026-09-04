@@ -33,7 +33,7 @@ source <(curl -sL in-1.cc) go GO-VERSION=1.23.4
 The variable name is `<TOOL>-VERSION` in upper case (`GO-VERSION`,
 `NODE-VERSION`, `RUST-VERSION`, ...).
 Versions coexist: each installs under
-`<root>/share/<tool>/<version>`, and the pinned example above puts
+`<prefix>/share/<tool>/<version>`, and the pinned example above puts
 both `go` and `go-1.23.4` on your `PATH`.
 
 ## Aliases

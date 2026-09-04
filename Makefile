@@ -19,7 +19,7 @@ endif
 include $M/shell.mk
 
 MAKES-CLEAN += www/site www/docs/index.html www/docs/rc
-MAKES-REALCLEAN += .cache/
+MAKES-REALCLEAN += .cache/ makes/ local/ log/
 
 SHELL-FILES := rc .rc bin/in-1 $(wildcard share/*.sh share/*.bash)
 

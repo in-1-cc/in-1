@@ -21,9 +21,13 @@ has "$out" 'in-1 ' "--version prints a version"
 out=$(bin/in-1 --help)
 has "$out" 'Usage' "--help prints usage"
 has "$out" 'IN1_ROOT' "--help documents IN1_ROOT"
+has "$out" '-U, --update' "--help documents -U"
 
 out=$(bin/in-1 --no-such-option 2>&1 || true)
 has "$out" "Unknown option '--no-such-option'" "bad option error"
+
+out=$(bin/in-1 --upgrade 2>&1 || true)
+has "$out" "Unknown option '--upgrade'" "--upgrade is gone"
 
 if bin/in-1 --complete bash | bash -n; then
   pass "--complete bash emits valid bash"

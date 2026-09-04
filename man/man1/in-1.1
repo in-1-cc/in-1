@@ -15,7 +15,7 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP \fB--local\fP \fITOOL\fP\&...
 
 .PP
-\fBin-1\fP \fB--list\fP | \fB--upgrade\fP | \fB--version\fP | \fB--help\fP
+\fBin-1\fP \fB--list\fP | \fB--version\fP | \fB--help\fP
 
 .PP
 \fBin-1\fP \fB--env\fP \fISHELL\fP \fITOOL\fP\&...
@@ -23,24 +23,35 @@ in-1 \- instant dev tools for your current shell
 .PP
 \fBin-1\fP \fB--complete\fP \fISHELL\fP
 
+.PP
+\fBin-1\fP \fB-U\fP | \fB--update\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
+
 
 .SH DESCRIPTION
-\fBin-1\fP installs development tools and languages under a temp root
-and puts a single directory, \fI/bin\fP, on \fBPATH\fP for the
-current shell session (plus \fBMANPATH\fP and completions).
+\fBin-1\fP installs development tools and languages under a prefix and
+puts a single directory, \fI/bin\fP, on \fBPATH\fP for the current
+shell session (plus \fBMANPATH\fP and completions).
 Nothing else on the system changes.
 
 .PP
-Each tool version installs into \fI/share//\fP, and
-in-1 writes a small wrapper for every command it provides into
+Each tool version installs into \fI/share//\fP,
+and in-1 writes a small wrapper for every command it provides into
 \fI/bin\fP\&.  The wrapper carries the tool's own environment
-(CARGO_HOME, ...), so \fBwhich <cmd>\fR is always \fI/bin/\fP and
-the shell itself stays clean.  Multiple versions coexist: the primary
-command of a tool also gets a version-specific wrapper,
+(CARGO_HOME, ...), so \fBwhich <cmd>\fR is always \fI/bin/\fP
+and the shell itself stays clean.  Multiple versions coexist: the
+primary command of a tool also gets a version-specific wrapper,
 \fI-\fP\&.
 
 .PP
-For a session the root is \fIIN1_ROOT\fP; for \fB--local\fP it is \fIPREFIX\fP\&.
+For a session the prefix is \fI$IN1_ROOT/local\fP, where \fIIN1_ROOT\fP is
+the in-1 clone itself (\fI/tmp/in-1\fP for the one-liner); for \fB--local\fP
+it is \fIPREFIX\fP (default \fI~/.local\fP).
+
+.PP
+Before an install, in-1 checks whether its own clone or its makes
+clone is behind its origin and prints one line per repo if so.
+Nothing is updated unless you ask with \fB-U\fP; set \fIIN1_OFFLINE\fP to
+skip the check.
 
 .PP
 It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
@@ -87,9 +98,15 @@ version-specific wrapper.
   Print tab completion code for the \fBin-1\fP command itself.
 
 .PP
-\fB--upgrade\fP
-  Update the in-1 repo clone to the latest version (or to
-  \fIIN1_VERSION\fP if set).
+\fB-U\fP, \fB--update\fP
+  Update the in-1 clone (\fIIN1_ROOT\fP) and its makes clone before
+  doing anything else.
+  Alone, that is all it does; with tools or other options it then
+  continues with them, so \fBin-1 -U rust\fP gets the newest in-1 and
+  makes and then installs rust.
+  The in-1 clone moves to the latest default branch (or to
+  \fIIN1_VERSION\fP if set) and the one-liner leaves it there from then
+  on.
 
 .PP
 \fB--version\fP
@@ -102,8 +119,12 @@ version-specific wrapper.
 
 .SH ENVIRONMENT
 \fBIN1_ROOT\fP
-  Session install root.
-  Default: \fI$TMPDIR/in-1\fP, falling back to \fI/tmp/in-1\fP\&.
+  The in-1 clone.
+  It holds the makes clone (\fImakes/\fP), the session installs
+  (\fIlocal/\fP), logs (\fIlog/\fP) and the download cache (\fI\&.cache/\fP).
+  Default: the clone the \fBin-1\fP command runs from; the one-liner
+  uses \fI/tmp/in-1\fP (\fI$TMPDIR/in-1\fP when \fITMPDIR\fP is set).
+  Sourcing \fI\&.rc\fP exports it.
 
 .PP
 \fBIN1_CACHE\fP
@@ -112,10 +133,10 @@ version-specific wrapper.
 
 .PP
 \fBPREFIX\fP
-  Install root override.
-  Session default: \fIIN1_ROOT\fP; \fB--local\fP default: \fI~/.local\fP, or
-  \fI/usr/local\fP when root.  A relative path is anchored to the current
-  directory.
+  Install prefix.
+  Session default: \fI$IN1_ROOT/local\fP; \fB--local\fP default:
+  \fI~/.local\fP, or \fI/usr/local\fP when root.  A relative path is anchored
+  to the current directory.
 
 .PP
 \fBIN1_VERSION\fP
@@ -133,7 +154,11 @@ version-specific wrapper.
 
 .PP
 \fBIN1_UPDATE\fP
-  Set to 1 to update the makes clone before installing.
+  Set to 1 for the same effect as \fB-U\fP\&.
+
+.PP
+\fBIN1_OFFLINE\fP
+  Set to 1 to skip the is-it-behind check before installs.
 
 .PP
 \fBIN1_VERBOSE\fP
@@ -186,6 +211,13 @@ Keep jq around for good:
 
 .EX
 in-1 --local jq
+.EE
+
+.PP
+Update in-1 and makes, then install the newest node:
+
+.EX
+in-1 -U node
 .EE
 
 

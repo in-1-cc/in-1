@@ -28,22 +28,36 @@ fi
 
 # in-1 test scaffolding:
 #
-# Each test gets its own scratch IN1_ROOT, pre-seeded with a symlink
-# to this working copy so the stub never needs to clone in-1, and a
-# local makes repo so only tool downloads can hit the network.
-# Tool downloads are cached in a dir shared by all tests.
+# Each test gets its own scratch IN1_ROOT, a stand-in for an in-1
+# clone that links back to this working copy, so the stub never needs
+# to clone in-1.  makes is cloned from a local repo, so only tool
+# downloads can hit the network; those are cached in a dir shared by
+# all tests.
 
 SCRATCH=$ROOT/.cache/test/$NAME
 rm -rf "$SCRATCH"
-mkdir -p "$SCRATCH/root"
+mkdir -p "$SCRATCH"
 
 export IN1_ROOT=$SCRATCH/root
 export IN1_REPO=$ROOT
 export IN1_CACHE=$ROOT/.cache/test/downloads
 export IN1_MAKES_REPO=${IN1_MAKES_REPO:-$ROOT/.cache/makes}
-unset IN1_VERSION IN1_UPDATE PREFIX
+unset IN1_VERSION IN1_UPDATE IN1_OFFLINE PREFIX
 
-ln -s "$ROOT" "$IN1_ROOT/in-1"
+# Build an in-1 clone stand-in at $1: a real bin/ whose in-1 links to
+# this working copy's command (so it resolves its own root to $1, as
+# a real clone would), plus links to everything else it and the
+# sourceable files need.
+make-in1-root() {
+  local f
+  mkdir -p "$1/bin"
+  ln -s "$ROOT/bin/in-1" "$1/bin/in-1"
+  for f in share man rc .rc; do
+    ln -s "$ROOT/$f" "$1/$f"
+  done
+}
+
+make-in1-root "$IN1_ROOT"
 
 [[ -d $IN1_MAKES_REPO ]] ||
   die "makes clone not found at '$IN1_MAKES_REPO' (run 'make test')"

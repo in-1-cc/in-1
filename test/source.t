@@ -17,7 +17,7 @@ out=$(bash -c '
   echo "TOOLS=$IN1_TOOLS"
 ')
 
-has "$out" "$IN1_ROOT/bin/jq" "which jq resolves to IN1_ROOT/bin"
+has "$out" "$IN1_ROOT/local/bin/jq" "which jq resolves to local/bin"
 has "$out" 'jq-1.' "jq runs and reports its version"
 has "$out" 'PATH-IDEMPOTENT' "re-sourcing does not grow PATH"
 has "$out" 'TMPDIR=unset' "TMPDIR does not leak into the shell"
@@ -29,18 +29,18 @@ version=$(
   grep '^JQ-VERSION ?=' "$IN1_MAKES_REPO/jq.mk" | head -1
 )
 version=${version##* }
-if [[ -x $IN1_ROOT/share/jq/$version/bin/jq ]]; then
-  pass "real jq under share/jq/$version"
+if [[ -x $IN1_ROOT/local/share/jq/$version/bin/jq ]]; then
+  pass "real jq under local/share/jq/$version"
 else
-  fail "real jq under share/jq/$version"
+  fail "real jq under local/share/jq/$version"
 fi
-if [[ -x $IN1_ROOT/bin/jq-$version ]]; then
+if [[ -x $IN1_ROOT/local/bin/jq-$version ]]; then
   pass "primary gets a versioned wrapper jq-$version"
 else
   fail "primary gets a versioned wrapper jq-$version"
 fi
-has "$(cat "$IN1_ROOT/bin/jq")" '# in-1 wrapper' \
-  "bin/jq is an in-1 wrapper"
+has "$(cat "$IN1_ROOT/local/bin/jq")" '# in-1 wrapper' \
+  "local/bin/jq is an in-1 wrapper"
 
 # A version is pinned by passing the tool's makes variable as an arg
 alt=1.7
@@ -50,10 +50,10 @@ out=$(bash -c "
   command -v jq-$alt
 ")
 has "$out" "jq-$alt" "make-var arg pins the version"
-if [[ -x $IN1_ROOT/share/jq/$alt/bin/jq ]]; then
-  pass "pinned version installs under share/jq/$alt"
+if [[ -x $IN1_ROOT/local/share/jq/$alt/bin/jq ]]; then
+  pass "pinned version installs under local/share/jq/$alt"
 else
-  fail "pinned version installs under share/jq/$alt"
+  fail "pinned version installs under local/share/jq/$alt"
 fi
 
 # A NAME=VALUE arg with no tool is a friendly error
@@ -64,14 +64,13 @@ has "$out" 'sets a make variable' "bare make-var arg explains itself"
 out=$(bash -c 'source ./rc jq >/dev/null' 2>&1)
 has "$out" '… jq v' "progress: installing line shown"
 has "$out" '√ jq v' "progress: success line shown"
-has "$out" "installed to $IN1_ROOT/bin/jq" \
+has "$out" "installed to $IN1_ROOT/local/bin/jq" \
   "progress: reports the wrapper path"
 has "$out" 's)' "progress: reports elapsed time"
 
 # A failed install shows an X line and the shell survives
 froot=$SCRATCH/fail
-mkdir -p "$froot"
-ln -s "$ROOT" "$froot/in-1"
+make-in1-root "$froot"
 out=$(
   IN1_ROOT=$froot bash -c '
     source ./rc jq JQ-VERSION=9.9.9 >/dev/null
@@ -94,11 +93,24 @@ out=$(bash -c '
   eval "$(bin/in-1 --env bash jq 2>/dev/null)"
   command -v jq
 ')
-has "$out" "$IN1_ROOT/bin/jq" "eval of in-1 --env works"
+has "$out" "$IN1_ROOT/local/bin/jq" "eval of in-1 --env works"
 
 # An alias installs the tool it names and labels itself
 out=$(bash -c 'source ./rc bb >/dev/null; command -v bb' 2>&1)
 has "$out" '√ bb v' "alias 'bb' reports itself, not babashka"
-has "$out" "$IN1_ROOT/bin/bb" "alias 'bb' installs and wraps babashka"
+has "$out" "$IN1_ROOT/local/bin/bb" \
+  "alias 'bb' installs and wraps babashka"
+
+# Installed mode: the in-1 function from .rc, with and without -U
+out=$(bash -c '
+  source "$IN1_ROOT/.rc"
+  in-1 jq >/dev/null 2>&1
+  command -v jq
+  in-1 -U jq 2>&1 >/dev/null
+  command -v jq
+')
+has "$out" "$IN1_ROOT/local/bin/jq" "in-1 function installs jq"
+has "$out" 'not updating in-1' "in-1 -U jq: goes through --env"
+has "$out" 'makes is now at' "in-1 -U jq: updates makes"
 
 done-testing

@@ -59,7 +59,7 @@ Then:
 in-1 rust node    # session install into the current shell
 in-1 --list       # all available tools
 in-1 --local jq   # persistent install under ~/.local
-in-1 --upgrade    # update in-1 itself
+in-1 -U           # update in-1 and makes
 man in-1
 ```
 
@@ -67,10 +67,11 @@ man in-1
 ## How it works
 
 The script served at in-1.cc clones this repo (pinned to the
-published version) and the makes repo under `$IN1_ROOT` (default
-`/tmp/in-1`), generates a Makefile that includes the requested
+published version) to `$IN1_ROOT` (default `/tmp/in-1`), clones the
+makes repo under it, generates a Makefile that includes the requested
 `<tool>.mk` files, runs it, then diffs the resulting environment
 against your shell's and applies the difference.
+Installs go under `$IN1_ROOT/local`, so the clone stays clean.
 
 See [doc/design](https://in-1.cc/doc/design/) for the full story and
 `man in-1` (or [doc/usage](https://in-1.cc/doc/usage/)) for every

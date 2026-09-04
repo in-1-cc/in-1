@@ -48,4 +48,57 @@ out=$(bash -c '
 ')
 is "$out" 0 "no _in1 residue in shell after sourcing"
 
+# An IN1_ROOT that exists but is not an in-1 clone (the old layout,
+# say) is an error, never touched
+old=$SCRATCH/old
+mkdir -p "$old/in-1"
+out=$(
+  IN1_ROOT=$old bash -c 'source ./rc jq 2>&1; echo "status=$? alive"'
+)
+has "$out" 'not an in-1 clone' "old layout: explains itself"
+has "$out" 'status=1 alive' "old layout: returns 1, shell survives"
+if [[ ! -e $old/bin ]]; then
+  pass "old layout: root left untouched"
+else
+  fail "old layout: root left untouched"
+fi
+
+if command -v fish >/dev/null 2>&1; then
+  out=$(
+    IN1_ROOT=$old fish -c 'source ./rc jq 2>&1; echo "status=$status"'
+  )
+  has "$out" 'not an in-1 clone' "fish: old layout explains itself"
+  has "$out" 'status=1' "fish: old layout returns 1"
+else
+  pass "fish not available; check skipped"
+fi
+
+# A missing or empty IN1_ROOT gets the clone (from IN1_REPO here)
+for fresh in "$SCRATCH/fresh/root" "$SCRATCH/empty"; do
+  [[ $fresh == */empty ]] && mkdir -p "$fresh"
+  out=$(
+    IN1_ROOT=$fresh bash -c 'source ./rc no-such-tool 2>&1; echo "s=$?"'
+  )
+  if [[ -x $fresh/bin/in-1 && -d $fresh/.git && -d $fresh/makes ]]; then
+    pass "clone lands in ${fresh##*/}: bin/in-1, .git and makes/"
+  else
+    fail "clone lands in ${fresh##*/}: bin/in-1, .git and makes/"
+  fi
+  has "$out" 'Unknown tool' "the clone in ${fresh##*/} runs"
+done
+
+# Installed mode: .rc sets IN1_ROOT to the clone it lives in and the
+# in-1 function sends -U to the command
+out=$(bash -c '
+  source "$IN1_ROOT/.rc"
+  echo "root=$IN1_ROOT"
+  in-1 -U 2>&1; echo "status=$?"
+  in-1 -U --list 2>/dev/null | grep -c ^rust$
+')
+has "$out" "root=$IN1_ROOT" ".rc exports IN1_ROOT as its own dir"
+has "$out" 'not updating in-1' "in-1 -U: warns on a non-clone root"
+has "$out" 'makes is now at' "in-1 -U: updates makes"
+has "$out" 'status=0' "in-1 -U: returns 0"
+has "$out" '1' "in-1 -U --list: lists tools"
+
 done-testing

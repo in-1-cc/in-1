@@ -24,9 +24,14 @@ local podman shell'
 
 self_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 
+# Set by -U/--update (or IN1_UPDATE); update in-1 and makes first
+update=''
+
 main() {
   local mode=run shell='' arg
   local -a tools=()
+
+  [[ ${IN1_UPDATE-} ]] && update=1
 
   while [[ $# -gt 0 ]]; do
     arg=$1; shift
@@ -42,13 +47,19 @@ main() {
         [[ $# -gt 0 ]] || die "--complete requires a shell name"
         do-complete "$1"; return 0
         ;;
-      --upgrade) do-upgrade; return 0;;
+      -U|--update) update=1;;
       --version) printf 'in-1 %s\n' "$(get-version)"; return 0;;
       --help|-h) usage | run-pager || true; return 0;;
       -*) die "Unknown option '$arg'. Try: in-1 --help";;
       *) tools+=("$arg");;
     esac
   done
+
+  # A bare update (no tools) just refreshes in-1 and makes
+  if [[ $update && ${#tools[@]} -eq 0 ]]; then
+    prepare-root
+    return 0
+  fi
 
   case $mode in
     env) do-env "$shell" ${tools[@]+"${tools[@]}"};;
@@ -71,28 +82,34 @@ Usage:
   in-1 --env SHELL TOOL...  Print env setup code for SHELL
                             (bash, zsh or fish)
   in-1 --complete SHELL     Print in-1 command completion for SHELL
-  in-1 --upgrade            Update the in-1 repo clone
+  in-1 -U, --update [ARGS]  Update in-1 and makes, then continue
   in-1 --version            Print the in-1 version
   in-1 --help               Show this help
 
-Each install goes under <root>/share/<tool>/<version> and gets a
-command wrapper in <root>/bin, which is the single dir put on PATH.
-So `which <cmd>` is always <root>/bin/<cmd>.  The primary command of
-a tool also gets a version-specific wrapper, <cmd>-<version>.
+Each install goes under <prefix>/share/<tool>/<version> and gets a
+command wrapper in <prefix>/bin, which is the single dir put on PATH.
+So `which <cmd>` is always <prefix>/bin/<cmd>.  The primary command
+of a tool also gets a version-specific wrapper, <cmd>-<version>.
 
 A NAME=VALUE argument is passed through to makes as a variable, so
 pin a version with its makes variable, e.g.
 'in-1 perl PERL-VERSION=5.42.0'.
 
+An install checks whether in-1 or makes is behind its origin and
+says so; nothing updates unless you pass -U.
+
 Environment variables:
-  IN1_ROOT        Session root; default '$TMPDIR/in-1' or '/tmp/in-1'
+  IN1_ROOT        The in-1 clone; holds makes/, local/, log/ and
+                  .cache/.  Default: the dir this command runs from
+                  ('/tmp/in-1' for the one-liner)
   IN1_CACHE       Download cache dir; default '$IN1_ROOT/.cache'
-  PREFIX          Install root override; --local default '~/.local'
-                  ('/usr/local' as root)
+  PREFIX          Install prefix; session default '$IN1_ROOT/local',
+                  --local default '~/.local' ('/usr/local' as root)
   IN1_REPO        in-1 repo URL to clone
   IN1_MAKES_REPO  makes repo URL to clone
   IN1_VERSION     in-1 version (git ref) to use
-  IN1_UPDATE      Set to 1 to update the makes clone before install
+  IN1_UPDATE      Set to 1 for the same effect as -U
+  IN1_OFFLINE     Set to 1 to skip the is-it-behind check
   IN1_VERBOSE     Set to 1 to stream full install output instead of
                   the quiet progress lines
 
@@ -123,11 +140,14 @@ run-pager() {
   fi
 }
 
-get-version() (
-  cd "$self_root"
-  git describe --tags --always 2>/dev/null ||
-    printf '%s\n' "$IN1_FALLBACK_VERSION"
-)
+get-version() {
+  set-globals
+  # Guarded: a non-clone root inside another repo must not describe it
+  if [[ -e $root/.git ]]; then
+    git -C "$root" describe --tags --always 2>/dev/null && return 0
+  fi
+  printf '%s\n' "$IN1_FALLBACK_VERSION"
+}
 
 uc() { printf '%s' "$1" | tr '[:lower:]' '[:upper:]'; }
 
@@ -215,10 +235,11 @@ check-prereqs() {
   esac
 }
 
+# The root is the in-1 clone itself (the dir this command runs from
+# unless IN1_ROOT says otherwise); makes, installs, logs and the
+# download cache all live under it.
 set-globals() {
-  local tmp=${TMPDIR:-${TEMP:-${TMP:-/tmp}}}
-  tmp=${tmp%/}
-  root=$(tilde-expand "${IN1_ROOT:-$tmp/in-1}")
+  root=$(tilde-expand "${IN1_ROOT:-$self_root}")
   makes=$root/makes
   cache=$(tilde-expand "${IN1_CACHE:-$root/.cache}")
 }
@@ -229,10 +250,84 @@ ensure-makes() {
     progress-run makes "$root/log/makes.log" '' '' \
       git clone -q "${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}" "$makes" ||
       die "Failed to clone the makes repo"
-  elif [[ ${IN1_UPDATE-} ]]; then
-    git -C "$makes" pull -q ||
-      warn "Warning: failed to update the makes clone"
   fi
+}
+
+# Everything an install needs in place: prereqs, globals, the makes
+# clone; then either update in-1 and makes (-U) or just say whether
+# they are behind.  Runs before tool args are parsed so an update can
+# bring in a newly added tool.
+prepare-root() {
+  check-prereqs
+  set-globals
+  ensure-makes
+  if [[ $update ]]; then
+    do-update
+  else
+    check-stale
+  fi
+}
+
+# Name of the branch origin/HEAD points at (main when unknown)
+default-branch() {  # $1=dir
+  local branch
+  branch=$(git -C "$1" symbolic-ref -q --short \
+    refs/remotes/origin/HEAD 2>/dev/null) || branch=origin/main
+  printf '%s' "${branch#origin/}"
+}
+
+# Quiet fetch that never prompts and gives up on a stalled connection
+git-fetch() {  # $1=dir
+  GIT_TERMINAL_PROMPT=0 git -C "$1" \
+    -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 \
+    fetch -q --tags origin 2>/dev/null
+}
+
+do-update() {
+  update-in1
+  update-makes
+}
+
+update-in1() {
+  if [[ ! -e $root/.git ]]; then
+    warn "'$root' is not a git clone; not updating in-1"
+    return 0
+  fi
+  git-fetch "$root" || die "Failed to fetch in-1 from origin"
+  if [[ ${IN1_VERSION-} ]]; then
+    git -C "$root" checkout -q "$IN1_VERSION" ||
+      die "Failed to checkout '$IN1_VERSION'"
+  else
+    local branch
+    branch=$(default-branch "$root")
+    git -C "$root" checkout -q "$branch" ||
+      die "Failed to checkout '$branch'"
+    git -C "$root" pull -q || die "Failed to pull latest in-1"
+  fi
+  warn "in-1 is now at version $(get-version)"
+}
+
+update-makes() {
+  git -C "$makes" pull -q || die "Failed to pull latest makes"
+  warn "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
+}
+
+check-stale() {
+  [[ ${IN1_OFFLINE-} ]] && return 0
+  stale-notice in-1 "$root"
+  stale-notice makes "$makes"
+}
+
+# One line if the clone in $2 is behind its origin; silent otherwise
+# (and when offline)
+stale-notice() {  # $1=label $2=dir
+  local n
+  [[ -e $2/.git ]] || return 0
+  git-fetch "$2" || return 0
+  n=$(git -C "$2" rev-list --count \
+    "HEAD..origin/$(default-branch "$2")" 2>/dev/null) || return 0
+  [[ $n -gt 0 ]] || return 0
+  warn "$1 is $n commit(s) behind; run 'in-1 -U' to update"
 }
 
 # Run a command quietly with a progress line:
@@ -299,6 +394,7 @@ progress-line() {  # $1=rc $2=label $3=disp $4=note $5=timing
 list-tools() {
   set-globals
   ensure-makes
+  [[ $update ]] && do-update
   local file name filter
   filter=" $(printf '%s' "$tool_filter" | tr '\n' ' ') "
   for file in "$makes"/*.mk; do
@@ -385,7 +481,7 @@ gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool
 # fortran.mk providing fpm (FPM-VERSION).
 tool-version() {  # $1=tool $2=primary
   local qf=$root/log/$1.ver.mk
-  gen-makefile "$root/.meta" "$qf" "$1"
+  gen-makefile "$root/log/.meta" "$qf" "$1"
   make -s -C "$root" -f "$qf" ${make_args[@]+"${make_args[@]}"} \
     in1-ver PRIMARY="$(uc "$2")" 2>/dev/null || true
 }
@@ -583,7 +679,7 @@ install-all() {  # $1=install-root
   comp_dirs=()
   wrap_count=0
   local i name tool version idir mf primary disp note
-  local envfile=$root/.in-1-env.$$
+  local envfile=$root/log/in-1-env.$$
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}
     tool=${req_tool[i]}
@@ -728,11 +824,9 @@ emit-completions() {  # $1=bash|zsh|fish
 # --- modes -----------------------------------------------------------
 
 session-prepare() {  # sets install_root, installs, writes wrappers
-  check-prereqs
-  set-globals
-  ensure-makes
+  prepare-root
   parse-tool-args "$@"
-  install-all "$(abs-path "${PREFIX:-$root}")"
+  install-all "$(abs-path "${PREFIX:-$root/local}")"
 }
 
 do-env() {
@@ -780,9 +874,7 @@ do-local() {
     warn "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
   fi
 
-  check-prereqs
-  set-globals
-  ensure-makes
+  prepare-root
   parse-tool-args "$@"
   install-all "$prefix"
 
@@ -800,7 +892,7 @@ do-complete() {
       cat <<'...'
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
-  local opts='--env --local --list --complete --upgrade --version --help'
+  local opts='--env --local --list --complete -U --update --version --help'
   local tools
   tools=$(command in-1 --list 2>/dev/null || true)
   COMPREPLY=()
@@ -815,7 +907,7 @@ complete -F _in_1_complete in-1
       cat <<'...'
 _in_1_complete() {
   local -a opts tools
-  opts=(--env --local --list --complete --upgrade --version --help)
+  opts=(--env --local --list --complete -U --update --version --help)
   tools=(${(f)"$(command in-1 --list 2>/dev/null)"})
   _describe 'in-1' opts -- tools
 }
@@ -832,34 +924,13 @@ complete -c in-1 -l env -d 'Print env setup code for a shell'
 complete -c in-1 -l local -d 'Install tools under PREFIX'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l complete -d 'Print command completion for a shell'
-complete -c in-1 -l upgrade -d 'Update the in-1 repo clone'
+complete -c in-1 -s U -l update -d 'Update in-1 and makes first'
 complete -c in-1 -l version -d 'Print the in-1 version'
 complete -c in-1 -l help -d 'Show help'
 ...
       ;;
     *) die "Unsupported shell '$1' (want bash, zsh or fish)";;
   esac
-}
-
-do-upgrade() {
-  [[ -d $self_root/.git ]] ||
-    die "'$self_root' is not a git clone; can not upgrade"
-  git -C "$self_root" fetch -q --tags origin ||
-    die "Failed to fetch from origin"
-  if [[ ${IN1_VERSION-} ]]; then
-    git -C "$self_root" checkout -q "$IN1_VERSION" ||
-      die "Failed to checkout '$IN1_VERSION'"
-  else
-    local branch
-    branch=$(git -C "$self_root" symbolic-ref -q --short \
-      refs/remotes/origin/HEAD 2>/dev/null) || branch=origin/main
-    branch=${branch#origin/}
-    git -C "$self_root" checkout -q "$branch" ||
-      die "Failed to checkout '$branch'"
-    git -C "$self_root" pull -q ||
-      die "Failed to pull latest changes"
-  fi
-  warn "in-1 is now at version $(get-version)"
 }
 
 main "$@"
