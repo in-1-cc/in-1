@@ -22,6 +22,14 @@ for alias in clj glj lg; do
   fi
 done
 
+if have-in1-mk "--list"; then
+  if grep -qx in-1 <<< "$out"; then
+    pass "--list includes in-1 itself"
+  else
+    fail "--list includes in-1 itself"
+  fi
+fi
+
 out=$(bin/in-1 --version)
 has "$out" 'in-1 ' "--version prints a version"
 
@@ -30,6 +38,7 @@ has "$out" 'Usage' "--help prints usage"
 has "$out" 'IN1_ROOT' "--help documents IN1_ROOT"
 has "$out" '-U, --update' "--help documents -U"
 has "$out" '-R, --reset' "--help documents -R"
+has "$out" '--local in-1' "--help documents installing in-1 itself"
 
 out=$(bin/in-1 --complete bash)
 has "$out" '--reset' "--complete bash offers --reset"

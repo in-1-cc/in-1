@@ -162,4 +162,56 @@ has "$out" "$IN1_ROOT/local/bin/jq" "in-1 function installs jq"
 has "$out" 'not updating in-1' "in-1 -U jq: goes through --env"
 has "$out" 'makes is now at' "in-1 -U jq: updates makes"
 
+# in-1 itself as a tool, next to another tool; installs through the
+# resulting function land in the one-liner's root, not in the
+# installed copy
+if have-in1-mk "in-1 as a tool"; then
+  make-in1-repo "$SCRATCH/repo"
+  out=$(bash -c '
+    source ./rc in-1 jq '"$in1_args"' >/dev/null 2>&1; echo "status=$?"
+    echo "type=$(type -t in-1)"
+    jq --version
+    in-1 bb >/dev/null 2>&1
+    echo "bb=$(command -v bb)"
+    echo "tools=$IN1_TOOLS"
+  ')
+  has "$out" 'status=0' "in-1 jq: returns 0"
+  has "$out" 'type=function' "in-1 jq: in-1 is a shell function"
+  has "$out" 'jq-1.' "in-1 jq: jq runs"
+  has "$out" "bb=$IN1_ROOT/local/bin/bb" "in-1 bb via the function: one root"
+  has "$out" 'tools=in-1 jq bb' "IN1_TOOLS lists all three"
+  if ls -d "$IN1_ROOT"/local/share/in-1/*/cache/in-1-*/local \
+      >/dev/null 2>&1; then
+    fail "the installed in-1 starts no root of its own"
+  else
+    pass "the installed in-1 starts no root of its own"
+  fi
+
+  # --local in-1 installs the command for keeps and says how to get
+  # the shell side of it
+  pfx=$SCRATCH/pfx
+  # shellcheck disable=SC2086  # in1_args holds two make args
+  out=$(
+    bin/in-1 --local in-1 PREFIX="$pfx" $in1_args 2>&1 &&
+      echo "status=$?" || echo "status=$?"
+  )
+  has "$out" 'status=0' "--local in-1: returns 0"
+  if [[ -x $pfx/bin/in-1 ]]; then
+    pass "--local in-1: writes PREFIX/bin/in-1"
+  else
+    fail "--local in-1: writes PREFIX/bin/in-1"
+  fi
+  rc=$(ls -d "$pfx"/share/in-1/*/cache/in-1-*/.rc 2>/dev/null | head -1)
+  has "$out" "source $rc" "--local in-1: prints the source line"
+  out=$(env -u IN1_ROOT bash -c '
+    source "'"$rc"'"
+    echo "type=$(type -t in-1)"
+    echo "root=$IN1_ROOT"
+    in-1 --version
+  ')
+  has "$out" 'type=function' "sourcing that .rc: in-1 is a function"
+  has "$out" "root=${rc%/.rc}" "sourcing that .rc: IN1_ROOT is that clone"
+  has "$out" $'\nin-1 ' "sourcing that .rc: in-1 --version runs"
+fi
+
 done-testing

@@ -89,6 +89,7 @@ in-1 - instant dev tools for your current shell
 Usage:
   source <(curl -sL in-1.cc) TOOL... [VAR=VALUE]...   # bash / zsh
   curl -sL in-1.cc | source - TOOL... [VAR=VALUE]...  # fish
+  source <(curl -sL in-1.cc) in-1                     # in-1 itself
 
   in-1 TOOL... [VAR=VALUE]... Install tools for this shell session
   in-1 --local TOOL...        Install tools under PREFIX for keeps
@@ -111,6 +112,11 @@ A NAME=VALUE argument is passed through to makes as a variable, so
 pin a version with its makes variable, e.g.
 'in-1 perl PERL-VERSION=5.42.0'.  PREFIX=DIR is the exception: it
 sets the install prefix, like the PREFIX environment variable.
+
+in-1 is itself a tool: 'in-1' as a TOOL (the one-liner with in-1,
+say) installs the in-1 command for this shell session, with its
+shell function, man page and completion; 'in-1 --local in-1'
+installs it for keeps.
 
 An install checks whether in-1 or makes is behind its origin and
 says so; nothing updates unless you pass -U.  -R starts over: it
@@ -168,11 +174,12 @@ run-pager() {
   fi
 }
 
-get-version() {
-  set-globals
-  # Guarded: a non-clone root inside another repo must not describe it
-  if [[ -e $root/.git ]]; then
-    git -C "$root" describe --tags --always 2>/dev/null && return 0
+# The version of the in-1 clone at $1 (default: the one running)
+get-version() {  # [$1=clone-dir]
+  local dir=${1:-$self_root}
+  # Guarded: a non-clone dir inside another repo must not describe it
+  if [[ -e $dir/.git ]]; then
+    git -C "$dir" describe --tags --always 2>/dev/null && return 0
   fi
   printf '%s\n' "$IN1_FALLBACK_VERSION"
 }
@@ -342,7 +349,7 @@ update-in1() {
       die "Failed to checkout '$branch'"
     git -C "$root" pull -q || die "Failed to pull latest in-1"
   fi
-  warn "in-1 is now at version $(get-version)"
+  warn "in-1 is now at version $(get-version "$root")"
 }
 
 update-makes() {
@@ -839,23 +846,28 @@ emit-tools-var() {  # $1=sh|fish
   fi
 }
 
-# Source share/<name>.<ext> extras for the target shell, if present
+# Source share/<name>.<ext> extras for the target shell, if present.
+# Each runs with IN1_ROOT and IN1_TOOL_DIR (that tool's install dir,
+# comp_dirs[i] pairs with req_name[i]) exported.
 emit-extras() {  # $1=bash|zsh|fish
-  local exts n ext file
+  local exts i n ext file
   case $1 in
     bash) exts='sh bash';;
     zsh) exts='sh zsh';;
     fish) exts='fish';;
   esac
-  for n in ${req_name[@]+"${req_name[@]}"}; do
+  for ((i=0; i<${#req_name[@]}; i++)); do
+    n=${req_name[i]}
     for ext in $exts; do
       file=$self_root/share/$n.$ext
       [[ -f $file ]] || continue
       if [[ $1 == fish ]]; then
         printf 'set -gx IN1_ROOT %s\n' "$(fq "$root")"
+        printf 'set -gx IN1_TOOL_DIR %s\n' "$(fq "${comp_dirs[i]}")"
         printf 'source %s\n' "$(fq "$file")"
       else
         printf 'export IN1_ROOT=%s\n' "$(sq "$root")"
+        printf 'export IN1_TOOL_DIR=%s\n' "$(sq "${comp_dirs[i]}")"
         printf 'source %s\n' "$(sq "$file")"
       fi
     done
@@ -929,8 +941,34 @@ do-run() {
     "  eval \"\$(in-1 --env zsh ${req_name[*]})\"   # zsh" \
     "  in-1 --env fish ${req_name[*]} | source    # fish" \
     "" \
-    "Or 'source /path/to/in-1/.rc' first to get an 'in-1' command" \
+    "Or run 'source $self_root/.rc' first to get an 'in-1' command" \
     "that does this for you."
+}
+
+# The clone an installed in-1 lives in, given its share/in-1/<v> dir
+in1-clone-of() {  # $1=install-dir
+  local d
+  for d in "$1"/cache/in-1-*; do
+    [[ -x $d/bin/in-1 ]] || continue
+    printf '%s' "$d"
+    return 0
+  done
+  return 1
+}
+
+# After `--local in-1`, say how to get the shell side of it
+local-in1-hint() {
+  local i clone
+  for ((i=0; i<${#req_name[@]}; i++)); do
+    [[ ${req_name[i]} == in-1 ]] || continue
+    clone=$(in1-clone-of "${comp_dirs[i]}") || return 0
+    warn "" \
+      "For the in-1 shell function, man page and tab completion add" \
+      "this line to your shell rc file (bash, zsh or fish):" \
+      "" \
+      "  source $clone/.rc"
+    return 0
+  done
 }
 
 do-local() {
@@ -958,6 +996,7 @@ do-local() {
     *":$prefix/bin:"*) ;;
     *) warn "Note: '$prefix/bin' is not in your PATH";;
   esac
+  local-in1-hint
 }
 
 do-complete() {

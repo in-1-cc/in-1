@@ -12,6 +12,7 @@
 #   source <(curl -sL in-1.cc) perl PERL-VERSION=5.42.0
 #   source <(curl -sL in-1.cc) -U rust     # update in-1 first
 #   source <(curl -sL in-1.cc) -R rust     # start clean first
+#   source <(curl -sL in-1.cc) in-1        # the in-1 command itself
 #
 # Docs:   https://in-1.cc/home/
 # Source: https://github.com/in-1-cc/in-1

@@ -44,16 +44,15 @@ Requirements: `git`, `curl`, GNU `make` and `bash`.
 
 ## Installing the in-1 command
 
-The one-liner needs no install at all.
-If you want the `in-1` command, man page and tab completion in every
-shell:
+in-1 is itself one of the tools, so the one-liner installs it too:
 
 ```bash
-git clone https://github.com/in-1-cc/in-1 ~/.in-1
-echo 'source ~/.in-1/.rc' >> ~/.bashrc  # or .zshrc, or config.fish
+source <(curl -sL in-1.cc) in-1      # bash / zsh
+curl -sL in-1.cc | source - in-1     # fish
 ```
 
-Then:
+That gives you the `in-1` command, its man page and tab completion in
+the current shell:
 
 ```bash
 in-1 rust node    # session install into the current shell
@@ -61,6 +60,20 @@ in-1 --list       # all available tools
 in-1 --local jq   # persistent install under ~/.local
 in-1 -U           # update in-1 and makes
 man in-1
+```
+
+To keep it, install it under `~/.local` like any other tool and add
+the `source` line it prints to your shell rc file:
+
+```bash
+in-1 --local in-1
+```
+
+Or clone the repo anywhere and source its `.rc`:
+
+```bash
+git clone https://github.com/in-1-cc/in-1 ~/.in-1
+echo 'source ~/.in-1/.rc' >> ~/.bashrc  # or .zshrc, or config.fish
 ```
 
 

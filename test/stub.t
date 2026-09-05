@@ -99,10 +99,10 @@ for fresh in "$SCRATCH/fresh/root" "$SCRATCH/empty"; do
   has "$out" 'Unknown tool' "the clone in ${fresh##*/} runs"
 done
 
-# Installed mode: .rc sets IN1_ROOT to the clone it lives in and the
-# in-1 function sends -U to the command
-out=$(bash -c '
-  source "$IN1_ROOT/.rc"
+# Installed mode: .rc sets IN1_ROOT to the clone it lives in (unless
+# it is already set) and the in-1 function sends -U to the command
+out=$(env -u IN1_ROOT bash -c '
+  source "'"$IN1_ROOT"'/.rc"
   echo "root=$IN1_ROOT"
   in-1 -U 2>&1; echo "status=$?"
   in-1 -U --list 2>/dev/null | grep -c ^rust$
@@ -112,6 +112,17 @@ has "$out" 'not updating in-1' "in-1 -U: warns on a non-clone root"
 has "$out" 'makes is now at' "in-1 -U: updates makes"
 has "$out" 'status=0' "in-1 -U: returns 0"
 has "$out" '1' "in-1 -U --list: lists tools"
+
+preset=$SCRATCH/preset
+rcfile=$IN1_ROOT/.rc
+out=$(IN1_ROOT=$preset bash -c "source $rcfile; echo root=\$IN1_ROOT")
+has "$out" "root=$preset" ".rc keeps a preset IN1_ROOT"
+if command -v fish >/dev/null 2>&1; then
+  out=$(IN1_ROOT=$preset fish -c "source $rcfile; echo root=\$IN1_ROOT")
+  has "$out" "root=$preset" "fish: .rc keeps a preset IN1_ROOT"
+else
+  pass "fish not available; check skipped"
+fi
 
 # The in-1 function sends -R to the command too
 out=$(bash -c '
@@ -134,6 +145,76 @@ if command -v fish >/dev/null 2>&1; then
   has "$out" '1' "fish: in-1 -R --list lists tools"
 else
   pass "fish not available; check skipped"
+fi
+
+# in-1 itself as a tool: the one-liner installs it (a local clone of
+# this working copy, no network) and its extra sources the installed
+# copy's .rc, so the shell gets the in-1 function, man page and
+# completion while IN1_ROOT stays the one-liner's root
+if have-in1-mk "in-1 as a tool"; then
+  make-in1-repo "$SCRATCH/repo"
+  nested="$IN1_ROOT/local/share/in-1/*/cache/in-1-*"
+  out=$(bash -c '
+    source ./rc in-1 '"$in1_args"' 2>&1; echo "status=$?"
+    echo "type=$(type -t in-1)"
+    echo "bin=$(type -P in-1)"
+    in-1 --version
+    echo "root=$IN1_ROOT"
+    echo "tools=$IN1_TOOLS"
+    echo "man=$MANPATH"
+    echo "list=$(in-1 --list 2>/dev/null | grep -cx in-1)"
+    echo "residue=$(set | grep -c "^_in1" || true)"
+  ')
+  has "$out" '√ in-1 v' "in-1 tool: progress line"
+  has "$out" 'status=0' "in-1 tool: returns 0"
+  has "$out" 'type=function' "in-1 tool: in-1 is a shell function"
+  has "$out" "bin=$IN1_ROOT/local/" "in-1 tool: the command is under local/"
+  has "$out" $'\nin-1 ' "in-1 tool: in-1 --version runs"
+  has "$out" "root=$IN1_ROOT" "in-1 tool: IN1_ROOT stays the one-liner root"
+  has "$out" 'tools=in-1' "in-1 tool: IN1_TOOLS lists in-1"
+  has "$out" "$IN1_ROOT/local/share/in-1/" "in-1 tool: man dir on MANPATH"
+  has "$out" 'list=1' "in-1 tool: in-1 --list works through the function"
+  has "$out" 'residue=0' "in-1 tool: no _in1 residue"
+  # shellcheck disable=SC2086  # the glob is the point
+  if ls -d $nested/local $nested/makes >/dev/null 2>&1; then
+    fail "in-1 tool: the installed copy starts no root of its own"
+  else
+    pass "in-1 tool: the installed copy starts no root of its own"
+  fi
+
+  if command -v zsh >/dev/null 2>&1; then
+    out=$(zsh -c '
+      source ./rc in-1 '"$in1_args"' >/dev/null 2>&1; echo "status=$?"
+      whence -w in-1
+      echo "root=$IN1_ROOT"
+      echo "tools=$IN1_TOOLS"
+    ')
+    has "$out" 'status=0' "zsh: in-1 tool returns 0"
+    has "$out" 'in-1: function' "zsh: in-1 is a shell function"
+    has "$out" "root=$IN1_ROOT" "zsh: IN1_ROOT stays the one-liner root"
+    has "$out" 'tools=in-1' "zsh: IN1_TOOLS lists in-1"
+  else
+    pass "zsh not available; check skipped"
+  fi
+
+  if command -v fish >/dev/null 2>&1; then
+    out=$(fish -c '
+      source ./rc in-1 '"$in1_args"' 2>/dev/null; echo "status=$status"
+      echo "type="(type -t in-1)
+      in-1 --version
+      echo "root=$IN1_ROOT"
+      echo "tools=$IN1_TOOLS"
+      echo "list="(in-1 --list 2>/dev/null | grep -cx in-1)
+    ' 2>/dev/null)
+    has "$out" 'status=0' "fish: in-1 tool returns 0"
+    has "$out" 'type=function' "fish: in-1 is a shell function"
+    has "$out" $'\nin-1 ' "fish: in-1 --version runs"
+    has "$out" "root=$IN1_ROOT" "fish: IN1_ROOT stays the one-liner root"
+    has "$out" 'tools=in-1' "fish: IN1_TOOLS lists in-1"
+    has "$out" 'list=1' "fish: in-1 --list works through the function"
+  else
+    pass "fish not available; check skipped"
+  fi
 fi
 
 done-testing

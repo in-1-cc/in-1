@@ -12,11 +12,14 @@ order, if they exist:
 - fish: `<name>.fish`
 
 They run in the user's interactive shell with `IN1_ROOT` (the in-1
-clone) set, so keep
-them small, idempotent and side-effect free beyond env, aliases and
-completion.
+clone) and `IN1_TOOL_DIR` (that tool's `share/<tool>/<version>`
+install dir) set, so keep them small, idempotent and side-effect free
+beyond env, aliases and completion.
 Most tools need no extras file at all; each installed command already
 gets a wrapper on PATH that carries the tool's environment.
+
+Example: `in-1.sh` and `in-1.fish` source the `.rc` of the in-1 copy
+just installed, which is where the `in-1` shell function lives.
 
 ## Wrapper hooks
 

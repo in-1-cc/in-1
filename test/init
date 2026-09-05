@@ -59,6 +59,32 @@ make-in1-root() {
 
 make-in1-root "$IN1_ROOT"
 
+# Build a throwaway in-1 repo at $1 with this working copy's files
+# (tracked and untracked) committed on the current branch, so that an
+# in-1.mk install cloning it tests the code here, not the last commit.
+# Sets in1_args to the make args that point in-1.mk at it.
+make-in1-repo() {
+  local f
+  git clone -q "$ROOT" "$1"
+  git -C "$ROOT" ls-files -z -co --exclude-standard |
+    while IFS= read -rd '' f; do
+      [[ -f $ROOT/$f ]] || continue
+      mkdir -p "$1/$(dirname "$f")"
+      cp "$ROOT/$f" "$1/$f"
+    done
+  git -C "$1" add -A
+  git -C "$1" commit -q --allow-empty -m 'Working copy'
+  # shellcheck disable=SC2034  # for the caller
+  in1_args="IN-1-REPO=$1 IN-1-REF=$(git -C "$1" branch --show-current)"
+}
+
+# The checks that install in-1 itself need in-1.mk in the makes clone
+have-in1-mk() {
+  [[ -f $IN1_MAKES_REPO/in-1.mk ]] && return 0
+  pass "$1: makes has no in-1.mk; skipped"
+  return 1
+}
+
 [[ -d $IN1_MAKES_REPO ]] ||
   die "makes clone not found at '$IN1_MAKES_REPO' (run 'make test')"
 

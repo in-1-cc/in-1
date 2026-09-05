@@ -6,7 +6,8 @@
 #
 #   source /path/to/in-1/.rc
 #
-# Then:
+# (Or, for the current shell only, `source <(curl -sL in-1.cc) in-1`
+# does the same for the in-1 it installs.)  Then:
 #
 #   in-1 rust node    # install tools into this shell session
 #   in-1 -U           # update in-1 and makes
@@ -15,28 +16,30 @@
 #   in-1 --help
 #   man in-1
 #
-# IN1_ROOT is set to the in-1 clone this file lives in; makes, the
-# session installs (local/), logs and the download cache go under it.
+# IN1_ROOT is left alone when it is already set; otherwise it becomes
+# the in-1 clone this file lives in.  makes, the session installs
+# (local/), logs and the download cache go under it.
 
 test -n "$BASH_VERSION$ZSH_VERSION" && eval '
 if [ -n "${BASH_VERSION-}" ]; then
-  IN1_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
   _in1_shell=bash
+  _in1_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
 else
-  IN1_ROOT=$(cd "$(dirname "$0")" && pwd -P)
   _in1_shell=zsh
+  _in1_dir=$(cd "$(dirname "$0")" && pwd -P)
 fi
+[ -n "${IN1_ROOT-}" ] || IN1_ROOT=$_in1_dir
 export IN1_ROOT
 
 case ":$PATH:" in
-  *":$IN1_ROOT/bin:"*) ;;
-  *) PATH=$IN1_ROOT/bin:$PATH;;
+  *":$_in1_dir/bin:"*) ;;
+  *) PATH=$_in1_dir/bin:$PATH;;
 esac
 export PATH
 
 case ":${MANPATH-}:" in
-  *":$IN1_ROOT/man:"*) ;;
-  *) MANPATH=$IN1_ROOT/man:$(manpath 2>/dev/null);;
+  *":$_in1_dir/man:"*) ;;
+  *) MANPATH=$_in1_dir/man:$(manpath 2>/dev/null);;
 esac
 export MANPATH
 
@@ -64,18 +67,19 @@ in-1() {
   esac
 }
 
-unset _in1_shell
+unset _in1_shell _in1_dir
 return 0
 '
 
 test -n "$FISH_VERSION" && eval '
-set -gx IN1_ROOT (cd (dirname (status filename)) && pwd -P)
+set -g _in1_dir (cd (dirname (status filename)) && pwd -P)
+test -n "$IN1_ROOT"; or set -gx IN1_ROOT $_in1_dir
 
-contains -- $IN1_ROOT/bin $PATH
-or set -gx PATH $IN1_ROOT/bin $PATH
+contains -- $_in1_dir/bin $PATH
+or set -gx PATH $_in1_dir/bin $PATH
 
-contains -- $IN1_ROOT/man $MANPATH
-or set -gx MANPATH $IN1_ROOT/man (manpath 2>/dev/null | string split :)
+contains -- $_in1_dir/man $MANPATH
+or set -gx MANPATH $_in1_dir/man (manpath 2>/dev/null | string split :)
 
 command in-1 --complete fish 2>/dev/null | source
 
@@ -100,10 +104,14 @@ function in-1
   end
 end
 
-return 0
+set -e _in1_dir
 '
 
-echo "ERROR: in-1/.rc requires bash, zsh or fish" >&2
-false
+# No `return` in the fish block: when this file is sourced from inside
+# a function (the in-1 extra does that), a fish `return` would leave
+# that function instead of this file.  bash and zsh returned above.
+test -n "$FISH_VERSION" ||
+  echo "ERROR: in-1/.rc requires bash, zsh or fish" >&2
+test -n "$FISH_VERSION"
 
 # vim: ft=sh:

@@ -35,7 +35,52 @@ Set `IN1_ROOT` first to clone somewhere other than `/tmp/in-1`.
 
 ## Install the `in-1` command
 
-Clone the repo once and source its `.rc` from your shell rc file:
+in-1 is itself one of the tools, so the same one-liner installs it:
+
+=== "Bash / Zsh"
+
+    ```bash
+    source <(curl -sL in-1.cc) in-1
+    ```
+
+=== "Fish"
+
+    ```fish
+    curl -sL in-1.cc | source - in-1
+    ```
+
+Now you have the `in-1` command, its man page and tab completion in
+this shell:
+
+```bash
+in-1 rust node    # install tools into this shell session
+in-1 --list       # see all available tools
+in-1 -U           # update in-1 and makes
+in-1 --help       # or: man in-1
+in-1 <TAB><TAB>   # tab completion
+```
+
+It lives under `/tmp/in-1` with everything else and installs tools
+there too.
+It can be asked for together with other tools:
+`source <(curl -sL in-1.cc) in-1 rust node`.
+
+### For keeps
+
+Install it under `~/.local` like any other tool:
+
+```bash
+in-1 --local in-1
+```
+
+That writes `~/.local/bin/in-1` and prints a `source .../.rc` line;
+add that line to your shell rc file (`.bashrc`, `.zshrc` or
+`config.fish`) for the shell function, man page and tab completion in
+every new shell.
+
+### From a clone
+
+Or clone the repo once and source its `.rc` from your shell rc file:
 
 === "Bash"
 
@@ -58,20 +103,10 @@ Clone the repo once and source its `.rc` from your shell rc file:
     echo 'source ~/.in-1/.rc' >> ~/.config/fish/config.fish
     ```
 
-Open a new shell (or source the file) and you have the `in-1`
-command, its man page and tab completion:
-
-```bash
-in-1 rust node    # install tools into this shell session
-in-1 --list       # see all available tools
-in-1 -U           # update in-1 and makes
-in-1 --help       # or: man in-1
-in-1 <TAB><TAB>   # tab completion
-```
-
-`~/.in-1` is just a suggestion; any directory works, and `.rc` sets
-`IN1_ROOT` to wherever the clone is.
-Session installs then live under that clone instead of `/tmp/in-1`.
+`~/.in-1` is just a suggestion; any directory works.
+`.rc` sets `IN1_ROOT` to wherever the clone is (unless `IN1_ROOT` is
+already set), so session installs then live under that clone instead
+of `/tmp/in-1`.
 
 ## Keep tools for good
 
@@ -106,12 +141,13 @@ gone:
 
 ```bash
 rm -rf /tmp/in-1          # the one-liner's clone, installs and cache
-rm -rf ~/.in-1            # the installed command (and its installs)
+rm -rf ~/.in-1            # a cloned command (and its installs)
 ```
 
 and drop the `source` line from your shell rc file.
 For `--local` installs, remove `~/.local/share/<tool>` and the
-wrappers in `~/.local/bin` that start with `# in-1 wrapper`.
+wrappers in `~/.local/bin` that start with `# in-1 wrapper`;
+`in-1 --local in-1` is `~/.local/share/in-1` and `~/.local/bin/in-1`.
 
 ## Requirements
 

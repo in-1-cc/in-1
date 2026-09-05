@@ -112,7 +112,12 @@ flat make variables in-1 reads directly.
 Some tools also need shell-side setup (an alias, a completion hook)
 that the wrappers cannot provide.  For those, an optional
 `share/<tool>.{sh,bash,zsh,fish}` file is sourced in your shell after
-a session install.
+a session install.  in-1 itself is the biggest user: it is an
+ordinary makes tool (`in-1.mk` clones the repo), and its extra sources
+the `.rc` of the copy just installed, which is where the `in-1` shell
+function lives.  `.rc` keeps an `IN1_ROOT` that is already set, so the
+installed copy shares the one-liner's root instead of starting its
+own.
 
 A few tools want more in their wrappers than makes provides.
 An optional `share/<tool>.mk` is included in the generated makefile,

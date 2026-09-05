@@ -58,6 +58,12 @@ there is available.  A tool may also be requested by an alias command
 name (e.g. **cargo** installs rust, **bb** installs babashka).
 Run **in-1 --list** to see tools and aliases.
 
+**in-1** is itself one of the tools: **in-1** as a *TOOL* (the
+one-liner with **in-1**, say) installs the in-1 command for the
+current shell session, complete with its shell function, man page and
+completion, and **in-1 --local in-1** installs it for keeps and prints
+the *.rc* line to add to a shell rc file.
+
 Any *VAR*=*VALUE* argument is passed through to makes as a variable.
 Pin a version with the tool's makes variable, for example
 **in-1 perl PERL-VERSION=5.42.0**.  A pinned version installs
@@ -175,7 +181,13 @@ Install a tool by an alias command name:
 
     source <(curl -sL in-1.cc) cargo
 
-Install the in-1 command permanently:
+Get the in-1 command itself in the current shell:
+
+    source <(curl -sL in-1.cc) in-1
+
+Install the in-1 command permanently, either way:
+
+    in-1 --local in-1
 
     git clone https://github.com/in-1-cc/in-1 ~/.in-1
     echo 'source ~/.in-1/.rc' >> ~/.bashrc

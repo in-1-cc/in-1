@@ -56,16 +56,27 @@ source <(curl -sL in-1.cc) bb      # installs babashka
 
 ## Installed mode
 
-Clone the repo once and source its `.rc` from your shell rc file:
+in-1 is itself one of the tools, so the one-liner installs it too:
+
+```bash
+source <(curl -sL in-1.cc) in-1     # bash / zsh
+curl -sL in-1.cc | source - in-1    # fish
+```
+
+For keeps, `in-1 --local in-1` installs it under `~/.local` and
+prints the `source .../.rc` line to add to your shell rc file.
+Or clone the repo once and source its `.rc` from your shell rc file:
 
 ```bash
 git clone https://github.com/in-1-cc/in-1 ~/.in-1
 echo 'source ~/.in-1/.rc' >> ~/.bashrc  # or .zshrc, or config.fish
 ```
 
-This sets `IN1_ROOT` to that clone, puts the `in-1` command, its man
-page and its tab completion in your shell, and wraps the command in a
-small shell function so that session installs work directly:
+Each way puts the `in-1` command, its man page and its tab completion
+in your shell, and wraps the command in a small shell function so
+that session installs work directly.
+`.rc` also sets `IN1_ROOT` to the clone it lives in, unless
+`IN1_ROOT` is already set:
 
 ```bash
 in-1 rust node            # session install, same as the one-liner

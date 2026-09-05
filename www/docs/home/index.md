@@ -41,12 +41,20 @@ asking for them again is instant.
 
 ## Keep it around
 
-If you like it, install the `in-1` command properly:
+in-1 is itself one of the tools, so the one-liner gives you the `in-1`
+command too:
 
-```bash
-git clone https://github.com/in-1-cc/in-1 ~/.in-1
-echo 'source ~/.in-1/.rc' >> ~/.bashrc  # or .zshrc, or config.fish
-```
+=== "Bash / Zsh"
+
+    ```bash
+    source <(curl -sL in-1.cc) in-1
+    ```
+
+=== "Fish"
+
+    ```fish
+    curl -sL in-1.cc | source - in-1
+    ```
 
 Then you have:
 
@@ -62,6 +70,7 @@ Want a tool to stick around for good?
 
 ```bash
 in-1 --local rust node
+in-1 --local in-1       # the in-1 command itself
 ```
 
 installs it under `~/.local` (or `/usr/local` when root).
