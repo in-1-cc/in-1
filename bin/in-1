@@ -46,7 +46,10 @@ main() {
         shell=$1; shift
         ;;
       --local) mode=local;;
-      --list) to-user "$mode"; list-tools | run-pager || true; return 0;;
+      --list)
+        list-tools | to-user "$mode" "$shell" | run-pager || true
+        return 0
+        ;;
       --complete)
         [[ $# -gt 0 ]] || die "--complete requires a shell name"
         do-complete "$1"; return 0
@@ -54,9 +57,13 @@ main() {
       -U|--update) update=1;;
       -R|--reset) reset=1;;
       --version)
-        to-user "$mode"; printf 'in-1 %s\n' "$(get-version)"; return 0
+        printf 'in-1 %s\n' "$(get-version)" | to-user "$mode" "$shell"
+        return 0
         ;;
-      --help|-h) to-user "$mode"; usage | run-pager || true; return 0;;
+      --help|-h)
+        usage | to-user "$mode" "$shell" | run-pager || true
+        return 0
+        ;;
       -*) die "Unknown option '$arg'. Try: in-1 --help";;
       *) tools+=("$arg");;
     esac
@@ -142,13 +149,23 @@ See 'man in-1' or https://in-1.cc/doc/ for full documentation.
 ...
 }
 
-# In --env mode stdout is shell code that the caller evals, so text
-# meant for the user (--list, --help, --version) goes to stderr
-# instead.  That is what the one-liner hits with
+# Pass text meant for the user (--list, --help, --version) through.
+# In --env mode stdout is shell code that the caller evals, so the
+# text is wrapped in a printf for the caller's shell to run; it still
+# lands on the user's stdout.  That is what the one-liner hits with
 # 'source <(curl -sL in-1.cc) --list'.
-to-user() {  # $1=mode
-  [[ $1 == env ]] && exec 1>&2
-  return 0
+to-user() {  # $1=mode $2=shell
+  local text
+  if [[ $1 == env ]]; then
+    text=$(cat)
+    if [[ $2 == fish ]]; then
+      printf "printf '%%s\\\\n' %s\n" "$(fq "$text")"
+    else
+      printf "printf '%%s\\\\n' %s\n" "$(sq "$text")"
+    fi
+  else
+    cat
+  fi
 }
 
 die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }
