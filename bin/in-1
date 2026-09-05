@@ -474,13 +474,17 @@ list-tools() {
   [[ $update ]] && do-update
   local file name filter
   filter=" $(printf '%s' "$tool_filter" | tr '\n' ' ') "
-  for file in "$makes"/*.mk; do
-    name=${file##*/}
-    name=${name%.mk}
-    case $filter in *" $name "*) continue;; esac
-    printf '%s\n' "$name"
-  done
-  list-aliases
+  # Tools from makes and the aliases from share/tools.mk, as one
+  # sorted list (an alias may share its name with a makes tool)
+  {
+    for file in "$makes"/*.mk; do
+      name=${file##*/}
+      name=${name%.mk}
+      case $filter in *" $name "*) continue;; esac
+      printf '%s\n' "$name"
+    done
+    list-aliases
+  } | sort -u
 }
 
 # Parse args into req_name / req_tool (bare tool or alias names) and

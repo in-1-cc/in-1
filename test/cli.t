@@ -22,6 +22,9 @@ for alias in clj glj lg; do
   fi
 done
 
+is "$out" "$(sort -u <<< "$out")" "--list is sorted with no duplicates"
+is "$(grep -cx ys <<< "$out")" 1 "--list shows ys once (tool and alias)"
+
 if have-in1-mk "--list"; then
   if grep -qx in-1 <<< "$out"; then
     pass "--list includes in-1 itself"
