@@ -68,6 +68,8 @@ current shell session, complete with its shell function, man page and
 completion, and **in-1 --local in-1** installs it for keeps.
 Then **source <(in-1 --rc)** (fish: **in-1 --rc | source**) in a shell
 rc file gives every new shell the same.
+**source <(curl -sL in-1.cc) --local in-1** does both the install and
+the setup of the current shell in one go.
 
 Any *VAR*=*VALUE* argument is passed through to makes as a variable.
 Pin a version with the tool's makes variable, for example
@@ -84,6 +86,9 @@ the install prefix, like the *PREFIX* environment variable.
   command into *PREFIX/bin*.
   These installs persist across shell sessions and need no shell
   setup, since the wrappers carry the tools' environment.
+  Through the one-liner (**source <(curl -sL in-1.cc) --local** *TOOL*)
+  the current shell also forgets any stale command paths, and a
+  **--local in-1** sources the installed in-1's *.rc* right away.
 
 **-U**, **--uninstall** *TOOL*...
   Remove the **--local** installs of the given tools from *PREFIX*:

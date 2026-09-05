@@ -74,6 +74,9 @@ in-1 --local in-1
 ```
 
 That writes `~/.local/bin/in-1`.
+Done through the one-liner
+(`source <(curl -sL in-1.cc) --local in-1`, or the fish form) it
+also sets up the current shell on the spot.
 For the shell function, man page and tab completion in every new
 shell, let the command point your shell rc file at its own `.rc`:
 

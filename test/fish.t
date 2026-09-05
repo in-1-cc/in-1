@@ -60,4 +60,21 @@ out=$(fish -c '
 has "$out" "'nope' is not installed" "fish: in-1 -U runs the command"
 has "$out" 'status=1' "fish: in-1 -U returns 1 for a missing tool"
 
+# Through the one-liner, --local in-1 sets up the current shell too
+if have-in1-mk "fish: one-liner --local in-1"; then
+  make-in1-repo "$SCRATCH/repo"
+  pfx=$SCRATCH/pfx
+  out=$(fish -c '
+    cat ./rc | source - --local in-1 PREFIX='"$pfx"' '"$in1_args"' 2>&1
+    echo "status=$status"
+    echo "type="(type -t in-1)
+    in-1 --version
+  ' 2>/dev/null)
+  has "$out" 'status=0' "fish: one-liner --local in-1 returns 0"
+  has "$out" 'This shell is set up now' \
+    "fish: one-liner --local in-1 says the shell is set up"
+  has "$out" 'type=function' "fish: one-liner --local in-1 defines in-1"
+  has "$out" $'\nin-1 ' "fish: one-liner --local in-1: in-1 --version runs"
+fi
+
 done-testing

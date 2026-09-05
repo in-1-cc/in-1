@@ -232,6 +232,29 @@ if have-in1-mk "in-1 as a tool"; then
     pass "the installed copy starts no root of its own"
   fi
 
+  # Through the one-liner, --local in-1 sets up the current shell as
+  # well: stale command paths are forgotten and the installed copy's
+  # .rc is sourced (IN1_ROOT is set here, so .rc keeps it)
+  # shellcheck disable=SC2086  # in1_args holds two make args
+  out=$(
+    bin/in-1 --env bash --local in-1 PREFIX="$pfx" $in1_args 2>/dev/null
+  )
+  is "$out" $'hash -r 2>/dev/null || true\n'"source '$rc'" \
+    "--env bash --local in-1: emits hash -r and the source line"
+  out=$(bash -c '
+    source ./rc --local in-1 PREFIX="'"$pfx"'" '"$in1_args"' 2>&1
+    echo "status=$?"
+    echo "type=$(type -t in-1)"
+    in-1 --version
+    echo "root=$IN1_ROOT"
+  ')
+  has "$out" 'status=0' "one-liner --local in-1: returns 0"
+  has "$out" 'This shell is set up now' \
+    "one-liner --local in-1: says the shell is set up"
+  has "$out" 'type=function' "one-liner --local in-1: in-1 is a function"
+  has "$out" $'\nin-1 ' "one-liner --local in-1: in-1 --version runs"
+  has "$out" "root=$IN1_ROOT" "one-liner --local in-1: keeps a set IN1_ROOT"
+
   # -U in-1 takes the command and its root with it
   out=$("$pfx/bin/in-1" -U in-1 PREFIX="$pfx" 2>&1 || echo "status=$?")
   has "$out" 'Uninstalled in-1:' "-U in-1: reports the uninstall"

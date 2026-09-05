@@ -83,6 +83,8 @@ current shell session, complete with its shell function, man page and
 completion, and \fBin-1 --local in-1\fP installs it for keeps.
 Then \fBsource <(in-1 --rc)\fP (fish: \fBin-1 --rc | source\fP) in a shell
 rc file gives every new shell the same.
+\fBsource <(curl -sL in-1.cc) --local in-1\fP does both the install and
+the setup of the current shell in one go.
 
 .PP
 Any \fIVAR\fP=\fIVALUE\fP argument is passed through to makes as a variable.
@@ -100,6 +102,9 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   command into \fIPREFIX/bin\fP\&.
   These installs persist across shell sessions and need no shell
   setup, since the wrappers carry the tools' environment.
+  Through the one-liner (\fBsource <(curl -sL in-1.cc) --local\fP \fITOOL\fP)
+  the current shell also forgets any stale command paths, and a
+  \fB--local in-1\fP sources the installed in-1's \fI\&.rc\fP right away.
 
 .PP
 \fB-U\fP, \fB--uninstall\fP \fITOOL\fP\&...

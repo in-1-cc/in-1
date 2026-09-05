@@ -96,7 +96,7 @@ main() {
 
   case $mode in
     env) do-env "$shell" ${tools[@]+"${tools[@]}"};;
-    local) do-local ${tools[@]+"${tools[@]}"};;
+    local) do-local "$shell" ${tools[@]+"${tools[@]}"};;
     run) do-run ${tools[@]+"${tools[@]}"};;
   esac
 }
@@ -139,7 +139,8 @@ say) installs the in-1 command for this shell session, with its
 shell function, man page and completion; 'in-1 --local in-1'
 installs it for keeps.  Then 'source <(in-1 --rc)' (bash, zsh) or
 'in-1 --rc | source' (fish) in your shell rc file gives every new
-shell the same.
+shell the same.  'source <(curl -sL in-1.cc) --local in-1' does both
+the install and the setup of the current shell in one go.
 
 An install checks whether in-1 or makes is behind its origin and
 says so; nothing updates unless you pass --update.  -R starts over: it
@@ -967,13 +968,17 @@ session-prepare() {  # sets install_root, installs, writes wrappers
   install-all "$(abs-path "${PREFIX:-$root/local}")"
 }
 
-do-env() {
-  local shell=$1; shift
-  case $shell in
-    bash|zsh|fish) ;;
-    sh) shell=bash;;
-    *) die "Unsupported shell '$shell' (want bash, zsh or fish)";;
+check-shell() {  # $1=shell -> bash|zsh|fish
+  case $1 in
+    bash|zsh|fish) printf '%s' "$1";;
+    sh) printf bash;;
+    *) die "Unsupported shell '$1' (want bash, zsh or fish)";;
   esac
+}
+
+do-env() {
+  local shell
+  shell=$(check-shell "$1"); shift
   session-prepare "$@"
   if [[ $shell == fish ]]; then
     emit-session-fish
@@ -1008,28 +1013,50 @@ in1-clone-of() {  # $1=install-dir
   return 1
 }
 
+# The clone of the in-1 just installed with --local, if any
+local-in1-clone() {
+  local i
+  for ((i=0; i<${#req_name[@]}; i++)); do
+    [[ ${req_name[i]} == in-1 ]] || continue
+    in1-clone-of "${comp_dirs[i]}" && return 0
+  done
+  return 1
+}
+
 # After `--local in-1`, say how to get the shell side of it.  The
 # rc line goes through the installed command, so it survives version
 # changes; so does that in-1's root, PREFIX/share/in-1/local.
-local-in1-hint() {  # $1=prefix
-  local i cmd=in-1
-  for ((i=0; i<${#req_name[@]}; i++)); do
-    [[ ${req_name[i]} == in-1 ]] || continue
-    in1-clone-of "${comp_dirs[i]}" >/dev/null || return 0
-    case ":$PATH:" in
-      *":$1/bin:"*) ;;
-      *) cmd=$1/bin/in-1;;
-    esac
-    warn "" \
-      "For the in-1 shell function, man page and tab completion add" \
-      "this line to your shell rc file:" \
-      "" \
-      "  source <($cmd --rc)     # bash / zsh" \
-      "  $cmd --rc | source      # fish" \
-      "" \
-      "Session installs made through it go under '$1/share/in-1/local'."
-    return 0
-  done
+local-in1-hint() {  # $1=prefix $2=shell ('' unless via --env)
+  local cmd=in-1
+  local-in1-clone >/dev/null || return 0
+  case ":$PATH:" in
+    *":$1/bin:"*) ;;
+    *) cmd=$1/bin/in-1;;
+  esac
+  warn "" \
+    ${2:+"This shell is set up now."} \
+    "For the in-1 shell function, man page and tab completion in" \
+    "every new shell add this line to your shell rc file:" \
+    "" \
+    "  source <($cmd --rc)     # bash / zsh" \
+    "  $cmd --rc | source      # fish" \
+    "" \
+    "Session installs made through it go under '$1/share/in-1/local'."
+}
+
+# --local through --env (the one-liner) hands the caller's shell
+# shell code: forget stale command paths, and for a just installed
+# in-1 the same line 'in-1 --rc' prints, so the shell function, man
+# page and completion are there right away.
+emit-local() {  # $1=bash|zsh|fish
+  local clone
+  [[ $1 == fish ]] || printf 'hash -r 2>/dev/null || true\n'
+  clone=$(local-in1-clone) || return 0
+  if [[ $1 == fish ]]; then
+    printf 'source %s\n' "$(fq "$clone/.rc")"
+  else
+    printf 'source %s\n' "$(sq "$clone/.rc")"
+  fi
 }
 
 # The --local prefix: PREFIX (the env var or a PREFIX=DIR arg), else
@@ -1051,10 +1078,11 @@ local-prefix() {
   printf '%s' "$prefix"
 }
 
-do-local() {
+do-local() {  # $1=shell ('' unless via --env); rest=tool args
+  local shell=$1 prefix; shift
+  [[ -z $shell ]] || shell=$(check-shell "$shell")
   prepare-root
   parse-tool-args "$@"
-  local prefix
   prefix=$(local-prefix)
 
   install-all "$prefix"
@@ -1065,7 +1093,8 @@ do-local() {
     *":$prefix/bin:"*) ;;
     *) warn "Note: '$prefix/bin' is not in your PATH";;
   esac
-  local-in1-hint "$prefix"
+  local-in1-hint "$prefix" "$shell"
+  [[ -z $shell ]] || emit-local "$shell"
 }
 
 # Args for --uninstall: tool names (an alias resolves through

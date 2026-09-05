@@ -63,9 +63,10 @@ source <(curl -sL in-1.cc) in-1     # bash / zsh
 curl -sL in-1.cc | source - in-1    # fish
 ```
 
-For keeps, `in-1 --local in-1` installs it under `~/.local`; then let
-the command point your shell rc file at its own `.rc`, so the line
-survives upgrades:
+For keeps, `in-1 --local in-1` installs it under `~/.local`
+(`source <(curl -sL in-1.cc) --local in-1` does that and sets up the
+current shell too); then let the command point your shell rc file at
+its own `.rc`, so the line survives upgrades:
 
 ```bash
 echo 'source <(in-1 --rc)' >> ~/.bashrc          # or .zshrc
