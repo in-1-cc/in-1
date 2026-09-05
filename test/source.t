@@ -150,17 +150,17 @@ else
   pass "-R jq: the bb wrapper is gone"
 fi
 
-# Installed mode: the in-1 function from .rc, with and without -U
+# Installed mode: the in-1 function from .rc, with and without --update
 out=$(bash -c '
   source "$IN1_ROOT/.rc"
   in-1 jq >/dev/null 2>&1
   command -v jq
-  in-1 -U jq 2>&1 >/dev/null
+  in-1 --update jq 2>&1 >/dev/null
   command -v jq
 ')
 has "$out" "$IN1_ROOT/local/bin/jq" "in-1 function installs jq"
-has "$out" 'not updating in-1' "in-1 -U jq: goes through --env"
-has "$out" 'makes is now at' "in-1 -U jq: updates makes"
+has "$out" 'not updating in-1' "in-1 --update jq: goes through --env"
+has "$out" 'makes is now at' "in-1 --update jq: updates makes"
 
 # in-1 itself as a tool, next to another tool; installs through the
 # resulting function land in the one-liner's root, not in the

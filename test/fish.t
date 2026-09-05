@@ -36,11 +36,19 @@ out=$(fish -c '
   type -t in-1
   in-1 jq >/dev/null 2>&1
   command -v jq
-  in-1 -U jq 2>&1 >/dev/null
+  in-1 --update jq 2>&1 >/dev/null
   command -v jq
 ' 2>/dev/null)
 has "$out" 'function' "fish: .rc defines the in-1 function"
 has "$out" "$IN1_ROOT/local/bin/jq" "fish: in-1 function installs jq"
-has "$out" 'makes is now at' "fish: in-1 -U jq goes through --env"
+has "$out" 'makes is now at' "fish: in-1 --update jq goes through --env"
+
+# -U (uninstall) goes straight to the command
+out=$(fish -c '
+  source "$IN1_ROOT/.rc"
+  in-1 -U nope PREFIX='"$SCRATCH/pfx"' 2>&1; echo "status=$status"
+' 2>/dev/null)
+has "$out" "'nope' is not installed" "fish: in-1 -U runs the command"
+has "$out" 'status=1' "fish: in-1 -U returns 1 for a missing tool"
 
 done-testing

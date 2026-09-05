@@ -12,13 +12,15 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--local** *TOOL*...
 
+**in-1** **-U** | **--uninstall** *TOOL*... [*PREFIX*=*DIR*]
+
 **in-1** **--list** | **--version** | **--help**
 
 **in-1** **--env** *SHELL* *TOOL*...
 
 **in-1** **--complete** *SHELL*
 
-**in-1** **-U** | **--update** [*OPTIONS*] [*TOOL*...]
+**in-1** **--update** [*OPTIONS*] [*TOOL*...]
 
 **in-1** **-R** | **--reset** [*OPTIONS*] [*TOOL*...]
 
@@ -43,7 +45,7 @@ it is *PREFIX* (default *~/.local*).
 
 Before an install, in-1 checks whether its own clone or its makes
 clone is behind its origin and prints one line per repo if so.
-Nothing is updated unless you ask with **-U**; set *IN1_OFFLINE* to
+Nothing is updated unless you ask with **--update**; set *IN1_OFFLINE* to
 skip the check.
 **-R** starts over: it removes everything in-1 put under *IN1_ROOT*
 before doing anything else.
@@ -80,6 +82,15 @@ the install prefix, like the *PREFIX* environment variable.
   These installs persist across shell sessions and need no shell
   setup, since the wrappers carry the tools' environment.
 
+**-U**, **--uninstall** *TOOL*...
+  Remove the **--local** installs of the given tools from *PREFIX*:
+  *PREFIX/share/<tool>* with every version in it, and every wrapper
+  in *PREFIX/bin* that in-1 wrote for it.
+  Files in *PREFIX/bin* that in-1 did not write stay.
+  Aliases work here too (**in-1 -U bb** removes babashka) and
+  **in-1 -U in-1** removes the command itself.
+  Session installs are covered by **-R**.
+
 **--list**
   List all available tool names and command aliases.
 
@@ -93,11 +104,11 @@ the install prefix, like the *PREFIX* environment variable.
 **--complete** *SHELL*
   Print tab completion code for the **in-1** command itself.
 
-**-U**, **--update**
+**--update**
   Update the in-1 clone (*IN1_ROOT*) and its makes clone before
   doing anything else.
   Alone, that is all it does; with tools or other options it then
-  continues with them, so **in-1 -U rust** gets the newest in-1 and
+  continues with them, so **in-1 --update rust** gets the newest in-1 and
   makes and then installs rust.
   The in-1 clone moves to the latest default branch (or to
   *IN1_VERSION* if set) and the one-liner leaves it there from then
@@ -111,7 +122,7 @@ the install prefix, like the *PREFIX* environment variable.
   *IN1_CACHE*.
   Alone, that is all it does; with tools or other options it then
   continues with them, so **in-1 -R rust** installs rust from
-  scratch and **in-1 -R -U** resets and then updates.
+  scratch and **in-1 -R --update** resets and then updates.
 
 **--version**
   Print the in-1 version.
@@ -151,7 +162,7 @@ the install prefix, like the *PREFIX* environment variable.
   Default: *https://github.com/makeplus/makes*.
 
 **IN1_UPDATE**
-  Set to 1 for the same effect as **-U**.
+  Set to 1 for the same effect as **--update**.
 
 **IN1_OFFLINE**
   Set to 1 to skip the is-it-behind check before installs.
@@ -196,9 +207,13 @@ Keep jq around for good:
 
     in-1 --local jq
 
+And remove it again:
+
+    in-1 -U jq
+
 Update in-1 and makes, then install the newest node:
 
-    in-1 -U node
+    in-1 --update node
 
 Throw away every install and start over with node:
 

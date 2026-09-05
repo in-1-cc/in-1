@@ -81,7 +81,7 @@ that session installs work directly.
 ```bash
 in-1 rust node            # session install, same as the one-liner
 in-1 --list               # all available tools
-in-1 -U                   # update in-1 and makes
+in-1 --update             # update in-1 and makes
 man in-1
 ```
 
@@ -101,22 +101,36 @@ resolves.
 
 in-1 never overwrites a file in `$PREFIX/bin` that it did not create.
 
+## Uninstalling
+
+```bash
+in-1 -U rust node         # or --uninstall
+```
+
+removes the `--local` installs of the named tools from `PREFIX`:
+`$PREFIX/share/<tool>` with every version in it, and the wrappers in
+`$PREFIX/bin` that in-1 wrote for it.
+Files in `$PREFIX/bin` that in-1 did not create stay.
+Aliases work here too (`in-1 -U bb` removes babashka), and
+`in-1 -U in-1` removes the command itself.
+Session installs are covered by `-R`, below.
+
 ## Updating
 
 Before an install, in-1 checks whether its own clone or its makes
 clone is behind its origin, and says so:
 
 ```text
-in-1: makes is 3 commit(s) behind; run 'in-1 -U' to update
+in-1: makes is 3 commit(s) behind; run 'in-1 --update' to update
 ```
 
-Nothing is updated unless you ask.  `-U` (or `--update`) updates both
-clones first and then carries on with whatever else you asked for:
+Nothing is updated unless you ask.  `--update` updates both clones
+first and then carries on with whatever else you asked for:
 
 ```bash
-in-1 -U                              # just update
-in-1 -U node                         # update, then install node
-source <(curl -sL in-1.cc) -U node   # same, from the one-liner
+in-1 --update                             # just update
+in-1 --update node                        # update, then install node
+source <(curl -sL in-1.cc) --update node  # same, from the one-liner
 ```
 
 The in-1 clone moves to the latest default branch (or to
@@ -138,7 +152,7 @@ on:
 ```bash
 in-1 -R                              # just reset
 in-1 -R node                         # reset, then install node
-in-1 -R -U node                      # reset, update, then install
+in-1 -R --update node                # reset, update, then install
 source <(curl -sL in-1.cc) -R node   # same, from the one-liner
 ```
 
@@ -149,10 +163,11 @@ After a reset `IN1_TOOLS` lists only the tools installed since.
 ```text
 in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
 in-1 --local TOOL...      Install tools under PREFIX for keeps
+in-1 -U TOOL...           Remove --local installs (--uninstall)
 in-1 --list               List available tools
 in-1 --env SHELL TOOL...  Print env setup code for SHELL
 in-1 --complete SHELL     Print in-1 command completion for SHELL
-in-1 -U, --update [ARGS]  Update in-1 and makes, then continue
+in-1 --update [ARGS]      Update in-1 and makes, then continue
 in-1 -R, --reset [ARGS]   Remove makes/, log/, local/ and cache/
                           from IN1_ROOT, then continue
 in-1 --version            Print the in-1 version
@@ -204,7 +219,7 @@ in-1 --env fish rust | source      # fish
     Default: `https://github.com/makeplus/makes`.
 
 `IN1_UPDATE`
-:   Set to `1` for the same effect as `-U`.
+:   Set to `1` for the same effect as `--update`.
 
 `IN1_OFFLINE`
 :   Set to `1` to skip the is-it-behind check before installs.

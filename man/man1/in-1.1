@@ -15,6 +15,9 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP \fB--local\fP \fITOOL\fP\&...
 
 .PP
+\fBin-1\fP \fB-U\fP | \fB--uninstall\fP \fITOOL\fP\&... [\fIPREFIX\fP=\fIDIR\fP]
+
+.PP
 \fBin-1\fP \fB--list\fP | \fB--version\fP | \fB--help\fP
 
 .PP
@@ -24,7 +27,7 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP \fB--complete\fP \fISHELL\fP
 
 .PP
-\fBin-1\fP \fB-U\fP | \fB--update\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
+\fBin-1\fP \fB--update\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
 
 .PP
 \fBin-1\fP \fB-R\fP | \fB--reset\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
@@ -53,7 +56,7 @@ it is \fIPREFIX\fP (default \fI~/.local\fP).
 .PP
 Before an install, in-1 checks whether its own clone or its makes
 clone is behind its origin and prints one line per repo if so.
-Nothing is updated unless you ask with \fB-U\fP; set \fIIN1_OFFLINE\fP to
+Nothing is updated unless you ask with \fB--update\fP; set \fIIN1_OFFLINE\fP to
 skip the check.
 \fB-R\fP starts over: it removes everything in-1 put under \fIIN1_ROOT\fP
 before doing anything else.
@@ -95,6 +98,16 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   setup, since the wrappers carry the tools' environment.
 
 .PP
+\fB-U\fP, \fB--uninstall\fP \fITOOL\fP\&...
+  Remove the \fB--local\fP installs of the given tools from \fIPREFIX\fP:
+  \fIPREFIX/share/\fP with every version in it, and every wrapper
+  in \fIPREFIX/bin\fP that in-1 wrote for it.
+  Files in \fIPREFIX/bin\fP that in-1 did not write stay.
+  Aliases work here too (\fBin-1 -U bb\fP removes babashka) and
+  \fBin-1 -U in-1\fP removes the command itself.
+  Session installs are covered by \fB-R\fP\&.
+
+.PP
 \fB--list\fP
   List all available tool names and command aliases.
 
@@ -111,11 +124,11 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   Print tab completion code for the \fBin-1\fP command itself.
 
 .PP
-\fB-U\fP, \fB--update\fP
+\fB--update\fP
   Update the in-1 clone (\fIIN1_ROOT\fP) and its makes clone before
   doing anything else.
   Alone, that is all it does; with tools or other options it then
-  continues with them, so \fBin-1 -U rust\fP gets the newest in-1 and
+  continues with them, so \fBin-1 --update rust\fP gets the newest in-1 and
   makes and then installs rust.
   The in-1 clone moves to the latest default branch (or to
   \fIIN1_VERSION\fP if set) and the one-liner leaves it there from then
@@ -130,7 +143,7 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   \fIIN1_CACHE\fP\&.
   Alone, that is all it does; with tools or other options it then
   continues with them, so \fBin-1 -R rust\fP installs rust from
-  scratch and \fBin-1 -R -U\fP resets and then updates.
+  scratch and \fBin-1 -R --update\fP resets and then updates.
 
 .PP
 \fB--version\fP
@@ -178,7 +191,7 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 .PP
 \fBIN1_UPDATE\fP
-  Set to 1 for the same effect as \fB-U\fP\&.
+  Set to 1 for the same effect as \fB--update\fP\&.
 
 .PP
 \fBIN1_OFFLINE\fP
@@ -247,10 +260,17 @@ in-1 --local jq
 .EE
 
 .PP
+And remove it again:
+
+.EX
+in-1 -U jq
+.EE
+
+.PP
 Update in-1 and makes, then install the newest node:
 
 .EX
-in-1 -U node
+in-1 --update node
 .EE
 
 .PP

@@ -58,7 +58,7 @@ the current shell:
 in-1 rust node    # session install into the current shell
 in-1 --list       # all available tools
 in-1 --local jq   # persistent install under ~/.local
-in-1 -U           # update in-1 and makes
+in-1 --update     # update in-1 and makes
 man in-1
 ```
 

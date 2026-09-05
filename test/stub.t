@@ -106,18 +106,26 @@ for fresh in "$SCRATCH/fresh/root" "$SCRATCH/empty"; do
 done
 
 # Installed mode: .rc sets IN1_ROOT to the clone it lives in (unless
-# it is already set) and the in-1 function sends -U to the command
+# it is already set) and the in-1 function sends --update to the command
 out=$(env -u IN1_ROOT bash -c '
   source "'"$IN1_ROOT"'/.rc"
   echo "root=$IN1_ROOT"
-  in-1 -U 2>&1; echo "status=$?"
-  in-1 -U --list 2>/dev/null | grep -c ^rust$
+  in-1 --update 2>&1; echo "status=$?"
+  in-1 --update --list 2>/dev/null | grep -c ^rust$
 ')
 has "$out" "root=$IN1_ROOT" ".rc exports IN1_ROOT as its own dir"
-has "$out" 'not updating in-1' "in-1 -U: warns on a non-clone root"
-has "$out" 'makes is now at' "in-1 -U: updates makes"
-has "$out" 'status=0' "in-1 -U: returns 0"
-has "$out" '1' "in-1 -U --list: lists tools"
+has "$out" 'not updating in-1' "in-1 --update: warns on a non-clone root"
+has "$out" 'makes is now at' "in-1 --update: updates makes"
+has "$out" 'status=0' "in-1 --update: returns 0"
+has "$out" '1' "in-1 --update --list: lists tools"
+
+# -U (uninstall) goes straight to the command, no --env
+out=$(bash -c '
+  source "$IN1_ROOT/.rc"
+  in-1 -U nope PREFIX='"$SCRATCH/pfx"' 2>&1; echo "status=$?"
+')
+has "$out" "'nope' is not installed" "in-1 -U: runs the command"
+has "$out" 'status=1' "in-1 -U: returns 1 for a missing tool"
 
 preset=$SCRATCH/preset
 rcfile=$IN1_ROOT/.rc

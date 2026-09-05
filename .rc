@@ -10,7 +10,9 @@
 # does the same for the in-1 it installs.)  Then:
 #
 #   in-1 rust node    # install tools into this shell session
-#   in-1 -U           # update in-1 and makes
+#   in-1 --local jq   # install jq under ~/.local for keeps
+#   in-1 -U jq        # remove that again
+#   in-1 --update     # update in-1 and makes
 #   in-1 -R           # remove makes/, log/, local/ and cache/
 #   in-1 -R rust      # same, then install rust from scratch
 #   in-1 --help
@@ -47,12 +49,12 @@ eval "$(command in-1 --complete "$_in1_shell" 2>/dev/null)"
 
 # Wrap the in-1 command in a function so that session installs can
 # modify the current shell environment.  The first argument that is
-# not -U/--update or -R/--reset decides: a tool name means a session
+# not --update or -R/--reset decides: a tool name means a session
 # install.
 in-1() {
   local first=""
   for first in "$@"; do
-    case $first in -U|--update|-R|--reset) continue;; esac
+    case $first in --update|-R|--reset) continue;; esac
     break
   done
   case $first in
@@ -86,7 +88,7 @@ command in-1 --complete fish 2>/dev/null | source
 function in-1
   set -l first ""
   for first in $argv
-    if not contains -- "$first" -U --update -R --reset
+    if not contains -- "$first" --update -R --reset
       break
     end
   end

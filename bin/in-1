@@ -32,7 +32,7 @@ update=''
 reset=''
 
 main() {
-  local mode=run shell='' arg
+  local mode=run shell='' arg upd_flag=''
   local -a tools=()
 
   [[ ${IN1_UPDATE-} ]] && update=1
@@ -54,7 +54,8 @@ main() {
         [[ $# -gt 0 ]] || die "--complete requires a shell name"
         do-complete "$1"; return 0
         ;;
-      -U|--update) update=1;;
+      -U|--uninstall) mode=uninstall;;
+      --update) update=1; upd_flag=1;;
       -R|--reset) reset=1;;
       --version)
         printf 'in-1 %s\n' "$(get-version)" | to-user "$mode" "$shell"
@@ -68,6 +69,12 @@ main() {
       *) tools+=("$arg");;
     esac
   done
+
+  if [[ $mode == uninstall ]]; then
+    [[ $reset || $upd_flag ]] && die "--uninstall takes no -R or --update"
+    do-uninstall ${tools[@]+"${tools[@]}"}
+    return
+  fi
 
   # A bare update or reset (no tools) does just that; a bare reset
   # does not clone makes again
@@ -100,11 +107,12 @@ Usage:
 
   in-1 TOOL... [VAR=VALUE]... Install tools for this shell session
   in-1 --local TOOL...        Install tools under PREFIX for keeps
+  in-1 -U TOOL...             Remove --local installs (--uninstall)
   in-1 --list               List available tools and aliases
   in-1 --env SHELL TOOL...  Print env setup code for SHELL
                             (bash, zsh or fish)
   in-1 --complete SHELL     Print in-1 command completion for SHELL
-  in-1 -U, --update [ARGS]  Update in-1 and makes, then continue
+  in-1 --update [ARGS]      Update in-1 and makes, then continue
   in-1 -R, --reset [ARGS]   Remove makes/, log/, local/ and cache/
                             from IN1_ROOT, then continue
   in-1 --version            Print the in-1 version
@@ -126,7 +134,7 @@ shell function, man page and completion; 'in-1 --local in-1'
 installs it for keeps.
 
 An install checks whether in-1 or makes is behind its origin and
-says so; nothing updates unless you pass -U.  -R starts over: it
+says so; nothing updates unless you pass --update.  -R starts over: it
 removes everything in-1 put under IN1_ROOT (the makes clone, all
 session installs, logs and downloads) before doing anything else.
 
@@ -403,7 +411,7 @@ stale-notice() {  # $1=label $2=dir
   n=$(git -C "$2" rev-list --count \
     "HEAD..origin/$(default-branch "$2")" 2>/dev/null) || return 0
   [[ $n -gt 0 ]] || return 0
-  warn "$1 is $n commit(s) behind; run 'in-1 -U' to update"
+  warn "$1 is $n commit(s) behind; run 'in-1 --update' to update"
 }
 
 # Run a command quietly with a progress line:
@@ -992,9 +1000,9 @@ local-in1-hint() {
   done
 }
 
-do-local() {
-  prepare-root
-  parse-tool-args "$@"
+# The --local prefix: PREFIX (the env var or a PREFIX=DIR arg), else
+# ~/.local, or /usr/local for root
+local-prefix() {
   local prefix=${PREFIX:-}
   if [[ -z $prefix ]]; then
     if [[ ${EUID:-$(id -u)} == 0 ]]; then
@@ -1008,6 +1016,14 @@ do-local() {
     prefix=${prefix%/bin}
     warn "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
   fi
+  printf '%s' "$prefix"
+}
+
+do-local() {
+  prepare-root
+  parse-tool-args "$@"
+  local prefix
+  prefix=$(local-prefix)
 
   install-all "$prefix"
 
@@ -1020,13 +1036,83 @@ do-local() {
   local-in1-hint
 }
 
+# Args for --uninstall: tool names (an alias resolves through
+# share/tools.mk, so no makes clone is needed) and PREFIX=DIR
+parse-uninstall-args() {
+  req_name=(); req_tool=()
+  local arg name tool
+  for arg; do
+    if [[ $arg == PREFIX=* ]]; then
+      PREFIX=${arg#*=}
+      continue
+    fi
+    [[ $arg == *=* ]] &&
+      die "--uninstall takes no make variables ('$arg')"
+    name=$arg
+    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
+      die "Invalid tool name '$name'"
+    tool=$(meta "$name-isa")
+    req_name+=("$name")
+    req_tool+=("${tool:-$name}")
+  done
+  [[ ${#req_name[@]} -gt 0 ]] || {
+    usage >&2
+    die "No tools specified"
+  }
+}
+
+# True when $1 is an in-1 wrapper whose command lives under dir $2
+is-wrapper-under() {  # $1=file $2=dir
+  local line n=0 under
+  [[ -f $1 ]] || return 1
+  [[ $(head -c 24 "$1" 2>/dev/null) == '#!/usr/bin/env bash'* ]] ||
+    return 1
+  under="cmd=$(printf '%q' "$2/")"
+  while IFS= read -r line; do
+    n=$((n + 1))
+    [[ $n -eq 2 && $line != '# in-1 wrapper' ]] && return 1
+    [[ $n -gt 2 && $line == "$under"* ]] && return 0
+  done < "$1"
+  return 1
+}
+
+# Undo --local installs: remove PREFIX/share/<tool>/ (every version)
+# and each in-1 wrapper in PREFIX/bin whose command lives under it.
+# Needs neither a root nor makes.
+do-uninstall() {
+  parse-uninstall-args "$@"
+  local prefix name tool sdir w n i missing=''
+  prefix=$(local-prefix)
+  for ((i=0; i<${#req_name[@]}; i++)); do
+    name=${req_name[i]}; tool=${req_tool[i]}
+    sdir=$prefix/share/$tool
+    n=0
+    for w in "$prefix"/bin/*; do
+      is-wrapper-under "$w" "$sdir" || continue
+      rm -f "$w" || die "Failed to remove '$w'"
+      n=$((n + 1))
+    done
+    if [[ -e $sdir ]]; then
+      rm -rf "${prefix:?}/share/${tool:?}" ||
+        die "Failed to remove '$sdir'"
+    elif [[ $n -eq 0 ]]; then
+      warn "'$name' is not installed under '$prefix'"
+      missing=1
+      continue
+    fi
+    warn "Uninstalled $name:" \
+      "removed $n command wrappers from '$prefix/bin' and '$sdir'"
+  done
+  [[ -z $missing ]]
+}
+
 do-complete() {
   case $1 in
     bash)
       cat <<'...'
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
-  local opts='--env --local --list --complete -U --update -R --reset
+  local opts='--env --local --list --complete -U --uninstall --update -R --reset
     --version --help'
   local tools
   tools=$(command in-1 --list 2>/dev/null || true)
@@ -1042,7 +1128,7 @@ complete -F _in_1_complete in-1
       cat <<'...'
 _in_1_complete() {
   local -a opts tools
-  opts=(--env --local --list --complete -U --update -R --reset
+  opts=(--env --local --list --complete -U --uninstall --update -R --reset
     --version --help)
   tools=(${(f)"$(command in-1 --list 2>/dev/null)"})
   _describe 'in-1' opts -- tools
@@ -1058,9 +1144,10 @@ complete -c in-1 -f
 complete -c in-1 -a '(command in-1 --list 2>/dev/null)'
 complete -c in-1 -l env -d 'Print env setup code for a shell'
 complete -c in-1 -l local -d 'Install tools under PREFIX'
+complete -c in-1 -s U -l uninstall -d 'Remove --local installs of tools'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l complete -d 'Print command completion for a shell'
-complete -c in-1 -s U -l update -d 'Update in-1 and makes first'
+complete -c in-1 -l update -d 'Update in-1 and makes first'
 complete -c in-1 -s R -l reset -d 'Remove makes, log, local and cache first'
 complete -c in-1 -l version -d 'Print the in-1 version'
 complete -c in-1 -l help -d 'Show help'

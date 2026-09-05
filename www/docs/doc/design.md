@@ -92,7 +92,7 @@ cache/                   the download cache (IN1_CACHE)
 ```
 
 All of it is gitignored, so the clone stays clean and `git pull`
-(which is what `in-1 -U` does, for both clones) always works.
+(which is what `in-1 --update` does, for both clones) always works.
 Re-running reuses all of it, so only the first request for a tool and
 version is slow.  Set `IN1_CACHE` somewhere persistent to keep
 downloads across reboots.  `in-1 -R` removes all four directories and
@@ -101,7 +101,7 @@ leaves just the clone, so starting over never needs an `rm -rf`.
 Before an install, in-1 fetches both clones and reports if either is
 behind its origin; it never updates on its own.  The one-liner pins a
 fresh clone to its published version but leaves a clone that is
-already on a branch where it is, so after `-U` you stay on the latest.
+already on a branch where it is, so after `--update` you stay on the latest.
 
 ## Metadata
 

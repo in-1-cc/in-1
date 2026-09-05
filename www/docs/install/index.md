@@ -55,7 +55,7 @@ this shell:
 ```bash
 in-1 rust node    # install tools into this shell session
 in-1 --list       # see all available tools
-in-1 -U           # update in-1 and makes
+in-1 --update     # update in-1 and makes
 in-1 --help       # or: man in-1
 in-1 <TAB><TAB>   # tab completion
 ```
@@ -127,8 +127,8 @@ create.
 ## Update
 
 ```bash
-in-1 -U           # update in-1 and makes
-in-1 -U node      # update, then install node
+in-1 --update         # update in-1 and makes
+in-1 --update node    # update, then install node
 ```
 
 in-1 tells you when either clone is behind, but never updates on its
@@ -136,18 +136,23 @@ own.
 
 ## Uninstall
 
-Everything in-1 does lives in a few directories; remove them and it is
-gone:
+`--local` installs, the `in-1` command included, come out with `-U`
+(`--uninstall`):
+
+```bash
+in-1 -U rust node         # remove tools installed with --local
+in-1 -U in-1              # remove the command from ~/.local
+```
+
+That removes `~/.local/share/<tool>` and the wrappers in
+`~/.local/bin` that in-1 wrote for it, and nothing else.
+Everything else in-1 does lives in a directory; remove it and drop
+the `source` line from your shell rc file:
 
 ```bash
 rm -rf /tmp/in-1          # the one-liner's clone, installs and cache
 rm -rf ~/.in-1            # a cloned command (and its installs)
 ```
-
-and drop the `source` line from your shell rc file.
-For `--local` installs, remove `~/.local/share/<tool>` and the
-wrappers in `~/.local/bin` that start with `# in-1 wrapper`;
-`in-1 --local in-1` is `~/.local/share/in-1` and `~/.local/bin/in-1`.
 
 ## Requirements
 

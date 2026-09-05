@@ -61,7 +61,7 @@ Then you have:
 ```bash
 in-1 rust node    # install tools into this shell session
 in-1 --list       # see all available tools
-in-1 -U           # update in-1 and makes
+in-1 --update     # update in-1 and makes
 in-1 --help       # or: man in-1
 in-1 <TAB><TAB>   # tab completion
 ```
