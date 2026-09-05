@@ -6,20 +6,15 @@ include $M/init.mk
 
 export MAKES_LOCAL_DIR := $(ROOT)/.cache/local
 
-include $M/perl.mk
 include $M/bpan.mk
+include $M/md2man.mk
+include $M/perl.mk
 include $M/shellcheck.mk
 include $M/clean.mk
-
-# md2man.mk pulls in go.mk, so only load it when building the man page
-ifneq (,$(filter manpage man/man1/in-1.1,$(MAKECMDGOALS)))
-include $M/md2man.mk
-endif
-
 include $M/shell.mk
 
 MAKES-CLEAN += www/site www/docs/index.html www/docs/rc
-MAKES-REALCLEAN += .cache/ makes/ local/ log/ cache/
+MAKES-REALCLEAN += makes/ local/ log/ cache/
 
 SHELL-FILES := rc .rc bin/in-1 \
   $(wildcard share/*.sh share/*.bash share/*.wrap)

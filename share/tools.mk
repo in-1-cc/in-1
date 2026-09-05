@@ -39,3 +39,5 @@ yaml-isa := yamlstar
 yamlstar-bin := yaml
 
 ys-isa := yamlscript
+
+ysd-isa := yamlschema
