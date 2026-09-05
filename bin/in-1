@@ -261,12 +261,21 @@ set-globals() {
   cache=$(tilde-expand "${IN1_CACHE:-$root/cache}")
 }
 
+# Clone makes if it is missing.  This is plumbing, not a tool the user
+# asked for, so it gets no progress line; the log only shows on
+# failure (or everything streams with IN1_VERBOSE=1).
 ensure-makes() {
   mkdir -p "$root/log"
-  if [[ ! -d $makes ]]; then
-    progress-run makes "$root/log/makes.log" '' '' \
-      git clone -q "${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}" "$makes" ||
+  [[ -d $makes ]] && return 0
+  local log=$root/log/makes.log
+  local repo=${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}
+  if [[ ${IN1_VERBOSE-} ]]; then
+    git clone -q "$repo" "$makes" 1>&2 ||
       die "Failed to clone the makes repo"
+  elif ! git clone -q "$repo" "$makes" &> "$log"; then
+    tail -20 "$log" >&2
+    warn "Full log: $log"
+    die "Failed to clone the makes repo"
   fi
 }
 
