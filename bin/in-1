@@ -46,15 +46,17 @@ main() {
         shell=$1; shift
         ;;
       --local) mode=local;;
-      --list) list-tools | run-pager || true; return 0;;
+      --list) to-user "$mode"; list-tools | run-pager || true; return 0;;
       --complete)
         [[ $# -gt 0 ]] || die "--complete requires a shell name"
         do-complete "$1"; return 0
         ;;
       -U|--update) update=1;;
       -R|--reset) reset=1;;
-      --version) printf 'in-1 %s\n' "$(get-version)"; return 0;;
-      --help|-h) usage | run-pager || true; return 0;;
+      --version)
+        to-user "$mode"; printf 'in-1 %s\n' "$(get-version)"; return 0
+        ;;
+      --help|-h) to-user "$mode"; usage | run-pager || true; return 0;;
       -*) die "Unknown option '$arg'. Try: in-1 --help";;
       *) tools+=("$arg");;
     esac
@@ -132,6 +134,15 @@ Environment variables:
 
 See 'man in-1' or https://in-1.cc/doc/ for full documentation.
 ...
+}
+
+# In --env mode stdout is shell code that the caller evals, so text
+# meant for the user (--list, --help, --version) goes to stderr
+# instead.  That is what the one-liner hits with
+# 'source <(curl -sL in-1.cc) --list'.
+to-user() {  # $1=mode
+  [[ $1 == env ]] && exec 1>&2
+  return 0
 }
 
 die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }

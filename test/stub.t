@@ -35,6 +35,18 @@ has "$out" 'status=1 alive' "no args: returns 1, shell survives"
 has "$out" 'No tools specified' "no args: prints an error"
 has "$out" 'Usage' "no args: prints usage"
 
+# Informational options through the one-liner go to the user, not
+# into the eval
+out=$(bash -c 'source ./rc --list 2>&1 >/dev/null; echo "status=$? alive"')
+has "$out" 'rust' "--list: lists tools on stderr"
+has "$out" 'status=0 alive' "--list: returns 0, shell survives"
+out=$(bash -c 'source ./rc --list 2>/dev/null; echo "status=$?"')
+is "$out" 'status=0' "--list: nothing on stdout, nothing evaled"
+out=$(bash -c 'source ./rc --help 2>&1 >/dev/null')
+has "$out" 'Usage' "--help: prints usage on stderr"
+out=$(bash -c 'source ./rc --version 2>&1 >/dev/null')
+has "$out" 'in-1 ' "--version: prints the version on stderr"
+
 # Unknown tool points at --list without dumping every tool
 out=$(bash -c 'source ./rc no-such-tool 2>&1; echo "status=$?"')
 has "$out" "Unknown tool 'no-such-tool'" "unknown tool: error message"
