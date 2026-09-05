@@ -46,6 +46,8 @@ out=$(bash -c 'source ./rc --help 2>/dev/null')
 has "$out" 'Usage' "--help: prints usage on stdout"
 out=$(bash -c 'source ./rc --version 2>/dev/null')
 has "$out" 'in-1 ' "--version: prints the version on stdout"
+out=$(bash -c 'source ./rc --rc 2>/dev/null')
+is "$out" "source '$IN1_ROOT/.rc'" "--rc: prints the source line on stdout"
 if command -v fish >/dev/null 2>&1; then
   out=$(fish -c 'source ./rc --list 2>/dev/null | grep -cx rust')
   is "$out" 1 "fish: --list lists tools on stdout"

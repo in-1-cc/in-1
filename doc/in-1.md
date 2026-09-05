@@ -20,6 +20,8 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--complete** *SHELL*
 
+**in-1** **--rc**
+
 **in-1** **--update** [*OPTIONS*] [*TOOL*...]
 
 **in-1** **-R** | **--reset** [*OPTIONS*] [*TOOL*...]
@@ -63,8 +65,9 @@ Run **in-1 --list** to see tools and aliases.
 **in-1** is itself one of the tools: **in-1** as a *TOOL* (the
 one-liner with **in-1**, say) installs the in-1 command for the
 current shell session, complete with its shell function, man page and
-completion, and **in-1 --local in-1** installs it for keeps and prints
-the *.rc* line to add to a shell rc file.
+completion, and **in-1 --local in-1** installs it for keeps.
+Then **source <(in-1 --rc)** (fish: **in-1 --rc | source**) in a shell
+rc file gives every new shell the same.
 
 Any *VAR*=*VALUE* argument is passed through to makes as a variable.
 Pin a version with the tool's makes variable, for example
@@ -104,6 +107,15 @@ the install prefix, like the *PREFIX* environment variable.
 **--complete** *SHELL*
   Print tab completion code for the **in-1** command itself.
 
+**--rc**
+  Print the line that sets up the shell: **source** followed by the
+  path of this in-1's own *.rc*.
+  Put **source <(in-1 --rc)** (bash, zsh) or **in-1 --rc | source**
+  (fish) in your shell rc file to get the **in-1** shell function, man
+  page and tab completion in every shell.
+  Since it goes through the **in-1** on *PATH*, the line keeps working
+  after **in-1 --local in-1** installs a newer version.
+
 **--update**
   Update the in-1 clone (*IN1_ROOT*) and its makes clone before
   doing anything else.
@@ -133,11 +145,13 @@ the install prefix, like the *PREFIX* environment variable.
 # ENVIRONMENT
 
 **IN1_ROOT**
-  The in-1 clone.
+  The in-1 root.
   It holds the makes clone (*makes/*), the session installs
   (*local/*), logs (*log/*) and the download cache (*cache/*).
   Default: the clone the **in-1** command runs from; the one-liner
-  uses */tmp/in-1* (*$TMPDIR/in-1* when *TMPDIR* is set).
+  uses */tmp/in-1* (*$TMPDIR/in-1* when *TMPDIR* is set), and an in-1
+  installed with **--local** uses *PREFIX/share/in-1/local*, which
+  survives version changes.
   Sourcing *.rc* exports it.
 
 **IN1_CACHE**
@@ -199,6 +213,7 @@ Get the in-1 command itself in the current shell:
 Install the in-1 command permanently, either way:
 
     in-1 --local in-1
+    echo 'source <(in-1 --rc)' >> ~/.bashrc
 
     git clone https://github.com/in-1-cc/in-1 ~/.in-1
     echo 'source ~/.in-1/.rc' >> ~/.bashrc

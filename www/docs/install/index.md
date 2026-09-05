@@ -73,10 +73,32 @@ Install it under `~/.local` like any other tool:
 in-1 --local in-1
 ```
 
-That writes `~/.local/bin/in-1` and prints a `source .../.rc` line;
-add that line to your shell rc file (`.bashrc`, `.zshrc` or
-`config.fish`) for the shell function, man page and tab completion in
-every new shell.
+That writes `~/.local/bin/in-1`.
+For the shell function, man page and tab completion in every new
+shell, let the command point your shell rc file at its own `.rc`:
+
+=== "Bash"
+
+    ```bash
+    echo 'source <(in-1 --rc)' >> ~/.bashrc
+    ```
+
+=== "Zsh"
+
+    ```zsh
+    echo 'source <(in-1 --rc)' >> ~/.zshrc
+    ```
+
+=== "Fish"
+
+    ```fish
+    echo 'in-1 --rc | source' >> ~/.config/fish/config.fish
+    ```
+
+The line goes through the `in-1` on `PATH`, so it keeps working when
+`in-1 --local in-1` installs a newer version.
+Session installs made through this in-1 go under
+`~/.local/share/in-1/local`, which survives version changes too.
 
 ### From a clone
 
@@ -141,11 +163,14 @@ own.
 
 ```bash
 in-1 -U rust node         # remove tools installed with --local
-in-1 -U in-1              # remove the command from ~/.local
+in-1 -U in-1              # remove the command, with its session installs
 ```
 
 That removes `~/.local/share/<tool>` and the wrappers in
 `~/.local/bin` that in-1 wrote for it, and nothing else.
+For `in-1` itself that tree includes `~/.local/share/in-1/local`, the
+root of its session installs; drop the `in-1 --rc` line from your
+shell rc file too.
 Everything else in-1 does lives in a directory; remove it and drop
 the `source` line from your shell rc file:
 

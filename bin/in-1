@@ -61,6 +61,11 @@ main() {
         printf 'in-1 %s\n' "$(get-version)" | to-user "$mode" "$shell"
         return 0
         ;;
+      --rc)
+        printf 'source %s\n' "$(sq "$self_root/.rc")" |
+          to-user "$mode" "$shell"
+        return 0
+        ;;
       --help|-h)
         usage | to-user "$mode" "$shell" | run-pager || true
         return 0
@@ -112,6 +117,7 @@ Usage:
   in-1 --env SHELL TOOL...  Print env setup code for SHELL
                             (bash, zsh or fish)
   in-1 --complete SHELL     Print in-1 command completion for SHELL
+  in-1 --rc                 Print the shell setup line (source it)
   in-1 --update [ARGS]      Update in-1 and makes, then continue
   in-1 -R, --reset [ARGS]   Remove makes/, log/, local/ and cache/
                             from IN1_ROOT, then continue
@@ -131,7 +137,9 @@ sets the install prefix, like the PREFIX environment variable.
 in-1 is itself a tool: 'in-1' as a TOOL (the one-liner with in-1,
 say) installs the in-1 command for this shell session, with its
 shell function, man page and completion; 'in-1 --local in-1'
-installs it for keeps.
+installs it for keeps.  Then 'source <(in-1 --rc)' (bash, zsh) or
+'in-1 --rc | source' (fish) in your shell rc file gives every new
+shell the same.
 
 An install checks whether in-1 or makes is behind its origin and
 says so; nothing updates unless you pass --update.  -R starts over: it
@@ -139,16 +147,17 @@ removes everything in-1 put under IN1_ROOT (the makes clone, all
 session installs, logs and downloads) before doing anything else.
 
 Environment variables:
-  IN1_ROOT        The in-1 clone; holds makes/, local/, log/ and
-                  cache/.  Default: the dir this command runs from
-                  ('/tmp/in-1' for the one-liner)
+  IN1_ROOT        The in-1 root; holds makes/, local/, log/ and
+                  cache/.  Default: the clone this command runs from
+                  ('/tmp/in-1' for the one-liner), or for an in-1
+                  installed with --local, PREFIX/share/in-1/local
   IN1_CACHE       Download cache dir; default '$IN1_ROOT/cache'
   PREFIX          Install prefix; session default '$IN1_ROOT/local',
                   --local default '~/.local' ('/usr/local' as root)
   IN1_REPO        in-1 repo URL to clone
   IN1_MAKES_REPO  makes repo URL to clone
   IN1_VERSION     in-1 version (git ref) to use
-  IN1_UPDATE      Set to 1 for the same effect as -U
+  IN1_UPDATE      Set to 1 for the same effect as --update
   IN1_OFFLINE     Set to 1 to skip the is-it-behind check
   IN1_VERBOSE     Set to 1 to stream full install output instead of
                   the quiet progress lines
@@ -295,11 +304,25 @@ check-prereqs() {
   esac
 }
 
+# An in-1 installed with --local runs from
+# PREFIX/share/in-1/<version>/cache/in-1-<version>; its root is
+# PREFIX/share/in-1/local, which survives version changes.  Prints
+# nothing for any other in-1.  (.rc applies the same rule.)
+local-root() {
+  case $self_root in
+    */share/in-1/*/cache/in-1-*)
+      printf '%s' "${self_root%/share/in-1/*}/share/in-1/local";;
+  esac
+}
+
 # The root is the in-1 clone itself (the dir this command runs from
-# unless IN1_ROOT says otherwise); makes, installs, logs and the
-# download cache all live under it.
+# unless IN1_ROOT says otherwise, or the stable dir of a --local
+# install); makes, installs, logs and the download cache all live
+# under it.
 set-globals() {
-  root=$(tilde-expand "${IN1_ROOT:-$self_root}")
+  local default
+  default=$(local-root)
+  root=$(tilde-expand "${IN1_ROOT:-${default:-$self_root}}")
   makes=$root/makes
   cache=$(tilde-expand "${IN1_CACHE:-$root/cache}")
 }
@@ -387,7 +410,7 @@ update-makes() {
 # stays.  A cache placed elsewhere by IN1_CACHE is left alone.
 do-reset() {
   local dir
-  [[ -x $root/bin/in-1 ]] ||
+  [[ -x $root/bin/in-1 || $root == */share/in-1/local ]] ||
     die "'$root' is not an in-1 clone; not resetting"
   for dir in makes log local cache; do
     [[ -e $root/$dir ]] || continue
@@ -970,8 +993,8 @@ do-run() {
     "  eval \"\$(in-1 --env zsh ${req_name[*]})\"   # zsh" \
     "  in-1 --env fish ${req_name[*]} | source    # fish" \
     "" \
-    "Or run 'source $self_root/.rc' first to get an 'in-1' command" \
-    "that does this for you."
+    "Or run 'source <(in-1 --rc)' first (fish: 'in-1 --rc | source')" \
+    "to get an 'in-1' shell function that does this for you."
 }
 
 # The clone an installed in-1 lives in, given its share/in-1/<v> dir
@@ -985,17 +1008,26 @@ in1-clone-of() {  # $1=install-dir
   return 1
 }
 
-# After `--local in-1`, say how to get the shell side of it
-local-in1-hint() {
-  local i clone
+# After `--local in-1`, say how to get the shell side of it.  The
+# rc line goes through the installed command, so it survives version
+# changes; so does that in-1's root, PREFIX/share/in-1/local.
+local-in1-hint() {  # $1=prefix
+  local i cmd=in-1
   for ((i=0; i<${#req_name[@]}; i++)); do
     [[ ${req_name[i]} == in-1 ]] || continue
-    clone=$(in1-clone-of "${comp_dirs[i]}") || return 0
+    in1-clone-of "${comp_dirs[i]}" >/dev/null || return 0
+    case ":$PATH:" in
+      *":$1/bin:"*) ;;
+      *) cmd=$1/bin/in-1;;
+    esac
     warn "" \
       "For the in-1 shell function, man page and tab completion add" \
-      "this line to your shell rc file (bash, zsh or fish):" \
+      "this line to your shell rc file:" \
       "" \
-      "  source $clone/.rc"
+      "  source <($cmd --rc)     # bash / zsh" \
+      "  $cmd --rc | source      # fish" \
+      "" \
+      "Session installs made through it go under '$1/share/in-1/local'."
     return 0
   done
 }
@@ -1033,7 +1065,7 @@ do-local() {
     *":$prefix/bin:"*) ;;
     *) warn "Note: '$prefix/bin' is not in your PATH";;
   esac
-  local-in1-hint
+  local-in1-hint "$prefix"
 }
 
 # Args for --uninstall: tool names (an alias resolves through
@@ -1112,8 +1144,8 @@ do-complete() {
       cat <<'...'
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
-  local opts='--env --local --list --complete -U --uninstall --update -R --reset
-    --version --help'
+  local opts='--env --local --list --complete --rc -U --uninstall
+    --update -R --reset --version --help'
   local tools
   tools=$(command in-1 --list 2>/dev/null || true)
   COMPREPLY=()
@@ -1128,8 +1160,8 @@ complete -F _in_1_complete in-1
       cat <<'...'
 _in_1_complete() {
   local -a opts tools
-  opts=(--env --local --list --complete -U --uninstall --update -R --reset
-    --version --help)
+  opts=(--env --local --list --complete --rc -U --uninstall
+    --update -R --reset --version --help)
   tools=(${(f)"$(command in-1 --list 2>/dev/null)"})
   _describe 'in-1' opts -- tools
 }
@@ -1147,6 +1179,7 @@ complete -c in-1 -l local -d 'Install tools under PREFIX'
 complete -c in-1 -s U -l uninstall -d 'Remove --local installs of tools'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l complete -d 'Print command completion for a shell'
+complete -c in-1 -l rc -d 'Print the shell setup line (source it)'
 complete -c in-1 -l update -d 'Update in-1 and makes first'
 complete -c in-1 -s R -l reset -d 'Remove makes, log, local and cache first'
 complete -c in-1 -l version -d 'Print the in-1 version'

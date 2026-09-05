@@ -36,7 +36,18 @@ fi
 out=$(bin/in-1 --version)
 has "$out" 'in-1 ' "--version prints a version"
 
+out=$(bin/in-1 --rc)
+is "$out" "source '$ROOT/.rc'" "--rc prints the source line for its .rc"
+out=$(env -u IN1_ROOT bash -c '
+  source <(bin/in-1 --rc)
+  echo "type=$(type -t in-1)"
+  echo "root=$IN1_ROOT"
+')
+has "$out" 'type=function' "source <(in-1 --rc): defines the function"
+has "$out" "root=$ROOT" "source <(in-1 --rc): IN1_ROOT is the clone"
+
 out=$(bin/in-1 --help)
+has "$out" 'in-1 --rc' "--help documents --rc"
 has "$out" 'Usage' "--help prints usage"
 has "$out" 'IN1_ROOT' "--help documents IN1_ROOT"
 has "$out" '--update [ARGS]' "--help documents --update"
@@ -48,6 +59,7 @@ has "$out" '--local in-1' "--help documents installing in-1 itself"
 out=$(bin/in-1 --complete bash)
 has "$out" '--reset' "--complete bash offers --reset"
 has "$out" '--uninstall' "--complete bash offers --uninstall"
+has "$out" '--rc' "--complete bash offers --rc"
 
 out=$(bin/in-1 --no-such-option 2>&1 || true)
 has "$out" "Unknown option '--no-such-option'" "bad option error"

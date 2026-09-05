@@ -87,4 +87,22 @@ else
   fail "not a clone: nothing removed"
 fi
 
+# The stable root of a --local installed in-1 is no clone either, but
+# it is in-1's own dir, so it resets
+stable=$SCRATCH/pfx/share/in-1/local
+mkdir -p "$stable/local/bin" "$stable/cache"
+touch "$stable/cache/y"
+out=$(
+  IN1_ROOT=$stable bin/in-1 -R 2>&1 && echo "status=$?" ||
+    echo "status=$?"
+)
+has "$out" "reset: removed makes/, log/, local/ and cache/ from '$stable'" \
+  "stable root: resets"
+has "$out" 'status=0' "stable root: returns 0"
+if [[ ! -e $stable/cache/y && ! -e $stable/local ]]; then
+  pass "stable root: local/ and cache/ removed"
+else
+  fail "stable root: local/ and cache/ removed"
+fi
+
 done-testing

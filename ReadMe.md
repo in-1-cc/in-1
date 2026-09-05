@@ -62,11 +62,13 @@ in-1 --update     # update in-1 and makes
 man in-1
 ```
 
-To keep it, install it under `~/.local` like any other tool and add
-the `source` line it prints to your shell rc file:
+To keep it, install it under `~/.local` like any other tool and let it
+point your shell rc file at its own `.rc`:
 
 ```bash
 in-1 --local in-1
+echo 'source <(in-1 --rc)' >> ~/.bashrc   # or .zshrc
+echo 'in-1 --rc | source' >> ~/.config/fish/config.fish
 ```
 
 Or clone the repo anywhere and source its `.rc`:

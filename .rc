@@ -6,6 +6,12 @@
 #
 #   source /path/to/in-1/.rc
 #
+# For an in-1 installed with `in-1 --local in-1`, let the command
+# find its own .rc, so the line survives version changes:
+#
+#   source <(in-1 --rc)     # bash / zsh
+#   in-1 --rc | source      # fish
+#
 # (Or, for the current shell only, `source <(curl -sL in-1.cc) in-1`
 # does the same for the in-1 it installs.)  Then:
 #
@@ -19,8 +25,10 @@
 #   man in-1
 #
 # IN1_ROOT is left alone when it is already set; otherwise it becomes
-# the in-1 clone this file lives in.  makes, the session installs
-# (local/), logs and the download cache go under it.
+# the in-1 clone this file lives in, or, for a --local installed in-1
+# (this file under PREFIX/share/in-1/<v>/cache/in-1-<v>/), the stable
+# PREFIX/share/in-1/local.  makes, the session installs (local/), logs
+# and the download cache go under it.
 
 test -n "$BASH_VERSION$ZSH_VERSION" && eval '
 if [ -n "${BASH_VERSION-}" ]; then
@@ -30,7 +38,13 @@ else
   _in1_shell=zsh
   _in1_dir=$(cd "$(dirname "$0")" && pwd -P)
 fi
-[ -n "${IN1_ROOT-}" ] || IN1_ROOT=$_in1_dir
+if [ -z "${IN1_ROOT-}" ]; then
+  case $_in1_dir in
+    */share/in-1/*/cache/in-1-*)
+      IN1_ROOT=${_in1_dir%/share/in-1/*}/share/in-1/local;;
+    *) IN1_ROOT=$_in1_dir;;
+  esac
+fi
 export IN1_ROOT
 
 case ":$PATH:" in
@@ -75,7 +89,14 @@ return 0
 
 test -n "$FISH_VERSION" && eval '
 set -g _in1_dir (cd (dirname (status filename)) && pwd -P)
-test -n "$IN1_ROOT"; or set -gx IN1_ROOT $_in1_dir
+if test -z "$IN1_ROOT"
+  if string match -q "*/share/in-1/*/cache/in-1-*" $_in1_dir
+    set -gx IN1_ROOT (string replace -r \
+      "/share/in-1/[^/]*/cache/in-1-[^/]*\$" /share/in-1/local $_in1_dir)
+  else
+    set -gx IN1_ROOT $_in1_dir
+  end
+end
 
 contains -- $_in1_dir/bin $PATH
 or set -gx PATH $_in1_dir/bin $PATH

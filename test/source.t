@@ -201,17 +201,46 @@ if have-in1-mk "in-1 as a tool"; then
   else
     fail "--local in-1: writes PREFIX/bin/in-1"
   fi
+  has "$out" "source <($pfx/bin/in-1 --rc)" "--local in-1: prints the --rc line"
+  has "$out" "$pfx/bin/in-1 --rc | source" "--local in-1: and the fish one"
+  has "$out" "'$pfx/share/in-1/local'" "--local in-1: names the stable root"
   rc=$(ls -d "$pfx"/share/in-1/*/cache/in-1-*/.rc 2>/dev/null | head -1)
-  has "$out" "source $rc" "--local in-1: prints the source line"
+  out=$("$pfx/bin/in-1" --rc)
+  is "$out" "source '$rc'" "installed in-1 --rc: points at its own .rc"
+
+  # Sourcing that line: the function, the stable root, and session
+  # installs (plus -R) under it
+  stable=$pfx/share/in-1/local
   out=$(env -u IN1_ROOT bash -c '
-    source "'"$rc"'"
+    source <("'"$pfx"'/bin/in-1" --rc)
     echo "type=$(type -t in-1)"
     echo "root=$IN1_ROOT"
     in-1 --version
+    in-1 jq >/dev/null 2>&1
+    echo "jq=$(command -v jq)"
+    in-1 -R 2>&1
   ')
-  has "$out" 'type=function' "sourcing that .rc: in-1 is a function"
-  has "$out" "root=${rc%/.rc}" "sourcing that .rc: IN1_ROOT is that clone"
-  has "$out" $'\nin-1 ' "sourcing that .rc: in-1 --version runs"
+  has "$out" 'type=function' "source <(in-1 --rc): in-1 is a function"
+  has "$out" "root=$stable" "source <(in-1 --rc): IN1_ROOT is the stable root"
+  has "$out" $'\nin-1 ' "source <(in-1 --rc): in-1 --version runs"
+  has "$out" "jq=$stable/local/bin/jq" "in-1 jq: installs under the stable root"
+  has "$out" "reset: removed makes/, log/, local/ and cache/ from '$stable'" \
+    "in-1 -R: resets the stable root"
+  if ls -d "$pfx"/share/in-1/*/cache/in-1-*/local >/dev/null 2>&1; then
+    fail "the installed copy starts no root of its own"
+  else
+    pass "the installed copy starts no root of its own"
+  fi
+
+  # -U in-1 takes the command and its root with it
+  out=$("$pfx/bin/in-1" -U in-1 PREFIX="$pfx" 2>&1 || echo "status=$?")
+  has "$out" 'Uninstalled in-1:' "-U in-1: reports the uninstall"
+  hasnt "$out" 'status=' "-U in-1: returns 0"
+  if [[ ! -e $pfx/share/in-1 && ! -e $pfx/bin/in-1 ]]; then
+    pass "-U in-1: the command and its root are gone"
+  else
+    fail "-U in-1: the command and its root are gone"
+  fi
 fi
 
 done-testing

@@ -63,8 +63,15 @@ source <(curl -sL in-1.cc) in-1     # bash / zsh
 curl -sL in-1.cc | source - in-1    # fish
 ```
 
-For keeps, `in-1 --local in-1` installs it under `~/.local` and
-prints the `source .../.rc` line to add to your shell rc file.
+For keeps, `in-1 --local in-1` installs it under `~/.local`; then let
+the command point your shell rc file at its own `.rc`, so the line
+survives upgrades:
+
+```bash
+echo 'source <(in-1 --rc)' >> ~/.bashrc          # or .zshrc
+echo 'in-1 --rc | source' >> ~/.config/fish/config.fish
+```
+
 Or clone the repo once and source its `.rc` from your shell rc file:
 
 ```bash
@@ -75,8 +82,9 @@ echo 'source ~/.in-1/.rc' >> ~/.bashrc  # or .zshrc, or config.fish
 Each way puts the `in-1` command, its man page and its tab completion
 in your shell, and wraps the command in a small shell function so
 that session installs work directly.
-`.rc` also sets `IN1_ROOT` to the clone it lives in, unless
-`IN1_ROOT` is already set:
+`.rc` also sets `IN1_ROOT`, unless it is already set: to the clone it
+lives in, or for a `--local` installed in-1 to the stable
+`~/.local/share/in-1/local`, which survives version changes.
 
 ```bash
 in-1 rust node            # session install, same as the one-liner
@@ -167,6 +175,7 @@ in-1 -U TOOL...           Remove --local installs (--uninstall)
 in-1 --list               List available tools
 in-1 --env SHELL TOOL...  Print env setup code for SHELL
 in-1 --complete SHELL     Print in-1 command completion for SHELL
+in-1 --rc                 Print the shell setup line (source it)
 in-1 --update [ARGS]      Update in-1 and makes, then continue
 in-1 -R, --reset [ARGS]   Remove makes/, log/, local/ and cache/
                           from IN1_ROOT, then continue
@@ -185,11 +194,12 @@ in-1 --env fish rust | source      # fish
 ## Environment variables
 
 `IN1_ROOT`
-:   The in-1 clone.
+:   The in-1 root.
     Holds the makes clone (`makes/`), the session installs
     (`local/`), logs (`log/`) and the download cache (`cache/`).
     Default: the clone the `in-1` command runs from; the one-liner
-    uses `/tmp/in-1` (`$TMPDIR/in-1` when `TMPDIR` is set).
+    uses `/tmp/in-1` (`$TMPDIR/in-1` when `TMPDIR` is set), and an
+    in-1 installed with `--local` uses `$PREFIX/share/in-1/local`.
     Sourcing `.rc` exports it.
 
 `IN1_CACHE`

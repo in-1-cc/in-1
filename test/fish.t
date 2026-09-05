@@ -43,6 +43,15 @@ has "$out" 'function' "fish: .rc defines the in-1 function"
 has "$out" "$IN1_ROOT/local/bin/jq" "fish: in-1 function installs jq"
 has "$out" 'makes is now at' "fish: in-1 --update jq goes through --env"
 
+# The --rc line sets up the same function
+out=$(fish -c '
+  bin/in-1 --rc | source
+  type -t in-1
+  echo "root=$IN1_ROOT"
+' 2>/dev/null)
+has "$out" 'function' "fish: in-1 --rc | source defines the function"
+has "$out" "root=$IN1_ROOT" "fish: in-1 --rc | source keeps IN1_ROOT"
+
 # -U (uninstall) goes straight to the command
 out=$(fish -c '
   source "$IN1_ROOT/.rc"
