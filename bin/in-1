@@ -1033,10 +1033,38 @@ local-in1-hint() {  # $1=prefix $2=shell ('' unless via --env)
     *":$1/bin:"*) ;;
     *) cmd=$1/bin/in-1;;
   esac
+  if [[ -n $2 ]]; then
+    local shell_name rc_file rc_line
+    case $2 in
+      bash)
+        shell_name=Bash
+        rc_file=\~/.bashrc
+        rc_line="source <($cmd --rc)"
+        ;;
+      zsh)
+        shell_name=Zsh
+        rc_file=\~/.zshrc
+        rc_line="source <($cmd --rc)"
+        ;;
+      fish)
+        shell_name=Fish
+        rc_file=\~/.config/fish/config.fish
+        rc_line="$cmd --rc | source"
+        ;;
+    esac
+    warn "" \
+      "This shell is set up now." \
+      "For the in-1 shell function, man page and tab completion in" \
+      "every new $shell_name shell, add this line to $rc_file:" \
+      "" \
+      "  $rc_line" \
+      "" \
+      "Session installs made through it go under '$1/share/in-1/local'."
+    return 0
+  fi
   warn "" \
-    ${2:+"This shell is set up now."} \
     "For the in-1 shell function, man page and tab completion in" \
-    "every new shell add this line to your shell rc file:" \
+    "every new shell, add the appropriate line to its rc file:" \
     "" \
     "  source <($cmd --rc)     # bash / zsh" \
     "  $cmd --rc | source      # fish" \

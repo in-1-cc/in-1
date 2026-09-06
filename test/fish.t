@@ -73,6 +73,14 @@ if have-in1-mk "fish: one-liner --local in-1"; then
   has "$out" 'status=0' "fish: one-liner --local in-1 returns 0"
   has "$out" 'This shell is set up now' \
     "fish: one-liner --local in-1 says the shell is set up"
+  has "$out" 'every new Fish shell' \
+    "fish: one-liner --local in-1 gives Fish-specific guidance"
+  has "$out" 'to ~/.config/fish/config.fish:' \
+    "fish: one-liner --local in-1 names the Fish rc file"
+  has "$out" 'in-1 --rc | source' \
+    "fish: one-liner --local in-1 gives Fish syntax"
+  hasnt "$out" 'source <(' \
+    "fish: one-liner --local in-1 does not mention Bash or Zsh"
   has "$out" 'type=function' "fish: one-liner --local in-1 defines in-1"
   has "$out" $'\nin-1 ' "fish: one-liner --local in-1: in-1 --version runs"
 fi

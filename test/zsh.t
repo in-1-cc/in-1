@@ -33,4 +33,23 @@ out=$(zsh -c '
 has "$out" 'in-1: function' "zsh: .rc defines the in-1 function"
 has "$out" "$IN1_ROOT/local/bin/jq" "zsh: in-1 function installs jq"
 
+# Through the one-liner, --local in-1 gives Zsh-specific rc guidance
+if have-in1-mk "zsh: one-liner --local in-1"; then
+  make-in1-repo "$SCRATCH/repo"
+  pfx=$SCRATCH/pfx
+  out=$(zsh -c '
+    source ./rc --local in-1 PREFIX="'"$pfx"'" '"$in1_args"' 2>&1
+    echo "status=$?"
+  ')
+  has "$out" 'status=0' "zsh: one-liner --local in-1 returns 0"
+  has "$out" 'every new Zsh shell' \
+    "zsh: one-liner --local in-1 gives Zsh-specific guidance"
+  has "$out" 'to ~/.zshrc:' \
+    "zsh: one-liner --local in-1 names the Zsh rc file"
+  has "$out" 'source <(in-1 --rc)' \
+    "zsh: one-liner --local in-1 gives Zsh syntax"
+  hasnt "$out" '| source' \
+    "zsh: one-liner --local in-1 does not mention Fish"
+fi
+
 done-testing

@@ -251,6 +251,14 @@ if have-in1-mk "in-1 as a tool"; then
   has "$out" 'status=0' "one-liner --local in-1: returns 0"
   has "$out" 'This shell is set up now' \
     "one-liner --local in-1: says the shell is set up"
+  has "$out" 'every new Bash shell' \
+    "one-liner --local in-1: gives Bash-specific guidance"
+  has "$out" 'to ~/.bashrc:' \
+    "one-liner --local in-1: names the Bash rc file"
+  hasnt "$out" 'bash / zsh' \
+    "one-liner --local in-1: does not mention Zsh"
+  hasnt "$out" '| source' \
+    "one-liner --local in-1: does not mention Fish"
   has "$out" 'type=function' "one-liner --local in-1: in-1 is a function"
   has "$out" $'\nin-1 ' "one-liner --local in-1: in-1 --version runs"
   has "$out" "root=$IN1_ROOT" "one-liner --local in-1: keeps a set IN1_ROOT"
