@@ -1154,8 +1154,8 @@ parse-uninstall-args() {
 is-wrapper-under() (  # $1=file $2=dir
   line='' n=0 under=''
   [[ -f $1 ]] || return 1
-  [[ $(head -c 24 "$1" 2>/dev/null) == '#!/usr/bin/env bash'* ]] ||
-    return 1
+  head -c 19 "$1" 2>/dev/null |
+    grep -Fqx '#!/usr/bin/env bash' || return 1
   under="cmd=$(printf '%q' "$2/")"
   while IFS= read -r line; do
     n=$((n + 1))

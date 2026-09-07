@@ -60,16 +60,21 @@ fake-install bar bar 2.0 bar
 fake-install bb babashka 1.0 bb
 echo 'not a wrapper' > "$pfx/bin/foo2"
 fake-wrapper "$pfx/share/bar/2.0/bin/bar" "$pfx/bin/foo3"
+printf '\177ELF\0not-a-wrapper\n' > "$pfx/bin/binary"
+chmod +x "$pfx/bin/binary"
 
 out=$(run bin/in-1 --uninstall foo PREFIX="$pfx")
 has "$out" 'Uninstalled foo:' "--uninstall foo: reports the uninstall"
 has "$out" "removed 3 command wrappers from '$pfx/bin'" \
   "--uninstall foo: counts the wrappers"
 has "$out" 'status=0' "--uninstall foo: returns 0"
+hasnt "$out" 'ignored null byte' \
+  "--uninstall foo: scanning a binary produces no warnings"
 for path in bin/foo bin/foo-helper bin/foo-1.0 share/foo; do
   gone "$path" "--uninstall foo"
 done
-for path in bin/bar bin/bar-2.0 bin/foo2 bin/foo3 share/bar bin/bb; do
+for path in bin/bar bin/bar-2.0 bin/foo2 bin/foo3 bin/binary \
+  share/bar bin/bb; do
   kept "$path" "--uninstall foo"
 done
 
