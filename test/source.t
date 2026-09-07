@@ -163,6 +163,19 @@ has "$out" "$IN1_ROOT/local/bin/jq" "in-1 function installs jq"
 has "$out" 'not updating in-1' "in-1 --update jq: goes through --env"
 has "$out" 'makes is now at' "in-1 --update jq: updates makes"
 
+# The in-1 function removes repeated PATH entries without changing
+# their order or masking the command's exit status.
+out=$(bash -c '
+  source "$IN1_ROOT/.rc"
+  PATH=/one:/two:/one:/three:/two:$PATH
+  in-1 --version >/dev/null
+  echo "path=$PATH"
+  in-1 --uninstall nope PREFIX='"$SCRATCH/pfx"' >/dev/null 2>&1
+  echo "status=$?"
+')
+has "$out" 'path=/one:/two:/three:' "in-1 function deduplicates PATH"
+has "$out" 'status=1' "PATH deduplication preserves command status"
+
 # in-1 itself as a tool, next to another tool; installs through the
 # resulting function land in the one-liner's root, not in the
 # installed copy
