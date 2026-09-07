@@ -50,6 +50,8 @@ hasnt "$out" 'Usage:' \
   "bare command: update notices suppress help"
 has "$out" 'No tools specified' \
   "bare command: retains the no-tools error"
+has "$out" 'Try: in-1 --help' \
+  "bare command: points at explicit help"
 
 out=$(bin/in-1 --list 2>&1)
 hasnt "$out" 'behind' "--list does not check"

@@ -176,6 +176,21 @@ out=$(bash -c '
 has "$out" 'path=/one:/two:/three:' "in-1 function deduplicates PATH"
 has "$out" 'status=1' "PATH deduplication preserves command status"
 
+# Without Perl the function leaves PATH untouched.
+no_perl=$SCRATCH/no-perl
+mkdir -p "$no_perl"
+printf '#!/bin/bash\nexit 0\n' > "$no_perl/in-1"
+chmod +x "$no_perl/in-1"
+out=$(NO_PERL=$no_perl bash -c '
+  source "$IN1_ROOT/.rc"
+  PATH=$NO_PERL:/one:/one
+  hash -r
+  in-1 --version
+  echo "path=$PATH"
+')
+is "$out" "path=$no_perl:/one:/one" \
+  "in-1 function keeps PATH when Perl is unavailable"
+
 # in-1 itself as a tool, next to another tool; installs through the
 # resulting function land in the one-liner's root, not in the
 # installed copy

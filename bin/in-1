@@ -31,9 +31,6 @@ update=''
 # root first
 reset=''
 
-# Set when check-stale prints at least one --update notice
-stale_notice=''
-
 main() {
   local mode=run shell='' arg upd_flag=''
   local -a tools=()
@@ -444,7 +441,6 @@ stale-notice() {  # $1=label $2=dir
     "HEAD..origin/$(default-branch "$2")" 2>/dev/null) || return 0
   [[ $n -gt 0 ]] || return 0
   warn "$1 is $n commit(s) behind; run 'in-1 --update' to update"
-  stale_notice=1
 }
 
 # Run a command quietly with a progress line:
@@ -534,10 +530,7 @@ list-tools() (
 parse-tool-args() {
   req_name=(); req_tool=(); make_args=()
   local arg name tool
-  [[ $# -gt 0 ]] || {
-    usage >&2
-    die "No tools specified"
-  }
+  [[ $# -gt 0 ]] || die "No tools specified. Try: in-1 --help"
   for arg; do
     if [[ $arg == *=* ]]; then
       name=${arg%%=*}
@@ -573,7 +566,7 @@ parse-tool-args() {
     [[ ${#make_args[@]} -gt 0 ]] &&
       die "No tool named. A NAME=VALUE arg sets a make variable;" \
         "add a tool too, e.g. 'perl PERL-VERSION=5.42.0'."
-    die "No tools specified"
+    die "No tools specified. Try: in-1 --help"
   }
 }
 
@@ -999,8 +992,7 @@ do-env() (
 do-run() (
   if [[ $# -eq 0 ]]; then
     prepare-root
-    [[ $stale_notice ]] || show-help run '' >&2
-    die "No tools specified"
+    die "No tools specified. Try: in-1 --help"
   fi
   session-prepare "$@"
   warn "Tools installed; wrappers are in '$install_root/bin'." \
@@ -1158,10 +1150,8 @@ parse-uninstall-args() {
     req_name+=("$name")
     req_tool+=("${tool:-$name}")
   done
-  [[ ${#req_name[@]} -gt 0 ]] || {
-    usage >&2
-    die "No tools specified"
-  }
+  [[ ${#req_name[@]} -gt 0 ]] ||
+    die "No tools specified. Try: in-1 --help"
 }
 
 # True when $1 is an in-1 wrapper whose command lives under dir $2

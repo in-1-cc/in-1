@@ -33,7 +33,8 @@ fi
 out=$(bash -c 'source ./rc 2>&1; echo "status=$? alive"')
 has "$out" 'status=1 alive' "no args: returns 1, shell survives"
 has "$out" 'No tools specified' "no args: prints an error"
-has "$out" 'Usage' "no args: prints usage"
+has "$out" 'Try: in-1 --help' "no args: points at explicit help"
+hasnt "$out" 'Usage' "no args: does not print usage"
 
 # Informational options through the one-liner reach the user's
 # stdout (the eval runs a printf), not stderr

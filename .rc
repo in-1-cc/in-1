@@ -82,10 +82,9 @@ in-1() {
       ;;
   esac
   in1_status=$?
-  PATH=$(echo -n "$PATH" |
-    awk -v RS=: -v ORS=: "!(\$0 in a) {a[\$0]; print}")
-  PATH=${PATH%:}
-  export PATH
+  if command -v perl >/dev/null 2>&1; then
+    export PATH=$(perl -e '"'"'print join(":", grep {!$seen{$_}++} split(/:/, $ENV{PATH}))'"'"')
+  fi
   return "$in1_status"
 }
 

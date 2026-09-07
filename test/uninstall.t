@@ -108,7 +108,8 @@ has "$out" '--uninstall takes no make variables' \
 
 out=$(bin/in-1 --uninstall 2>&1 || true)
 has "$out" 'No tools specified' "--uninstall alone: no tools"
-has "$out" 'Usage' "--uninstall alone: prints usage"
+has "$out" 'Try: in-1 --help' "--uninstall alone: points at help"
+hasnt "$out" 'Usage' "--uninstall alone: does not print usage"
 
 out=$(bin/in-1 --uninstall --reset foo PREFIX="$pfx" 2>&1 || true)
 has "$out" '--uninstall takes no --reset or --update' \

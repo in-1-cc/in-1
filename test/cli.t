@@ -74,6 +74,15 @@ hasnt "$out" '-s R' "--complete fish does not offer -R"
 
 out=$(bin/in-1 --no-such-option 2>&1 || true)
 has "$out" "Unknown option '--no-such-option'" "bad option error"
+hasnt "$out" 'Usage' "bad option does not print usage"
+
+out=$(bin/in-1 --env bash 2>&1 || true)
+has "$out" 'Try: in-1 --help' "--env without tools points at help"
+hasnt "$out" 'Usage' "--env without tools does not print usage"
+
+out=$(bin/in-1 --local 2>&1 || true)
+has "$out" 'Try: in-1 --help' "--local without tools points at help"
+hasnt "$out" 'Usage' "--local without tools does not print usage"
 
 out=$(bin/in-1 --upgrade 2>&1 || true)
 has "$out" "Unknown option '--upgrade'" "--upgrade is gone"
