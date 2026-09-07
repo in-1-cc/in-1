@@ -8,9 +8,10 @@ It is a polyglot that works when sourced by bash, zsh or fish, and it
 does only three things:
 
 1. Clone the [in-1 repo](https://github.com/in-1-cc/in-1) to
-   `$IN1_ROOT` (default `/tmp/in-1`), checked out at the version the
+   `$TMPDIR/in-1` (default `/tmp/in-1`), checked out at the version the
    script was published with (so the served endpoint and the code
-   always agree).
+   always agree).  Run it with `IN1_ROOT` set to that clone rather than
+   inheriting the installed shell function's root.
 2. Run `bin/in-1 --env <your-shell> <tools...>` from that clone.
 3. Evaluate its output in your current shell.
 

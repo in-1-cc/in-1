@@ -30,8 +30,8 @@ them on `PATH` in your **current shell** only.
 Open a new shell and they are gone; the downloads stay cached, so
 asking again is instant.
 Nothing else on your system changes.
-
-Set `IN1_ROOT` first to clone somewhere other than `/tmp/in-1`.
+The one-liner always uses `$TMPDIR/in-1` (default `/tmp/in-1`), even
+when an installed `in-1` function has set `IN1_ROOT` in the shell.
 
 ## Install the `in-1` command
 

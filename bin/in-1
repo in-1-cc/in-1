@@ -151,8 +151,9 @@ session installs, logs and downloads) before doing anything else.
 Environment variables:
   IN1_ROOT        The in-1 root; holds makes/, local/, log/ and
                   cache/.  Default: the clone this command runs from
-                  ('/tmp/in-1' for the one-liner), or for an in-1
-                  installed with --local, PREFIX/share/in-1/local
+                  or, for an in-1 installed with --local,
+                  PREFIX/share/in-1/local.  The one-liner always uses
+                  '$TMPDIR/in-1' (default '/tmp/in-1')
   IN1_CACHE       Download cache dir; default '$IN1_ROOT/cache'
   PREFIX          Install prefix; session default '$IN1_ROOT/local',
                   --local default '~/.local' ('/usr/local' as root)

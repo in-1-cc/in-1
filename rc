@@ -25,7 +25,7 @@ test -n "$BASH_VERSION$ZSH_VERSION" && eval '
 _in1_boot() {
   local pin=${IN1_VERSION:-@IN1_VERSION@}
   local tmp=${TMPDIR:-/tmp}
-  local root=${IN1_ROOT:-${tmp%/}/in-1}
+  local root=${tmp%/}/in-1
   local repo=${IN1_REPO:-https://github.com/in-1-cc/in-1}
   local shell=bash fresh="" out
 
@@ -68,7 +68,8 @@ _in1_boot() {
     fi
   fi
 
-  out=$(bash "$root/bin/in-1" --env "$shell" "$@") || return 1
+  out=$(IN1_ROOT="$root" bash "$root/bin/in-1" \
+    --env "$shell" "$@") || return 1
   eval "$out"
 }
 
@@ -90,8 +91,7 @@ function _in1_boot
   test -n "$pin"; or set pin @IN1_VERSION@
   set -l tmp "$TMPDIR"
   test -n "$tmp"; or set tmp /tmp
-  set -l root "$IN1_ROOT"
-  test -n "$root"; or set root (string trim -r -c / -- $tmp)/in-1
+  set -l root (string trim -r -c / -- $tmp)/in-1
   set -l repo "$IN1_REPO"
   test -n "$repo"; or set repo https://github.com/in-1-cc/in-1
   set -l fresh ""
@@ -129,7 +129,7 @@ function _in1_boot
   end
 
   set -l envfile (mktemp)
-  if bash $root/bin/in-1 --env fish $argv > $envfile
+  if env IN1_ROOT=$root bash $root/bin/in-1 --env fish $argv > $envfile
     source $envfile
     rm -f $envfile
   else

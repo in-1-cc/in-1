@@ -28,9 +28,9 @@ fi
 
 # in-1 test scaffolding:
 #
-# Each test gets its own scratch IN1_ROOT, a stand-in for an in-1
-# clone that links back to this working copy, so the stub never needs
-# to clone in-1.  makes is cloned from a local repo, so only tool
+# Each test gets its own scratch TMPDIR and IN1_ROOT, a stand-in for
+# an in-1 clone that links back to this working copy, so the stub never
+# needs to clone in-1.  makes is cloned from a local repo, so only tool
 # downloads can hit the network; those are cached in a dir shared by
 # all tests.
 
@@ -38,7 +38,8 @@ SCRATCH=$ROOT/.cache/test/$NAME
 rm -rf "$SCRATCH"
 mkdir -p "$SCRATCH"
 
-export IN1_ROOT=$SCRATCH/root
+export TMPDIR=$SCRATCH
+export IN1_ROOT=$TMPDIR/in-1
 export IN1_REPO=$ROOT
 export IN1_CACHE=$ROOT/.cache/test/downloads
 export IN1_MAKES_REPO=${IN1_MAKES_REPO:-$ROOT/.cache/makes}

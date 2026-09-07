@@ -178,10 +178,11 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   The in-1 root.
   It holds the makes clone (\fImakes/\fP), the session installs
   (\fIlocal/\fP), logs (\fIlog/\fP) and the download cache (\fIcache/\fP).
-  Default: the clone the \fBin-1\fP command runs from; the one-liner
-  uses \fI/tmp/in-1\fP (\fI$TMPDIR/in-1\fP when \fITMPDIR\fP is set), and an in-1
-  installed with \fB--local\fP uses \fIPREFIX/share/in-1/local\fP, which
-  survives version changes.
+  Default: the clone the \fBin-1\fP command runs from, or, for an in-1
+  installed with \fB--local\fP, \fIPREFIX/share/in-1/local\fP, which survives
+  version changes.
+  The one-liner always uses \fI/tmp/in-1\fP (\fI$TMPDIR/in-1\fP when \fITMPDIR\fP
+  is set), even when \fIIN1_ROOT\fP is already set in the shell.
   Sourcing \fI\&.rc\fP exports it.
 
 .PP

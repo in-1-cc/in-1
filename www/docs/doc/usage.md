@@ -27,11 +27,12 @@ source <(curl -sL in-1.cc) go GO-VERSION=1.23.4 jq
 `PREFIX=DIR` is the exception: it sets the
 [install prefix](#environment-variables) instead of going to makes.
 
-The one-liner clones in-1 to `$IN1_ROOT` (default `/tmp/in-1`) and
-everything else lives under that clone.  Each tool version installs
-under `$IN1_ROOT/local/share/<tool>/<version>`, and in-1 writes a
-wrapper for every command it provides into `$IN1_ROOT/local/bin` (the
-one directory put on your `PATH`).  So `which node` is always
+The one-liner clones in-1 to `$TMPDIR/in-1` (default `/tmp/in-1`) and
+runs it with `IN1_ROOT` set to that clone, even when `IN1_ROOT` is
+already set in the shell.  Each tool version installs under
+`$IN1_ROOT/local/share/<tool>/<version>`, and in-1 writes a wrapper for
+every command it provides into `$IN1_ROOT/local/bin` (the one directory
+put on your `PATH`).  So `which node` is always
 `$IN1_ROOT/local/bin/node`, the wrapper carries the tool's own
 environment (`CARGO_HOME`, ...), and your shell itself stays clean.
 Your shell also gets `MANPATH` entries and completions.
@@ -198,9 +199,10 @@ in-1 --env fish rust | source      # fish
 :   The in-1 root.
     Holds the makes clone (`makes/`), the session installs
     (`local/`), logs (`log/`) and the download cache (`cache/`).
-    Default: the clone the `in-1` command runs from; the one-liner
-    uses `/tmp/in-1` (`$TMPDIR/in-1` when `TMPDIR` is set), and an
-    in-1 installed with `--local` uses `$PREFIX/share/in-1/local`.
+    Default: the clone the `in-1` command runs from; an in-1 installed
+    with `--local` uses `$PREFIX/share/in-1/local`.
+    The one-liner always sets it to `$TMPDIR/in-1` (default
+    `/tmp/in-1`), ignoring a value inherited from the current shell.
     Sourcing `.rc` exports it.
 
 `IN1_CACHE`

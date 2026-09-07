@@ -4,7 +4,6 @@ source test/init slow
 
 # Full session install of jq in bash via the curl stub
 out=$(bash -c '
-  unset TMPDIR
   export LANG=C
   source ./rc jq >/dev/null 2>&1 || echo "status=$?"
   command -v jq
@@ -12,7 +11,7 @@ out=$(bash -c '
   path1=$PATH
   source ./rc jq >/dev/null 2>&1
   [[ $PATH == "$path1" ]] && echo "PATH-IDEMPOTENT"
-  echo "TMPDIR=${TMPDIR-unset}"
+  echo "TMPDIR=$TMPDIR"
   echo "LANG=$LANG"
   echo "TOOLS=$IN1_TOOLS"
 ')
@@ -20,7 +19,7 @@ out=$(bash -c '
 has "$out" "$IN1_ROOT/local/bin/jq" "which jq resolves to local/bin"
 has "$out" 'jq-1.' "jq runs and reports its version"
 has "$out" 'PATH-IDEMPOTENT' "re-sourcing does not grow PATH"
-has "$out" 'TMPDIR=unset' "TMPDIR does not leak into the shell"
+has "$out" "TMPDIR=$TMPDIR" "TMPDIR does not change in the shell"
 has "$out" 'LANG=C' "LANG does not leak into the shell"
 has "$out" 'TOOLS=jq' "IN1_TOOLS is set"
 
@@ -299,6 +298,35 @@ if have-in1-mk "in-1 as a tool"; then
   has "$out" 'type=function' "one-liner --local in-1: in-1 is a function"
   has "$out" $'\nin-1 ' "one-liner --local in-1: in-1 --version runs"
   has "$out" "root=$IN1_ROOT" "one-liner --local in-1: keeps a set IN1_ROOT"
+
+  # The shell function honors the locally installed .rc root, but a
+  # later one-liner always uses a new temporary root.
+  session_tmp=$SCRATCH/session-tmp
+  out=$(
+    env -u IN1_ROOT TMPDIR="$session_tmp" \
+      IN1_REPO="$SCRATCH/repo" bash -c '
+      source <("'"$pfx"'/bin/in-1" --rc)
+      echo "local-root=$IN1_ROOT"
+      in-1 in-1 '"$in1_args"' >/dev/null 2>&1
+      echo "function-root=$IN1_ROOT"
+      echo "function-command=$(type -P in-1)"
+      source ./rc in-1 '"$in1_args"' >/dev/null 2>&1
+      echo "session-root=$IN1_ROOT"
+      echo "session-command=$(type -P in-1)"
+    '
+  )
+  stable=$pfx/share/in-1/local
+  session_root=$session_tmp/in-1
+  has "$out" "local-root=$stable" \
+    "installed .rc selects its stable root"
+  has "$out" "function-root=$stable" \
+    "the in-1 function honors the stable root"
+  has "$out" "function-command=$stable/local/" \
+    "the in-1 function selects its stable in-1"
+  has "$out" "session-root=$session_root" \
+    "a later one-liner selects its temporary root"
+  has "$out" "session-command=$session_root/local/" \
+    "the later one-liner selects its temporary in-1"
 
   # --uninstall in-1 takes the command and its root with it
   out=$(

@@ -69,12 +69,13 @@ out=$(bash -c '
 ')
 is "$out" 0 "no _in1 residue in shell after sourcing"
 
-# An IN1_ROOT that exists but is not an in-1 clone (the old layout,
-# say) is an error, never touched
-old=$SCRATCH/old
+# A one-liner root that exists but is not an in-1 clone (the old
+# layout, say) is an error, never touched.
+old_tmp=$SCRATCH/old
+old=$old_tmp/in-1
 mkdir -p "$old/in-1"
 out=$(
-  IN1_ROOT=$old bash -c 'source ./rc jq 2>&1; echo "status=$? alive"'
+  TMPDIR=$old_tmp bash -c 'source ./rc jq 2>&1; echo "status=$? alive"'
 )
 has "$out" 'not an in-1 clone' "old layout: explains itself"
 has "$out" 'status=1 alive' "old layout: returns 1, shell survives"
@@ -86,7 +87,7 @@ fi
 
 if command -v fish >/dev/null 2>&1; then
   out=$(
-    IN1_ROOT=$old fish -c 'source ./rc jq 2>&1; echo "status=$status"'
+    TMPDIR=$old_tmp fish -c 'source ./rc jq 2>&1; echo "status=$status"'
   )
   has "$out" 'not an in-1 clone' "fish: old layout explains itself"
   has "$out" 'status=1' "fish: old layout returns 1"
@@ -94,18 +95,21 @@ else
   pass "fish not available; check skipped"
 fi
 
-# A missing or empty IN1_ROOT gets the clone (from IN1_REPO here)
-for fresh in "$SCRATCH/fresh/root" "$SCRATCH/empty"; do
-  [[ $fresh == */empty ]] && mkdir -p "$fresh"
+# A missing or empty one-liner root gets the clone (from IN1_REPO here).
+for kind in root empty; do
+  fresh_tmp=$SCRATCH/fresh-$kind
+  fresh=$fresh_tmp/in-1
+  [[ $kind == empty ]] && mkdir -p "$fresh"
   out=$(
-    IN1_ROOT=$fresh bash -c 'source ./rc no-such-tool 2>&1; echo "s=$?"'
+    TMPDIR=$fresh_tmp bash -c \
+      'source ./rc no-such-tool 2>&1; echo "s=$?"'
   )
   if [[ -x $fresh/bin/in-1 && -d $fresh/.git && -d $fresh/makes ]]; then
-    pass "clone lands in ${fresh##*/}: bin/in-1, .git and makes/"
+    pass "clone lands in $kind: bin/in-1, .git and makes/"
   else
-    fail "clone lands in ${fresh##*/}: bin/in-1, .git and makes/"
+    fail "clone lands in $kind: bin/in-1, .git and makes/"
   fi
-  has "$out" 'Unknown tool' "the clone in ${fresh##*/} runs"
+  has "$out" 'Unknown tool' "the clone in $kind runs"
 done
 
 # Installed mode: .rc sets IN1_ROOT to the clone it lives in (unless

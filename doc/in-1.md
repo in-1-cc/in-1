@@ -153,10 +153,11 @@ the install prefix, like the *PREFIX* environment variable.
   The in-1 root.
   It holds the makes clone (*makes/*), the session installs
   (*local/*), logs (*log/*) and the download cache (*cache/*).
-  Default: the clone the **in-1** command runs from; the one-liner
-  uses */tmp/in-1* (*$TMPDIR/in-1* when *TMPDIR* is set), and an in-1
-  installed with **--local** uses *PREFIX/share/in-1/local*, which
-  survives version changes.
+  Default: the clone the **in-1** command runs from, or, for an in-1
+  installed with **--local**, *PREFIX/share/in-1/local*, which survives
+  version changes.
+  The one-liner always uses */tmp/in-1* (*$TMPDIR/in-1* when *TMPDIR*
+  is set), even when *IN1_ROOT* is already set in the shell.
   Sourcing *.rc* exports it.
 
 **IN1_CACHE**
