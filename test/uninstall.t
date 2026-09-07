@@ -58,6 +58,7 @@ kept() {
 fake-install foo foo 1.0 foo foo-helper
 fake-install bar bar 2.0 bar
 fake-install bb babashka 1.0 bb
+fake-install ys ys 1.0 ys
 echo 'not a wrapper' > "$pfx/bin/foo2"
 fake-wrapper "$pfx/share/bar/2.0/bin/bar" "$pfx/bin/foo3"
 printf '\177ELF\0not-a-wrapper\n' > "$pfx/bin/binary"
@@ -74,7 +75,7 @@ for path in bin/foo bin/foo-helper bin/foo-1.0 share/foo; do
   gone "$path" "--uninstall foo"
 done
 for path in bin/bar bin/bar-2.0 bin/foo2 bin/foo3 bin/binary \
-  share/bar bin/bb; do
+  share/bar bin/bb bin/ys; do
   kept "$path" "--uninstall foo"
 done
 
@@ -84,6 +85,14 @@ has "$out" 'Uninstalled bb:' "--uninstall bb: reports the uninstall"
 has "$out" 'status=0' "--uninstall bb: returns 0"
 for path in bin/bb bin/bb-1.0 share/babashka; do
   gone "$path" "--uninstall bb"
+done
+
+# A direct tool wins over same-named alias metadata.
+out=$(run bin/in-1 --uninstall ys PREFIX="$pfx")
+has "$out" 'Uninstalled ys:' "--uninstall ys: reports the uninstall"
+has "$out" 'status=0' "--uninstall ys: returns 0"
+for path in bin/ys bin/ys-1.0 share/ys; do
+  gone "$path" "--uninstall ys"
 done
 
 # Not installed: says so, returns 1, and the rest still happens

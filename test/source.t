@@ -317,10 +317,10 @@ if have-in1-mk "in-1 as a tool"; then
       source ./rc in-1 '"$in1_args"' >/dev/null 2>&1
       echo "session-root=$IN1_ROOT"
       echo "session-command=$(type -P in-1)"
-      in-1 jq >/dev/null 2>&1
-      in-1 --uninstall jq 2>&1
+      in-1 ys >/dev/null 2>&1
+      in-1 --uninstall ys 2>&1
       echo "function-uninstall-status=$?"
-      [[ ! -e $IN1_ROOT/local/share/jq ]] && echo function-uninstalled
+      [[ ! -e $IN1_ROOT/local/share/ys ]] && echo function-uninstalled
     '
   )
   stable=$pfx/share/in-1/local

@@ -1183,6 +1183,9 @@ do-uninstall() (
   prefix=$(local-prefix)
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}; tool=${req_tool[i]}
+    # Install parsing prefers a direct Makes tool over a same-named alias.
+    # Its install dir preserves that choice without needing the Makes clone.
+    [[ -e $prefix/share/$name ]] && tool=$name
     sdir=$prefix/share/$tool
     n=0
     for w in "$prefix"/bin/*; do
