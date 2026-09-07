@@ -9,15 +9,16 @@
 #   <name>-isa   make `in-1 <name>` install this tool (an alias)
 #   <name>-bin   the command shown for that alias
 
-babashka-bin := bb
+alire-bin := alr
+alr-isa := alire
 
+babashka-bin := bb
 bb-isa := babashka
 
 cargo-isa := rust
 cargo-bin := cargo
 
 clj-isa := clojure
-
 clojure-also := clj
 
 fortran-bin := fpm
@@ -28,16 +29,15 @@ glj-isa := glojure
 glojure-bin := glj
 
 let-go-bin := lg
-
 lg-isa := let-go
 
 rust-bin := rustc
 rust-also := cargo* and rust* commands
 
 yaml-isa := yamlstar
-
 yamlstar-bin := yaml
 
+yamlscript-bin := ys
 ys-isa := yamlscript
 
 ysd-isa := yamlschema

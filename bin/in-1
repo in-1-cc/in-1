@@ -67,7 +67,7 @@ main() {
         return 0
         ;;
       --help|-h)
-        usage | to-user "$mode" "$shell" | run-pager || true
+        show-help "$mode" "$shell"
         return 0
         ;;
       -*) die "Unknown option '$arg'. Try: in-1 --help";;
@@ -79,6 +79,15 @@ main() {
     [[ $reset || $upd_flag ]] && die "--uninstall takes no -R or --update"
     do-uninstall ${tools[@]+"${tools[@]}"}
     return
+  fi
+
+  # With no arguments, show the same paged help as -h, then retain
+  # the existing error and status.  IN1_UPDATE still makes a bare
+  # invocation perform an update.
+  if [[ $mode == run && ${#tools[@]} -eq 0 &&
+        -z $update && -z $reset ]]; then
+    show-help "$mode" "$shell" >&2
+    die "No tools specified"
   fi
 
   # A bare update or reset (no tools) does just that; a bare reset
@@ -165,6 +174,10 @@ Environment variables:
 
 See 'man in-1' or https://in-1.cc/doc/ for full documentation.
 ...
+}
+
+show-help() {  # $1=mode $2=shell
+  usage | to-user "$1" "$2" | run-pager || true
 }
 
 # Pass text meant for the user (--list, --help, --version) through.
