@@ -78,6 +78,9 @@ main() {
   if [[ $mode == uninstall ]]; then
     [[ $reset || $upd_flag ]] &&
       die "--uninstall takes no --reset or --update"
+    if [[ $shell && -z ${PREFIX-} ]]; then
+      PREFIX=${IN1_ROOT:-$self_root}/local
+    fi
     do-uninstall ${tools[@]+"${tools[@]}"}
     return
   fi
@@ -113,7 +116,7 @@ Usage:
 
   in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
   in-1 --local TOOL...         Install tools under PREFIX for keeps
-  in-1 --uninstall TOOL...     Remove --local installs
+  in-1 --uninstall TOOL...     Remove tools from their install prefix
   in-1 --list                  List available tools and aliases
   in-1 --env SHELL TOOL...     Print env setup code for SHELL
                                (bash, zsh or fish)
@@ -155,8 +158,9 @@ Environment variables:
                   PREFIX/share/in-1/local.  The one-liner always uses
                   '$TMPDIR/in-1' (default '/tmp/in-1')
   IN1_CACHE       Download cache dir; default '$IN1_ROOT/cache'
-  PREFIX          Install prefix; session default '$IN1_ROOT/local',
-                  --local default '~/.local' ('/usr/local' as root)
+  PREFIX          Install prefix; session default '$IN1_ROOT/local'.
+                  --local and direct --uninstall default '~/.local'
+                  ('/usr/local' as root)
   IN1_REPO        in-1 repo URL to clone
   IN1_MAKES_REPO  makes repo URL to clone
   IN1_VERSION     in-1 version (git ref) to use
@@ -1233,7 +1237,7 @@ complete -c in-1 -f
 complete -c in-1 -a '(command in-1 --list 2>/dev/null)'
 complete -c in-1 -l env -d 'Print env setup code for a shell'
 complete -c in-1 -l local -d 'Install tools under PREFIX'
-complete -c in-1 -l uninstall -d 'Remove --local installs of tools'
+complete -c in-1 -l uninstall -d 'Remove tools from their install prefix'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l complete -d 'Print command completion for a shell'
 complete -c in-1 -l rc -d 'Print the shell setup line (source it)'

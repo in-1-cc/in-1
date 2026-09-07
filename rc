@@ -27,9 +27,17 @@ _in1_boot() {
   local tmp=${TMPDIR:-/tmp}
   local root=${tmp%/}/in-1
   local repo=${IN1_REPO:-https://github.com/in-1-cc/in-1}
-  local shell=bash fresh="" out
+  local shell=bash fresh="" out arg
 
   [ -n "${ZSH_VERSION-}" ] && shell=zsh
+
+  for arg in "$@"; do
+    if [ "$arg" = --uninstall ]; then
+      echo "in-1: --uninstall must be run by the in-1 command" >&2
+      echo "in-1: Try: in-1 --uninstall TOOL..." >&2
+      return 1
+    fi
+  done
 
   command -v git >/dev/null 2>&1 || {
     echo "in-1: git is required" >&2
@@ -95,6 +103,12 @@ function _in1_boot
   set -l repo "$IN1_REPO"
   test -n "$repo"; or set repo https://github.com/in-1-cc/in-1
   set -l fresh ""
+
+  if contains -- --uninstall $argv
+    echo "in-1: --uninstall must be run by the in-1 command" >&2
+    echo "in-1: Try: in-1 --uninstall TOOL..." >&2
+    return 1
+  end
 
   command -q git; or begin
     echo "in-1: git is required" >&2

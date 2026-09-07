@@ -91,13 +91,18 @@ the install prefix, like the *PREFIX* environment variable.
   **--local in-1** sources the installed in-1's *.rc* right away.
 
 **--uninstall** *TOOL*...
-  Remove the **--local** installs of the given tools from *PREFIX*:
+  Remove the installs of the given tools from *PREFIX*:
   *PREFIX/share/<tool>* with every version in it, and every wrapper
   in *PREFIX/bin* that in-1 wrote for it.
   Files in *PREFIX/bin* that in-1 did not write stay.
+  The shell function defaults to its session prefix, *IN1_ROOT/local*.
+  A direct command invocation defaults to the **--local** prefix.
+  The curl one-liner rejects **--uninstall**; install the **in-1**
+  command into the session first.
+  An explicit *PREFIX* overrides either default.
   Aliases work here too (**in-1 --uninstall bb** removes babashka) and
   **in-1 --uninstall in-1** removes the command itself.
-  Session installs are covered by **--reset**.
+  **--reset** removes all session installs at once.
 
 **--list**
   List all available tool names and command aliases.
@@ -166,9 +171,11 @@ the install prefix, like the *PREFIX* environment variable.
 
 **PREFIX**
   Install prefix.
-  Session default: *$IN1_ROOT/local*; **--local** default:
-  *~/.local*, or */usr/local* when root.  A relative path is anchored
-  to the current directory.  A *PREFIX*=*DIR* argument sets it too.
+  Session default: *$IN1_ROOT/local*.
+  **--local** and a direct command invocation of **--uninstall**
+  default to *~/.local*, or */usr/local* when root.
+  A relative path is anchored to the current directory.
+  A *PREFIX*=*DIR* argument sets it too.
 
 **IN1_VERSION**
   The in-1 git ref to use.

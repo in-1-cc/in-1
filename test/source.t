@@ -313,6 +313,10 @@ if have-in1-mk "in-1 as a tool"; then
       source ./rc in-1 '"$in1_args"' >/dev/null 2>&1
       echo "session-root=$IN1_ROOT"
       echo "session-command=$(type -P in-1)"
+      in-1 jq >/dev/null 2>&1
+      in-1 --uninstall jq 2>&1
+      echo "function-uninstall-status=$?"
+      [[ ! -e $IN1_ROOT/local/share/jq ]] && echo function-uninstalled
     '
   )
   stable=$pfx/share/in-1/local
@@ -327,6 +331,14 @@ if have-in1-mk "in-1 as a tool"; then
     "a later one-liner selects its temporary root"
   has "$out" "session-command=$session_root/local/" \
     "the later one-liner selects its temporary in-1"
+  has "$out" "from '$session_root/local/bin'" \
+    "the session function uninstalls from its session prefix"
+  has "$out" 'function-uninstall-status=0' \
+    "the session function uninstall returns 0"
+  has "$out" 'function-uninstalled' \
+    "the session function removes its session install"
+  hasnt "$out" 'ignored null byte' \
+    "the session function uninstall produces no NUL warnings"
 
   # --uninstall in-1 takes the command and its root with it
   out=$(
@@ -341,6 +353,26 @@ if have-in1-mk "in-1 as a tool"; then
   else
     fail "--uninstall in-1: the command and its root are gone"
   fi
+fi
+
+# --uninstall must be run through the in-1 command, and the rejected
+# one-liner does not clone in-1 first.
+reject_tmp=$SCRATCH/reject-tmp
+out=$(
+  env -u IN1_ROOT TMPDIR="$reject_tmp" bash -c '
+    source ./rc --uninstall ys 2>&1
+    echo "status=$?"
+  '
+)
+has "$out" '--uninstall must be run by the in-1 command' \
+  "one-liner --uninstall explains the error"
+has "$out" 'Try: in-1 --uninstall TOOL...' \
+  "one-liner --uninstall gives the command to run"
+has "$out" 'status=1' "one-liner --uninstall returns 1"
+if [[ ! -e $reject_tmp/in-1 ]]; then
+  pass "one-liner --uninstall does not clone in-1"
+else
+  fail "one-liner --uninstall does not clone in-1"
 fi
 
 done-testing

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# --uninstall removes --local installs from PREFIX: share/<tool>
-# and the wrappers in bin that point into it.  The prefix is faked
-# here, so this needs no network and no makes.
+# --uninstall removes installs from PREFIX: share/<tool> and the
+# wrappers in bin that point into it.  The prefix is faked here, so
+# this needs no network and no makes.
 
 source test/init
 
@@ -105,6 +105,24 @@ for path in bin/bar bin/bar-2.0 bin/foo3 share/bar; do
   gone "$path" "--uninstall bar"
 done
 kept bin/foo2 "--uninstall bar"
+
+# Direct commands default to the persistent prefix.
+home=$SCRATCH/home
+pfx=$home/.local
+fake-install foo foo 1.0 foo
+out=$(HOME=$home run bin/in-1 --uninstall foo)
+has "$out" "from '$pfx/bin'" \
+  "direct --uninstall defaults to the persistent prefix"
+gone share/foo "direct --uninstall"
+
+# The shell function uses --env and defaults to its session prefix.
+session_root=$SCRATCH/session
+pfx=$session_root/local
+fake-install foo foo 1.0 foo
+out=$(IN1_ROOT=$session_root run bin/in-1 --env bash --uninstall foo)
+has "$out" "from '$pfx/bin'" \
+  "--env --uninstall defaults to the session prefix"
+gone share/foo "--env --uninstall"
 
 # Argument errors
 out=$(bin/in-1 --uninstall foo JQ-VERSION=1 PREFIX="$pfx" 2>&1 || true)

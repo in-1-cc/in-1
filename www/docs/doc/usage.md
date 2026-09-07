@@ -117,13 +117,25 @@ in-1 never overwrites a file in `$PREFIX/bin` that it did not create.
 in-1 --uninstall rust node
 ```
 
-removes the `--local` installs of the named tools from `PREFIX`:
+removes the installs of the named tools from `PREFIX`:
 `$PREFIX/share/<tool>` with every version in it, and the wrappers in
 `$PREFIX/bin` that in-1 wrote for it.
 Files in `$PREFIX/bin` that in-1 did not create stay.
+The shell function defaults to its session prefix, `$IN1_ROOT/local`:
+
+```bash
+source <(curl -sL in-1.cc) in-1
+in-1 rust node
+in-1 --uninstall rust node
+```
+
+A direct command invocation defaults to the `--local` prefix.
+The curl one-liner rejects `--uninstall`; install the `in-1` command
+into the session first, as above.
+An explicit `PREFIX` overrides either default.
 Aliases work here too (`in-1 --uninstall bb` removes babashka), and
 `in-1 --uninstall in-1` removes the command itself.
-Session installs are covered by `--reset`, below.
+`--reset`, below, removes all session installs at once.
 
 ## Updating
 
@@ -173,7 +185,7 @@ After a reset `IN1_TOOLS` lists only the tools installed since.
 ```text
 in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
 in-1 --local TOOL...         Install tools under PREFIX for keeps
-in-1 --uninstall TOOL...     Remove --local installs
+in-1 --uninstall TOOL...     Remove tools from their install prefix
 in-1 --list                  List available tools
 in-1 --env SHELL TOOL...     Print env setup code for SHELL
 in-1 --complete SHELL        Print in-1 command completion for SHELL
@@ -212,8 +224,9 @@ in-1 --env fish rust | source      # fish
 
 `PREFIX`
 :   Install prefix.
-    Session default: `$IN1_ROOT/local`; `--local` default: `~/.local`,
-    or `/usr/local` when root.
+    Session default: `$IN1_ROOT/local`.
+    `--local` and a direct command invocation of `--uninstall`
+    default to `~/.local`, or `/usr/local` when root.
     A relative path is anchored to the current directory.
     A `PREFIX=DIR` argument sets it too, so the one-liner can pick a
     prefix: `source <(curl -sL in-1.cc) jq PREFIX=/opt/tools`.

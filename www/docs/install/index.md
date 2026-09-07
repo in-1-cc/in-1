@@ -171,6 +171,18 @@ in-1 --uninstall in-1       # remove command and session installs
 
 That removes `~/.local/share/<tool>` and the wrappers in
 `~/.local/bin` that in-1 wrote for it, and nothing else.
+To remove individual session installs, first install `in-1` into the
+session:
+
+```bash
+source <(curl -sL in-1.cc) in-1
+in-1 rust node
+in-1 --uninstall rust node
+```
+
+That uninstall removes the tools from `$IN1_ROOT/local`.
+The curl one-liner itself rejects `--uninstall`.
+
 For `in-1` itself that tree includes `~/.local/share/in-1/local`, the
 root of its session installs; drop the `in-1 --rc` line from your
 shell rc file too.

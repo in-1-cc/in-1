@@ -66,20 +66,16 @@ eval "$(command in-1 --complete "$_in1_shell" 2>/dev/null)"
 # not --update or --reset decides: a tool name means a session
 # install.
 in-1() {
-  local first="" in1_status
+  local first="" in1_status in1_shell=bash
+  [ -n "${ZSH_VERSION-}" ] && in1_shell=zsh
   for first in "$@"; do
     case $first in --update|--reset) continue;; esac
     break
   done
   case $first in
+    --uninstall) command in-1 --env "$in1_shell" "$@";;
     ""|-*) command in-1 "$@";;
-    *)
-      if [ -n "${ZSH_VERSION-}" ]; then
-        eval "$(command in-1 --env zsh "$@")"
-      else
-        eval "$(command in-1 --env bash "$@")"
-      fi
-      ;;
+    *) eval "$(command in-1 --env "$in1_shell" "$@")";;
   esac
   in1_status=$?
   if command -v perl >/dev/null 2>&1; then
@@ -118,7 +114,9 @@ function in-1
       break
     end
   end
-  if test -z "$first"; or string match -q -- "-*" "$first"
+  if test "$first" = --uninstall
+    command in-1 --env fish $argv
+  else if test -z "$first"; or string match -q -- "-*" "$first"
     command in-1 $argv
   else
     set -l envfile (mktemp)

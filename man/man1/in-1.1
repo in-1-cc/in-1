@@ -108,13 +108,18 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 .PP
 \fB--uninstall\fP \fITOOL\fP\&...
-  Remove the \fB--local\fP installs of the given tools from \fIPREFIX\fP:
+  Remove the installs of the given tools from \fIPREFIX\fP:
   \fIPREFIX/share/\fP with every version in it, and every wrapper
   in \fIPREFIX/bin\fP that in-1 wrote for it.
   Files in \fIPREFIX/bin\fP that in-1 did not write stay.
+  The shell function defaults to its session prefix, \fIIN1_ROOT/local\fP\&.
+  A direct command invocation defaults to the \fB--local\fP prefix.
+  The curl one-liner rejects \fB--uninstall\fP; install the \fBin-1\fP
+  command into the session first.
+  An explicit \fIPREFIX\fP overrides either default.
   Aliases work here too (\fBin-1 --uninstall bb\fP removes babashka) and
   \fBin-1 --uninstall in-1\fP removes the command itself.
-  Session installs are covered by \fB--reset\fP\&.
+  \fB--reset\fP removes all session installs at once.
 
 .PP
 \fB--list\fP
@@ -193,9 +198,11 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 .PP
 \fBPREFIX\fP
   Install prefix.
-  Session default: \fI$IN1_ROOT/local\fP; \fB--local\fP default:
-  \fI~/.local\fP, or \fI/usr/local\fP when root.  A relative path is anchored
-  to the current directory.  A \fIPREFIX\fP=\fIDIR\fP argument sets it too.
+  Session default: \fI$IN1_ROOT/local\fP\&.
+  \fB--local\fP and a direct command invocation of \fB--uninstall\fP
+  default to \fI~/.local\fP, or \fI/usr/local\fP when root.
+  A relative path is anchored to the current directory.
+  A \fIPREFIX\fP=\fIDIR\fP argument sets it too.
 
 .PP
 \fBIN1_VERSION\fP
