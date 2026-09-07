@@ -4,9 +4,9 @@ source test/init slow
 
 prefix=$SCRATCH/prefix
 
-run() {
+run() (
   "$@" 2>&1 && echo "status=$?" || echo "status=$?"
-}
+)
 
 out=$(PREFIX=$prefix bin/in-1 --local jq 2>&1)
 has "$out" 'command wrappers' "--local reports wrapper creation"
@@ -36,17 +36,18 @@ is "$out" '' "--env fish --local: emits nothing"
 out=$(PREFIX=$prefix bin/in-1 --env csh --local jq 2>&1 || true)
 has "$out" "Unsupported shell 'csh'" "--env csh --local: rejects the shell"
 
-# -U removes the wrappers (jq and jq-<version>) and share/jq
+# --uninstall removes the wrappers (jq and jq-<version>) and share/jq
 version=$(ls "$prefix/share/jq")
-out=$(run bin/in-1 -U jq PREFIX="$prefix")
-has "$out" 'Uninstalled jq' "-U jq: reports the uninstall"
-has "$out" 'removed 2 command wrappers' "-U jq: removed both wrappers"
-has "$out" 'status=0' "-U jq: returns 0"
+out=$(run bin/in-1 --uninstall jq PREFIX="$prefix")
+has "$out" 'Uninstalled jq' "--uninstall jq: reports the uninstall"
+has "$out" 'removed 2 command wrappers' \
+  "--uninstall jq: removed both wrappers"
+has "$out" 'status=0' "--uninstall jq: returns 0"
 for path in bin/jq "bin/jq-$version" share/jq; do
   if [[ -e $prefix/$path ]]; then
-    fail "-U jq: $path is gone"
+    fail "--uninstall jq: $path is gone"
   else
-    pass "-U jq: $path is gone"
+    pass "--uninstall jq: $path is gone"
   fi
 done
 
@@ -59,16 +60,18 @@ has "$out" "Skipping existing non-wrapper file" \
 is "$(cat "$prefix/bin/jq")" 'not a wrapper' \
   "existing non-wrapper file content untouched"
 
-# ... nor removed by -U, which still takes out the rest
-out=$(run bin/in-1 -U jq PREFIX="$prefix")
-has "$out" 'removed 1 command wrappers' "-U jq: removes only the wrapper"
-has "$out" 'status=0' "-U jq: returns 0 with a foreign bin/jq"
+# ... nor removed by --uninstall, which still takes out the rest
+out=$(run bin/in-1 --uninstall jq PREFIX="$prefix")
+has "$out" 'removed 1 command wrappers' \
+  "--uninstall jq: removes only the wrapper"
+has "$out" 'status=0' \
+  "--uninstall jq: returns 0 with a foreign bin/jq"
 is "$(cat "$prefix/bin/jq")" 'not a wrapper' \
-  "-U jq: foreign bin/jq untouched"
+  "--uninstall jq: foreign bin/jq untouched"
 if [[ -e $prefix/share/jq ]]; then
-  fail "-U jq: share/jq is gone"
+  fail "--uninstall jq: share/jq is gone"
 else
-  pass "-U jq: share/jq is gone"
+  pass "--uninstall jq: share/jq is gone"
 fi
 
 done-testing

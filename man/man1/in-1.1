@@ -15,7 +15,7 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP \fB--local\fP \fITOOL\fP\&...
 
 .PP
-\fBin-1\fP \fB-U\fP | \fB--uninstall\fP \fITOOL\fP\&... [\fIPREFIX\fP=\fIDIR\fP]
+\fBin-1\fP \fB--uninstall\fP \fITOOL\fP\&... [\fIPREFIX\fP=\fIDIR\fP]
 
 .PP
 \fBin-1\fP \fB--list\fP | \fB--version\fP | \fB--help\fP
@@ -33,7 +33,7 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP \fB--update\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
 
 .PP
-\fBin-1\fP \fB-R\fP | \fB--reset\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
+\fBin-1\fP \fB--reset\fP [\fIOPTIONS\fP] [\fITOOL\fP\&...]
 
 
 .SH DESCRIPTION
@@ -61,7 +61,7 @@ Before an install, in-1 checks whether its own clone or its makes
 clone is behind its origin and prints one line per repo if so.
 Nothing is updated unless you ask with \fB--update\fP; set \fIIN1_OFFLINE\fP to
 skip the check.
-\fB-R\fP starts over: it removes everything in-1 put under \fIIN1_ROOT\fP
+\fB--reset\fP starts over: it removes everything in-1 put under \fIIN1_ROOT\fP
 before doing anything else.
 
 .PP
@@ -107,14 +107,14 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   \fB--local in-1\fP sources the installed in-1's \fI\&.rc\fP right away.
 
 .PP
-\fB-U\fP, \fB--uninstall\fP \fITOOL\fP\&...
+\fB--uninstall\fP \fITOOL\fP\&...
   Remove the \fB--local\fP installs of the given tools from \fIPREFIX\fP:
   \fIPREFIX/share/\fP with every version in it, and every wrapper
   in \fIPREFIX/bin\fP that in-1 wrote for it.
   Files in \fIPREFIX/bin\fP that in-1 did not write stay.
-  Aliases work here too (\fBin-1 -U bb\fP removes babashka) and
-  \fBin-1 -U in-1\fP removes the command itself.
-  Session installs are covered by \fB-R\fP\&.
+  Aliases work here too (\fBin-1 --uninstall bb\fP removes babashka) and
+  \fBin-1 --uninstall in-1\fP removes the command itself.
+  Session installs are covered by \fB--reset\fP\&.
 
 .PP
 \fB--list\fP
@@ -154,15 +154,15 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   on.
 
 .PP
-\fB-R\fP, \fB--reset\fP
+\fB--reset\fP
   Remove \fImakes/\fP, \fIlog/\fP, \fIlocal/\fP and \fIcache/\fP from \fIIN1_ROOT\fP
   before doing anything else: the makes clone, every session install,
   the logs and the download cache.
   The in-1 clone itself stays, as does a cache placed elsewhere with
   \fIIN1_CACHE\fP\&.
   Alone, that is all it does; with tools or other options it then
-  continues with them, so \fBin-1 -R rust\fP installs rust from
-  scratch and \fBin-1 -R --update\fP resets and then updates.
+  continues with them, so \fBin-1 --reset rust\fP installs rust from
+  scratch and \fBin-1 --reset --update\fP resets and then updates.
 
 .PP
 \fB--version\fP
@@ -285,7 +285,7 @@ in-1 --local jq
 And remove it again:
 
 .EX
-in-1 -U jq
+in-1 --uninstall jq
 .EE
 
 .PP
@@ -299,7 +299,7 @@ in-1 --update node
 Throw away every install and start over with node:
 
 .EX
-in-1 -R node
+in-1 --reset node
 .EE
 
 

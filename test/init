@@ -48,14 +48,14 @@ unset IN1_VERSION IN1_UPDATE IN1_OFFLINE PREFIX
 # this working copy's command (so it resolves its own root to $1, as
 # a real clone would), plus links to everything else it and the
 # sourceable files need.
-make-in1-root() {
-  local f
+make-in1-root() (
+  f=''
   mkdir -p "$1/bin"
   ln -s "$ROOT/bin/in-1" "$1/bin/in-1"
   for f in share man rc .rc; do
     ln -s "$ROOT/$f" "$1/$f"
   done
-}
+)
 
 make-in1-root "$IN1_ROOT"
 

@@ -11,7 +11,7 @@
 #   source <(curl -sL in-1.cc) rust node
 #   source <(curl -sL in-1.cc) perl PERL-VERSION=5.42.0
 #   source <(curl -sL in-1.cc) --update rust   # update in-1 first
-#   source <(curl -sL in-1.cc) -R rust     # start clean first
+#   source <(curl -sL in-1.cc) --reset rust  # start clean first
 #   source <(curl -sL in-1.cc) in-1        # the in-1 command itself
 #
 # Docs:   https://in-1.cc/home/
@@ -53,7 +53,7 @@ _in1_boot() {
 
   # Use the in-1 version this script was published with, unless the
   # version token was never stamped (running from a working copy).
-  # A clone already on a branch (after in-1 -U, say) is left there
+  # A clone already on a branch (after in-1 --update, say) is left there
   # unless IN1_VERSION asks for something else.
   if [ "$pin" != "@IN1_VERSION""@" ]; then
     if [ -n "$fresh" ] || [ -n "${IN1_VERSION-}" ] ||

@@ -51,21 +51,38 @@ has "$out" 'in-1 --rc' "--help documents --rc"
 has "$out" 'Usage' "--help prints usage"
 has "$out" 'IN1_ROOT' "--help documents IN1_ROOT"
 has "$out" '--update [ARGS]' "--help documents --update"
-has "$out" '-U TOOL...' "--help documents -U"
-has "$out" '(--uninstall)' "--help documents --uninstall"
-has "$out" '-R, --reset' "--help documents -R"
+has "$out" '--uninstall TOOL...' "--help documents --uninstall"
+has "$out" '--reset [ARGS]' "--help documents --reset"
+hasnt "$out" '-U TOOL...' "--help does not document -U"
+hasnt "$out" '-R, --reset' "--help does not document -R"
 has "$out" '--local in-1' "--help documents installing in-1 itself"
 
 out=$(bin/in-1 --complete bash)
 has "$out" '--reset' "--complete bash offers --reset"
 has "$out" '--uninstall' "--complete bash offers --uninstall"
 has "$out" '--rc' "--complete bash offers --rc"
+hasnt "$out" '-U' "--complete bash does not offer -U"
+hasnt "$out" '-R' "--complete bash does not offer -R"
+
+out=$(bin/in-1 --complete zsh)
+hasnt "$out" '-U' "--complete zsh does not offer -U"
+hasnt "$out" '-R' "--complete zsh does not offer -R"
+
+out=$(bin/in-1 --complete fish)
+hasnt "$out" '-s U' "--complete fish does not offer -U"
+hasnt "$out" '-s R' "--complete fish does not offer -R"
 
 out=$(bin/in-1 --no-such-option 2>&1 || true)
 has "$out" "Unknown option '--no-such-option'" "bad option error"
 
 out=$(bin/in-1 --upgrade 2>&1 || true)
 has "$out" "Unknown option '--upgrade'" "--upgrade is gone"
+
+out=$(bin/in-1 -U jq 2>&1 || true)
+has "$out" "Unknown option '-U'" "-U is gone"
+
+out=$(bin/in-1 -R 2>&1 || true)
+has "$out" "Unknown option '-R'" "-R is gone"
 
 if bin/in-1 --complete bash | bash -n; then
   pass "--complete bash emits valid bash"

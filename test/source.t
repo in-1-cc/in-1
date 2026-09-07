@@ -133,21 +133,22 @@ else
   pass "shellcheck not available; check skipped"
 fi
 
-# -R wipes the root first, then installs; IN1_TOOLS starts over
+# --reset wipes the root first, then installs; IN1_TOOLS starts over
 out=$(bash -c '
   source ./rc jq bb >/dev/null 2>&1
-  source ./rc -R jq >/dev/null 2>&1 || echo "status=$?"
+  source ./rc --reset jq >/dev/null 2>&1 || echo "status=$?"
   command -v jq
   jq --version
   echo "TOOLS=$IN1_TOOLS"
 ' 2>&1)
-has "$out" "$IN1_ROOT/local/bin/jq" "-R jq: jq is back on PATH"
-has "$out" 'jq-1.' "-R jq: jq runs after the reset"
-has "$out" 'TOOLS=jq' "-R jq: IN1_TOOLS lists only jq"
+has "$out" "$IN1_ROOT/local/bin/jq" \
+  "--reset jq: jq is back on PATH"
+has "$out" 'jq-1.' "--reset jq: jq runs after the reset"
+has "$out" 'TOOLS=jq' "--reset jq: IN1_TOOLS lists only jq"
 if [[ -e $IN1_ROOT/local/bin/bb ]]; then
-  fail "-R jq: the bb wrapper is gone"
+  fail "--reset jq: the bb wrapper is gone"
 else
-  pass "-R jq: the bb wrapper is gone"
+  pass "--reset jq: the bb wrapper is gone"
 fi
 
 # Installed mode: the in-1 function from .rc, with and without --update
@@ -209,7 +210,7 @@ if have-in1-mk "in-1 as a tool"; then
   is "$out" "source '$rc'" "installed in-1 --rc: points at its own .rc"
 
   # Sourcing that line: the function, the stable root, and session
-  # installs (plus -R) under it
+  # installs (plus --reset) under it
   stable=$pfx/share/in-1/local
   out=$(env -u IN1_ROOT bash -c '
     source <("'"$pfx"'/bin/in-1" --rc)
@@ -218,14 +219,14 @@ if have-in1-mk "in-1 as a tool"; then
     in-1 --version
     in-1 jq >/dev/null 2>&1
     echo "jq=$(command -v jq)"
-    in-1 -R 2>&1
+    in-1 --reset 2>&1
   ')
   has "$out" 'type=function' "source <(in-1 --rc): in-1 is a function"
   has "$out" "root=$stable" "source <(in-1 --rc): IN1_ROOT is the stable root"
   has "$out" $'\nin-1 ' "source <(in-1 --rc): in-1 --version runs"
   has "$out" "jq=$stable/local/bin/jq" "in-1 jq: installs under the stable root"
   has "$out" "reset: removed makes/, log/, local/ and cache/ from '$stable'" \
-    "in-1 -R: resets the stable root"
+    "in-1 --reset: resets the stable root"
   if ls -d "$pfx"/share/in-1/*/cache/in-1-*/local >/dev/null 2>&1; then
     fail "the installed copy starts no root of its own"
   else
@@ -263,14 +264,18 @@ if have-in1-mk "in-1 as a tool"; then
   has "$out" $'\nin-1 ' "one-liner --local in-1: in-1 --version runs"
   has "$out" "root=$IN1_ROOT" "one-liner --local in-1: keeps a set IN1_ROOT"
 
-  # -U in-1 takes the command and its root with it
-  out=$("$pfx/bin/in-1" -U in-1 PREFIX="$pfx" 2>&1 || echo "status=$?")
-  has "$out" 'Uninstalled in-1:' "-U in-1: reports the uninstall"
-  hasnt "$out" 'status=' "-U in-1: returns 0"
+  # --uninstall in-1 takes the command and its root with it
+  out=$(
+    "$pfx/bin/in-1" --uninstall in-1 PREFIX="$pfx" 2>&1 ||
+      echo "status=$?"
+  )
+  has "$out" 'Uninstalled in-1:' \
+    "--uninstall in-1: reports the uninstall"
+  hasnt "$out" 'status=' "--uninstall in-1: returns 0"
   if [[ ! -e $pfx/share/in-1 && ! -e $pfx/bin/in-1 ]]; then
-    pass "-U in-1: the command and its root are gone"
+    pass "--uninstall in-1: the command and its root are gone"
   else
-    fail "-U in-1: the command and its root are gone"
+    fail "--uninstall in-1: the command and its root are gone"
   fi
 fi
 

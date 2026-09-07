@@ -121,13 +121,16 @@ has "$out" 'makes is now at' "in-1 --update: updates makes"
 has "$out" 'status=0' "in-1 --update: returns 0"
 has "$out" '1' "in-1 --update --list: lists tools"
 
-# -U (uninstall) goes straight to the command, no --env
+# --uninstall goes straight to the command, with no --env
 out=$(bash -c '
   source "$IN1_ROOT/.rc"
-  in-1 -U nope PREFIX='"$SCRATCH/pfx"' 2>&1; echo "status=$?"
+  in-1 --uninstall nope PREFIX='"$SCRATCH/pfx"' 2>&1
+  echo "status=$?"
 ')
-has "$out" "'nope' is not installed" "in-1 -U: runs the command"
-has "$out" 'status=1' "in-1 -U: returns 1 for a missing tool"
+has "$out" "'nope' is not installed" \
+  "in-1 --uninstall: runs the command"
+has "$out" 'status=1' \
+  "in-1 --uninstall: returns 1 for a missing tool"
 
 preset=$SCRATCH/preset
 rcfile=$IN1_ROOT/.rc
@@ -140,25 +143,25 @@ else
   pass "fish not available; check skipped"
 fi
 
-# The in-1 function sends -R to the command too
+# The in-1 function sends --reset to the command too
 out=$(bash -c '
   source "$IN1_ROOT/.rc"
-  in-1 -R 2>&1; echo "status=$?"
-  in-1 -R --list 2>/dev/null | grep -c ^rust$
+  in-1 --reset 2>&1; echo "status=$?"
+  in-1 --reset --list 2>/dev/null | grep -c ^rust$
 ')
-has "$out" 'reset: removed' "in-1 -R: resets the root"
-has "$out" 'status=0' "in-1 -R: returns 0"
-has "$out" '1' "in-1 -R --list: resets, then lists tools"
+has "$out" 'reset: removed' "in-1 --reset: resets the root"
+has "$out" 'status=0' "in-1 --reset: returns 0"
+has "$out" '1' "in-1 --reset --list: resets, then lists tools"
 
 if command -v fish >/dev/null 2>&1; then
   out=$(fish -c '
     source "$IN1_ROOT/.rc"
-    in-1 -R 2>&1; echo "status=$status"
-    in-1 -R --list 2>/dev/null | grep -cx rust
+    in-1 --reset 2>&1; echo "status=$status"
+    in-1 --reset --list 2>/dev/null | grep -cx rust
   ')
-  has "$out" 'reset: removed' "fish: in-1 -R resets the root"
-  has "$out" 'status=0' "fish: in-1 -R returns 0"
-  has "$out" '1' "fish: in-1 -R --list lists tools"
+  has "$out" 'reset: removed' "fish: in-1 --reset resets the root"
+  has "$out" 'status=0' "fish: in-1 --reset returns 0"
+  has "$out" '1' "fish: in-1 --reset --list lists tools"
 else
   pass "fish not available; check skipped"
 fi

@@ -52,13 +52,16 @@ out=$(fish -c '
 has "$out" 'function' "fish: in-1 --rc | source defines the function"
 has "$out" "root=$IN1_ROOT" "fish: in-1 --rc | source keeps IN1_ROOT"
 
-# -U (uninstall) goes straight to the command
+# --uninstall goes straight to the command
 out=$(fish -c '
   source "$IN1_ROOT/.rc"
-  in-1 -U nope PREFIX='"$SCRATCH/pfx"' 2>&1; echo "status=$status"
+  in-1 --uninstall nope PREFIX='"$SCRATCH/pfx"' 2>&1
+  echo "status=$status"
 ' 2>/dev/null)
-has "$out" "'nope' is not installed" "fish: in-1 -U runs the command"
-has "$out" 'status=1' "fish: in-1 -U returns 1 for a missing tool"
+has "$out" "'nope' is not installed" \
+  "fish: in-1 --uninstall runs the command"
+has "$out" 'status=1' \
+  "fish: in-1 --uninstall returns 1 for a missing tool"
 
 # Through the one-liner, --local in-1 sets up the current shell too
 if have-in1-mk "fish: one-liner --local in-1"; then

@@ -12,7 +12,7 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--local** *TOOL*...
 
-**in-1** **-U** | **--uninstall** *TOOL*... [*PREFIX*=*DIR*]
+**in-1** **--uninstall** *TOOL*... [*PREFIX*=*DIR*]
 
 **in-1** **--list** | **--version** | **--help**
 
@@ -24,7 +24,7 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--update** [*OPTIONS*] [*TOOL*...]
 
-**in-1** **-R** | **--reset** [*OPTIONS*] [*TOOL*...]
+**in-1** **--reset** [*OPTIONS*] [*TOOL*...]
 
 # DESCRIPTION
 
@@ -49,7 +49,7 @@ Before an install, in-1 checks whether its own clone or its makes
 clone is behind its origin and prints one line per repo if so.
 Nothing is updated unless you ask with **--update**; set *IN1_OFFLINE* to
 skip the check.
-**-R** starts over: it removes everything in-1 put under *IN1_ROOT*
+**--reset** starts over: it removes everything in-1 put under *IN1_ROOT*
 before doing anything else.
 
 It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
@@ -90,14 +90,14 @@ the install prefix, like the *PREFIX* environment variable.
   the current shell also forgets any stale command paths, and a
   **--local in-1** sources the installed in-1's *.rc* right away.
 
-**-U**, **--uninstall** *TOOL*...
+**--uninstall** *TOOL*...
   Remove the **--local** installs of the given tools from *PREFIX*:
   *PREFIX/share/<tool>* with every version in it, and every wrapper
   in *PREFIX/bin* that in-1 wrote for it.
   Files in *PREFIX/bin* that in-1 did not write stay.
-  Aliases work here too (**in-1 -U bb** removes babashka) and
-  **in-1 -U in-1** removes the command itself.
-  Session installs are covered by **-R**.
+  Aliases work here too (**in-1 --uninstall bb** removes babashka) and
+  **in-1 --uninstall in-1** removes the command itself.
+  Session installs are covered by **--reset**.
 
 **--list**
   List all available tool names and command aliases.
@@ -131,15 +131,15 @@ the install prefix, like the *PREFIX* environment variable.
   *IN1_VERSION* if set) and the one-liner leaves it there from then
   on.
 
-**-R**, **--reset**
+**--reset**
   Remove *makes/*, *log/*, *local/* and *cache/* from *IN1_ROOT*
   before doing anything else: the makes clone, every session install,
   the logs and the download cache.
   The in-1 clone itself stays, as does a cache placed elsewhere with
   *IN1_CACHE*.
   Alone, that is all it does; with tools or other options it then
-  continues with them, so **in-1 -R rust** installs rust from
-  scratch and **in-1 -R --update** resets and then updates.
+  continues with them, so **in-1 --reset rust** installs rust from
+  scratch and **in-1 --reset --update** resets and then updates.
 
 **--version**
   Print the in-1 version.
@@ -229,7 +229,7 @@ Keep jq around for good:
 
 And remove it again:
 
-    in-1 -U jq
+    in-1 --uninstall jq
 
 Update in-1 and makes, then install the newest node:
 
@@ -237,7 +237,7 @@ Update in-1 and makes, then install the newest node:
 
 Throw away every install and start over with node:
 
-    in-1 -R node
+    in-1 --reset node
 
 # SEE ALSO
 

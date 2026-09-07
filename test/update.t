@@ -21,11 +21,11 @@ git clone -q "$IN1_MAKES_REPO" "$morigin"
 export IN1_ROOT=$clone
 export IN1_MAKES_REPO=$morigin
 
-commit() {  # $1=repo $2=message
+commit() (  # $1=repo $2=message
   git -C "$1" -c user.name=t -c user.email=t@t \
     commit -q --allow-empty -m "$2"
-}
-head-of() { git -C "$1" rev-parse HEAD; }
+)
+head-of() ( git -C "$1" rev-parse HEAD )
 mclone=$clone/makes
 
 out=$(bin/in-1 no-such-tool 2>&1 || true)
@@ -40,6 +40,16 @@ has "$out" "in-1 is 1 commit(s) behind; run 'in-1 --update' to update" \
 has "$out" "makes is 1 commit(s) behind; run 'in-1 --update' to update" \
   "behind: makes notice"
 has "$out" 'Unknown tool' "behind: install still proceeds"
+
+out=$(bin/in-1 2>&1 || true)
+has "$out" "in-1 is 1 commit(s) behind" \
+  "bare command: prints the in-1 update notice"
+has "$out" "makes is 1 commit(s) behind" \
+  "bare command: prints the makes update notice"
+hasnt "$out" 'Usage:' \
+  "bare command: update notices suppress help"
+has "$out" 'No tools specified' \
+  "bare command: retains the no-tools error"
 
 out=$(bin/in-1 --list 2>&1)
 hasnt "$out" 'behind' "--list does not check"

@@ -24,12 +24,15 @@ local podman shell'
 
 self_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 
-# Set by -U/--update (or IN1_UPDATE); update in-1 and makes first
+# Set by --update (or IN1_UPDATE); update in-1 and makes first
 update=''
 
-# Set by -R/--reset; remove makes/, log/, local/ and cache/ from the
+# Set by --reset; remove makes/, log/, local/ and cache/ from the
 # root first
 reset=''
+
+# Set when check-stale prints at least one --update notice
+stale_notice=''
 
 main() {
   local mode=run shell='' arg upd_flag=''
@@ -54,9 +57,9 @@ main() {
         [[ $# -gt 0 ]] || die "--complete requires a shell name"
         do-complete "$1"; return 0
         ;;
-      -U|--uninstall) mode=uninstall;;
+      --uninstall) mode=uninstall;;
       --update) update=1; upd_flag=1;;
-      -R|--reset) reset=1;;
+      --reset) reset=1;;
       --version)
         printf 'in-1 %s\n' "$(get-version)" | to-user "$mode" "$shell"
         return 0
@@ -76,18 +79,10 @@ main() {
   done
 
   if [[ $mode == uninstall ]]; then
-    [[ $reset || $upd_flag ]] && die "--uninstall takes no -R or --update"
+    [[ $reset || $upd_flag ]] &&
+      die "--uninstall takes no --reset or --update"
     do-uninstall ${tools[@]+"${tools[@]}"}
     return
-  fi
-
-  # With no arguments, show the same paged help as -h, then retain
-  # the existing error and status.  IN1_UPDATE still makes a bare
-  # invocation perform an update.
-  if [[ $mode == run && ${#tools[@]} -eq 0 &&
-        -z $update && -z $reset ]]; then
-    show-help "$mode" "$shell" >&2
-    die "No tools specified"
   fi
 
   # A bare update or reset (no tools) does just that; a bare reset
@@ -110,7 +105,7 @@ main() {
   esac
 }
 
-usage() {
+usage() (
   cat <<'...'
 in-1 - instant dev tools for your current shell
 
@@ -119,19 +114,19 @@ Usage:
   curl -sL in-1.cc | source - TOOL... [VAR=VALUE]...  # fish
   source <(curl -sL in-1.cc) in-1                     # in-1 itself
 
-  in-1 TOOL... [VAR=VALUE]... Install tools for this shell session
-  in-1 --local TOOL...        Install tools under PREFIX for keeps
-  in-1 -U TOOL...             Remove --local installs (--uninstall)
-  in-1 --list               List available tools and aliases
-  in-1 --env SHELL TOOL...  Print env setup code for SHELL
-                            (bash, zsh or fish)
-  in-1 --complete SHELL     Print in-1 command completion for SHELL
-  in-1 --rc                 Print the shell setup line (source it)
-  in-1 --update [ARGS]      Update in-1 and makes, then continue
-  in-1 -R, --reset [ARGS]   Remove makes/, log/, local/ and cache/
-                            from IN1_ROOT, then continue
-  in-1 --version            Print the in-1 version
-  in-1 --help               Show this help
+  in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
+  in-1 --local TOOL...         Install tools under PREFIX for keeps
+  in-1 --uninstall TOOL...     Remove --local installs
+  in-1 --list                  List available tools and aliases
+  in-1 --env SHELL TOOL...     Print env setup code for SHELL
+                               (bash, zsh or fish)
+  in-1 --complete SHELL        Print in-1 command completion for SHELL
+  in-1 --rc                    Print the shell setup line (source it)
+  in-1 --update [ARGS]         Update in-1 and makes, then continue
+  in-1 --reset [ARGS]          Remove makes/, log/, local/ and cache/
+                               from IN1_ROOT, then continue
+  in-1 --version               Print the in-1 version
+  in-1 --help                  Show this help
 
 Each install goes under <prefix>/share/<tool>/<version> and gets a
 command wrapper in <prefix>/bin, which is the single dir put on PATH.
@@ -152,7 +147,7 @@ shell the same.  'source <(curl -sL in-1.cc) --local in-1' does both
 the install and the setup of the current shell in one go.
 
 An install checks whether in-1 or makes is behind its origin and
-says so; nothing updates unless you pass --update.  -R starts over: it
+says so; nothing updates unless you pass --update.  --reset starts over: it
 removes everything in-1 put under IN1_ROOT (the makes clone, all
 session installs, logs and downloads) before doing anything else.
 
@@ -174,19 +169,19 @@ Environment variables:
 
 See 'man in-1' or https://in-1.cc/doc/ for full documentation.
 ...
-}
+)
 
-show-help() {  # $1=mode $2=shell
+show-help() (  # $1=mode $2=shell
   usage | to-user "$1" "$2" | run-pager || true
-}
+)
 
 # Pass text meant for the user (--list, --help, --version) through.
 # In --env mode stdout is shell code that the caller evals, so the
 # text is wrapped in a printf for the caller's shell to run; it still
 # lands on the user's stdout.  That is what the one-liner hits with
 # 'source <(curl -sL in-1.cc) --list'.
-to-user() {  # $1=mode $2=shell
-  local text
+to-user() (  # $1=mode $2=shell
+  text=''
   if [[ $1 == env ]]; then
     text=$(cat)
     if [[ $2 == fish ]]; then
@@ -197,19 +192,19 @@ to-user() {  # $1=mode $2=shell
   else
     cat
   fi
-}
+)
 
 die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }
-warn() { printf 'in-1: %s\n' "$@" >&2; }
+warn() ( printf 'in-1: %s\n' "$@" >&2 )
 
 # Page stdin when writing to a terminal.  Honor PAGER; use
 # 'less -FRX' when PAGER is unset or exactly 'less'.
-run-pager() {
+run-pager() (
   if [[ ! -t 1 ]]; then
     cat
     return
   fi
-  local pager=${PAGER-}
+  pager=${PAGER-}
   if [[ -z $pager || $pager == less ]]; then
     if command -v less >/dev/null 2>&1; then
       less -FRX
@@ -220,61 +215,61 @@ run-pager() {
     # shellcheck disable=SC2086  # PAGER may carry its own arguments
     $pager
   fi
-}
+)
 
 # The version of the in-1 clone at $1 (default: the one running)
-get-version() {  # [$1=clone-dir]
-  local dir=${1:-$self_root}
+get-version() (  # [$1=clone-dir]
+  dir=${1:-$self_root}
   # Guarded: a non-clone dir inside another repo must not describe it
   if [[ -e $dir/.git ]]; then
     git -C "$dir" describe --tags --always 2>/dev/null && return 0
   fi
   printf '%s\n' "$IN1_FALLBACK_VERSION"
-}
+)
 
-uc() { printf '%s' "$1" | tr '[:lower:]' '[:upper:]'; }
+uc() ( printf '%s' "$1" | tr '[:lower:]' '[:upper:]' )
 
-join-colon() { local IFS=:; printf '%s' "$*"; }
+join-colon() ( IFS=:; printf '%s' "$*" )
 
-tilde-expand() {
+tilde-expand() (
   # shellcheck disable=SC2088  # literal leading tilde is the point
   case $1 in
     '~') printf '%s' "$HOME";;
     '~/'*) printf '%s/%s' "$HOME" "${1#'~/'}";;
     *) printf '%s' "$1";;
   esac
-}
+)
 
 # Absolute path, tilde-expanded, with relative paths anchored to the
 # caller's current directory (not the internal makes root)
-abs-path() {
-  local p
+abs-path() (
+  p=''
   p=$(tilde-expand "$1")
   case $p in
     /*) printf '%s' "$p";;
     *) printf '%s/%s' "$PWD" "$p";;
   esac
-}
+)
 
 # Current time in seconds with a fractional part when available
-now() {
+now() (
   if [[ -n ${EPOCHREALTIME:-} ]]; then
     printf '%s' "${EPOCHREALTIME/,/.}"
   else
     date +%s.%N 2>/dev/null || date +%s
   fi
-}
+)
 
 # Elapsed seconds between two now() readings, as N.NN
-elapsed() {  # $1=start $2=end
+elapsed() (  # $1=start $2=end
   awk -v a="$1" -v b="$2" 'BEGIN { d = b - a; if (d < 0) d = 0
     printf "%.2f", d }'
-}
+)
 
 # Look up a variable from share/tools.mk (flat "key := value" lines).
 # Values are literal; make is not involved so '*' etc. do not expand.
-meta() {  # $1=key -> value ('' if unset)
-  local f=$self_root/share/tools.mk line key=$1 v
+meta() (  # $1=key -> value ('' if unset)
+  f=$self_root/share/tools.mk line='' key=$1 v=''
   [[ -f $f ]] || return 0
   while IFS= read -r line; do
     line=${line%%#*}
@@ -288,11 +283,11 @@ meta() {  # $1=key -> value ('' if unset)
     printf '%s' "$v"
     return 0
   done < "$f"
-}
+)
 
 # Alias names declared in share/tools.mk via "<name>-isa := <tool>"
-list-aliases() {
-  local f=$self_root/share/tools.mk line k
+list-aliases() (
+  f=$self_root/share/tools.mk line='' k=''
   [[ -f $f ]] || return 0
   while IFS= read -r line; do
     line=${line%%#*}
@@ -304,10 +299,10 @@ list-aliases() {
     k=${k//[[:space:]]/}
     printf '%s\n' "${k%-isa}"
   done < "$f"
-}
+)
 
-check-prereqs() {
-  local cmd
+check-prereqs() (
+  cmd=''
   for cmd in git curl make; do
     command -v "$cmd" >/dev/null 2>&1 ||
       die "'$cmd' is required but not found in PATH"
@@ -316,18 +311,18 @@ check-prereqs() {
     *GNU\ Make*) ;;
     *) die "GNU make is required";;
   esac
-}
+)
 
 # An in-1 installed with --local runs from
 # PREFIX/share/in-1/<version>/cache/in-1-<version>; its root is
 # PREFIX/share/in-1/local, which survives version changes.  Prints
 # nothing for any other in-1.  (.rc applies the same rule.)
-local-root() {
+local-root() (
   case $self_root in
     */share/in-1/*/cache/in-1-*)
       printf '%s' "${self_root%/share/in-1/*}/share/in-1/local";;
   esac
-}
+)
 
 # The root is the in-1 clone itself (the dir this command runs from
 # unless IN1_ROOT says otherwise, or the stable dir of a --local
@@ -344,11 +339,11 @@ set-globals() {
 # Clone makes if it is missing.  This is plumbing, not a tool the user
 # asked for, so it gets no progress line; the log only shows on
 # failure (or everything streams with IN1_VERBOSE=1).
-ensure-makes() {
+ensure-makes() (
   mkdir -p "$root/log"
   [[ -d $makes ]] && return 0
-  local log=$root/log/makes.log
-  local repo=${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}
+  log=$root/log/makes.log
+  repo=${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}
   if [[ ${IN1_VERBOSE-} ]]; then
     git clone -q "$repo" "$makes" 1>&2 ||
       die "Failed to clone the makes repo"
@@ -357,10 +352,10 @@ ensure-makes() {
     warn "Full log: $log"
     die "Failed to clone the makes repo"
   fi
-}
+)
 
 # Everything an install needs in place: prereqs, globals, a reset if
-# asked (-R), the makes clone; then either update in-1 and makes (-U)
+# asked (--reset), the makes clone; then either update in-1 and makes
 # or just say whether they are behind.  Runs before tool args are
 # parsed so an update can bring in a newly added tool.
 prepare-root() {
@@ -376,26 +371,26 @@ prepare-root() {
 }
 
 # Name of the branch origin/HEAD points at (main when unknown)
-default-branch() {  # $1=dir
-  local branch
+default-branch() (  # $1=dir
+  branch=''
   branch=$(git -C "$1" symbolic-ref -q --short \
     refs/remotes/origin/HEAD 2>/dev/null) || branch=origin/main
   printf '%s' "${branch#origin/}"
-}
+)
 
 # Quiet fetch that never prompts and gives up on a stalled connection
-git-fetch() {  # $1=dir
+git-fetch() (  # $1=dir
   GIT_TERMINAL_PROMPT=0 git -C "$1" \
     -c http.lowSpeedLimit=1000 -c http.lowSpeedTime=10 \
     fetch -q --tags origin 2>/dev/null
-}
+)
 
-do-update() {
+do-update() (
   update-in1
   update-makes
-}
+)
 
-update-in1() {
+update-in1() (
   if [[ ! -e $root/.git ]]; then
     warn "'$root' is not a git clone; not updating in-1"
     return 0
@@ -405,25 +400,25 @@ update-in1() {
     git -C "$root" checkout -q "$IN1_VERSION" ||
       die "Failed to checkout '$IN1_VERSION'"
   else
-    local branch
+    branch=''
     branch=$(default-branch "$root")
     git -C "$root" checkout -q "$branch" ||
       die "Failed to checkout '$branch'"
     git -C "$root" pull -q || die "Failed to pull latest in-1"
   fi
   warn "in-1 is now at version $(get-version "$root")"
-}
+)
 
-update-makes() {
+update-makes() (
   git -C "$makes" pull -q || die "Failed to pull latest makes"
   warn "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
-}
+)
 
 # Remove everything in-1 put under the root: the makes clone, the
 # session installs, the logs and the download cache.  The clone itself
 # stays.  A cache placed elsewhere by IN1_CACHE is left alone.
-do-reset() {
-  local dir
+do-reset() (
+  dir=''
   [[ -x $root/bin/in-1 || $root == */share/in-1/local ]] ||
     die "'$root' is not an in-1 clone; not resetting"
   for dir in makes log local cache; do
@@ -431,7 +426,7 @@ do-reset() {
     rm -rf "${root:?}/$dir" || die "Failed to remove '$root/$dir'"
   done
   warn "reset: removed makes/, log/, local/ and cache/ from '$root'"
-}
+)
 
 check-stale() {
   [[ ${IN1_OFFLINE-} ]] && return 0
@@ -449,6 +444,7 @@ stale-notice() {  # $1=label $2=dir
     "HEAD..origin/$(default-branch "$2")" 2>/dev/null) || return 0
   [[ $n -gt 0 ]] || return 0
   warn "$1 is $n commit(s) behind; run 'in-1 --update' to update"
+  stale_notice=1
 }
 
 # Run a command quietly with a progress line:
@@ -457,8 +453,8 @@ stale-notice() {  # $1=label $2=dir
 # line reporting where it installed and how long it took.  All output
 # goes to the log file, shown only on failure.  IN1_VERBOSE=1 streams
 # everything instead.
-progress-run() {  # $1=label $2=logfile $3=disp $4=note; rest=command
-  local label=$1 log=$2 disp=$3 note=$4 rc=0 pid tick=0 start end
+progress-run() (  # $1=label $2=logfile $3=disp $4=note; rest=command
+  label=$1 log=$2 disp=$3 note=$4 rc=0 pid='' tick=0 start='' end=''
   shift 4
   if [[ ${IN1_VERBOSE-} ]]; then
     "$@" 1>&2 || rc=$?
@@ -492,12 +488,12 @@ progress-run() {  # $1=label $2=logfile $3=disp $4=note; rest=command
     warn "Full log: $log"
   fi
   return $rc
-}
+)
 
 # Print the result line, colored when stderr is a terminal
-progress-line() {  # $1=rc $2=label $3=disp $4=note $5=timing
-  local rc=$1 label=$2 disp=$3 note=$4 timing=$5
-  local to='' also='' g='' r='' z=''
+progress-line() (  # $1=rc $2=label $3=disp $4=note $5=timing
+  rc=$1 label=$2 disp=$3 note=$4 timing=$5
+  to='' also='' g='' r='' z=''
   [[ -n $disp ]] && to=" to $disp"
   [[ -n $note ]] && also=" also: $note"
   if [[ -t 2 ]]; then
@@ -510,14 +506,14 @@ progress-line() {  # $1=rc $2=label $3=disp $4=note $5=timing
     printf '%sX%s %s NOT installed (%ss)\n' \
       "$r" "$z" "$label" "$timing" >&2
   fi
-}
+)
 
-list-tools() {
+list-tools() (
   set-globals
   [[ $reset ]] && do-reset
   ensure-makes
   [[ $update ]] && do-update
-  local file name filter
+  file='' name='' filter=''
   filter=" $(printf '%s' "$tool_filter" | tr '\n' ' ') "
   # Tools from makes and the aliases from share/tools.mk, as one
   # sorted list (an alias may share its name with a makes tool)
@@ -530,7 +526,7 @@ list-tools() {
     done
     list-aliases
   } | sort -u
-}
+)
 
 # Parse args into req_name / req_tool (bare tool or alias names) and
 # make_args (any NAME=VALUE argument, passed through to make).  A pin
@@ -582,14 +578,14 @@ parse-tool-args() {
 }
 
 # The primary command shown/versioned for a requested name
-primary-of() {  # $1=name
-  local p
+primary-of() (  # $1=name
+  p=''
   p=$(meta "$1-bin")
   [[ -n $p ]] || p=$1
   printf '%s' "$p"
-}
+)
 
-gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool
+gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
   mkdir -p "${2%/*}"
   {
     # override so a NAME=VALUE make arg can not redirect the install
@@ -607,19 +603,19 @@ gen-makefile() {  # $1=install-dir $2=makefile-path $3=tool
     printf 'in1-ver:\n\t@echo $(or $($(PRIMARY)-VERSION),$(%s-VERSION))\n' \
       "$(uc "$3")"
   } > "$2"
-}
+)
 
 # Resolve the version to install: the primary command's makes version
 # variable (<PRIMARY>-VERSION), falling back to the tool's
 # (<TOOL>-VERSION), after any NAME=VALUE make args are applied.  This
 # handles tools whose file name differs from their command, like
 # fortran.mk providing fpm (FPM-VERSION).
-tool-version() {  # $1=tool $2=primary
-  local qf=$root/log/$1.ver.mk
+tool-version() (  # $1=tool $2=primary
+  qf=$root/log/$1.ver.mk
   gen-makefile "$root/log/.meta" "$qf" "$1"
   make -s -C "$root" -f "$qf" ${make_args[@]+"${make_args[@]}"} \
     in1-ver PRIMARY="$(uc "$2")" 2>/dev/null || true
-}
+)
 
 setup-make-env() {
   # Own the environment make runs in: a parent make (or a makes-based
@@ -670,8 +666,8 @@ add-env-entry() {
 }
 
 # Remove every occurrence of entry $2 from colon list $1
-strip-entry() {
-  local rest=$1 out='' dir
+strip-entry() (
+  rest=$1 out='' dir=''
   while [[ -n $rest ]]; do
     dir=${rest%%:*}
     if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
@@ -679,12 +675,12 @@ strip-entry() {
     out=$out$dir:
   done
   printf '%s' "${out%:}"
-}
+)
 
 # Prepend entries of colon list $1 not already in colon list $2
-path-merge() {
-  local out=$2 i dir
-  local -a parts=()
+path-merge() (
+  out=$2 i='' dir=''
+  parts=()
   IFS=: read -ra parts <<< "$1"
   for ((i=${#parts[@]}-1; i>=0; i--)); do
     dir=${parts[i]}
@@ -693,7 +689,7 @@ path-merge() {
     out=$dir:$out
   done
   printf '%s' "$out"
-}
+)
 
 # Diff env_names/env_values (a tool's install env) against our own.
 # Fills out_names/out_values (tool vars) and added_dirs (the tool's
@@ -748,17 +744,17 @@ collect-manpath() {
 }
 
 # Single-quote $1 for bash/zsh eval
-sq() {
-  local s=${1//\'/\'\\\'\'}
+sq() (
+  s=${1//\'/\'\\\'\'}
   printf "'%s'" "$s"
-}
+)
 
 # Single-quote $1 for fish eval
-fq() {
-  local s=${1//\\/\\\\}
+fq() (
+  s=${1//\\/\\\\}
   s=${s//\'/\\\'}
   printf "'%s'" "$s"
-}
+)
 
 # Write one env-baking wrapper (live PATH prepend).  Uses the current
 # out_names/out_values for the tool's env vars.  $4, if given, is a
@@ -853,37 +849,37 @@ install-all() {  # $1=install-root
 
 # --- shell emit (session mode) ---------------------------------------
 
-emit-prepend-sh() {  # $1=var $2=dir
+emit-prepend-sh() (  # $1=var $2=dir
   # shellcheck disable=SC2016  # $var expands in the emitted user shell
   printf 'case ":${%s-}:" in *":%s:"*) ;; *) export %s=%s${%s:+:$%s};; esac\n' \
     "$1" "$2" "$1" "$(sq "$2")" "$1" "$1"
-}
+)
 
-emit-manpath-sh() {
+emit-manpath-sh() (
   [[ -n $man_adds ]] || return 0
-  local first=${man_adds%%:*}
+  first=${man_adds%%:*}
   # shellcheck disable=SC2016  # $MANPATH expands in the emitted shell
   printf 'case ":${MANPATH-}:" in *":%s:"*) ;; *) if [ -n "${MANPATH-}" ]; then export MANPATH=%s:$MANPATH; else export MANPATH=%s:; fi;; esac\n' \
     "$first" "$(sq "$man_adds")" "$(sq "$man_adds")"
-}
+)
 
-emit-session-sh() {  # $1=bash|zsh
+emit-session-sh() (  # $1=bash|zsh
   emit-prepend-sh PATH "$install_root/bin"
   emit-manpath-sh
   emit-completions "$1"
   emit-extras "$1"
   emit-tools-var sh
   printf 'hash -r 2>/dev/null || true\n'
-}
+)
 
-emit-session-fish() {
-  local bindir=$install_root/bin dir
+emit-session-fish() (
+  bindir=$install_root/bin dir=''
   # shellcheck disable=SC2016  # $PATH expands in the user's fish
   printf 'contains -- %s $PATH; or set -gx PATH %s $PATH\n' \
     "$(fq "$bindir")" "$(fq "$bindir")"
   if [[ -n $man_adds ]]; then
     printf 'set -q MANPATH; or set -gx MANPATH ""\n'
-    local rest=$man_adds
+    rest=$man_adds
     while [[ -n $rest ]]; do
       dir=${rest%%:*}
       if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
@@ -895,10 +891,10 @@ emit-session-fish() {
   emit-completions fish
   emit-extras fish
   emit-tools-var fish
-}
+)
 
-emit-tools-var() {  # $1=sh|fish
-  local list=${IN1_TOOLS-} n
+emit-tools-var() (  # $1=sh|fish
+  list=${IN1_TOOLS-} n=''
   # After a reset only the tools just installed are active
   [[ $reset ]] && list=''
   for n in ${req_name[@]+"${req_name[@]}"}; do
@@ -910,13 +906,13 @@ emit-tools-var() {  # $1=sh|fish
   else
     printf 'export IN1_TOOLS=%s\n' "$(sq "$list")"
   fi
-}
+)
 
 # Source share/<name>.<ext> extras for the target shell, if present.
 # Each runs with IN1_ROOT and IN1_TOOL_DIR (that tool's install dir,
 # comp_dirs[i] pairs with req_name[i]) exported.
-emit-extras() {  # $1=bash|zsh|fish
-  local exts i n ext file
+emit-extras() (  # $1=bash|zsh|fish
+  exts='' i='' n='' ext='' file=''
   case $1 in
     bash) exts='sh bash';;
     zsh) exts='sh zsh';;
@@ -938,11 +934,11 @@ emit-extras() {  # $1=bash|zsh|fish
       fi
     done
   done
-}
+)
 
 # Best-effort completion setup from each installed tool tree
-emit-completions() {  # $1=bash|zsh|fish
-  local d dir file
+emit-completions() (  # $1=bash|zsh|fish
+  d='' dir='' file=''
   for d in ${comp_dirs[@]+"${comp_dirs[@]}"}; do
     case $1 in
       bash)
@@ -971,7 +967,7 @@ emit-completions() {  # $1=bash|zsh|fish
     esac
   done
   return 0
-}
+)
 
 # --- modes -----------------------------------------------------------
 
@@ -981,16 +977,16 @@ session-prepare() {  # sets install_root, installs, writes wrappers
   install-all "$(abs-path "${PREFIX:-$root/local}")"
 }
 
-check-shell() {  # $1=shell -> bash|zsh|fish
+check-shell() (  # $1=shell -> bash|zsh|fish
   case $1 in
     bash|zsh|fish) printf '%s' "$1";;
     sh) printf bash;;
     *) die "Unsupported shell '$1' (want bash, zsh or fish)";;
   esac
-}
+)
 
-do-env() {
-  local shell
+do-env() (
+  shell=''
   shell=$(check-shell "$1"); shift
   session-prepare "$@"
   if [[ $shell == fish ]]; then
@@ -998,9 +994,14 @@ do-env() {
   else
     emit-session-sh "$shell"
   fi
-}
+)
 
-do-run() {
+do-run() (
+  if [[ $# -eq 0 ]]; then
+    prepare-root
+    [[ $stale_notice ]] || show-help run '' >&2
+    die "No tools specified"
+  fi
   session-prepare "$@"
   warn "Tools installed; wrappers are in '$install_root/bin'." \
     "" \
@@ -1013,41 +1014,41 @@ do-run() {
     "" \
     "Or run 'source <(in-1 --rc)' first (fish: 'in-1 --rc | source')" \
     "to get an 'in-1' shell function that does this for you."
-}
+)
 
 # The clone an installed in-1 lives in, given its share/in-1/<v> dir
-in1-clone-of() {  # $1=install-dir
-  local d
+in1-clone-of() (  # $1=install-dir
+  d=''
   for d in "$1"/cache/in-1-*; do
     [[ -x $d/bin/in-1 ]] || continue
     printf '%s' "$d"
     return 0
   done
   return 1
-}
+)
 
 # The clone of the in-1 just installed with --local, if any
-local-in1-clone() {
-  local i
+local-in1-clone() (
+  i=''
   for ((i=0; i<${#req_name[@]}; i++)); do
     [[ ${req_name[i]} == in-1 ]] || continue
     in1-clone-of "${comp_dirs[i]}" && return 0
   done
   return 1
-}
+)
 
 # After `--local in-1`, say how to get the shell side of it.  The
 # rc line goes through the installed command, so it survives version
 # changes; so does that in-1's root, PREFIX/share/in-1/local.
-local-in1-hint() {  # $1=prefix $2=shell ('' unless via --env)
-  local cmd=in-1
+local-in1-hint() (  # $1=prefix $2=shell ('' unless via --env)
+  cmd=in-1
   local-in1-clone >/dev/null || return 0
   case ":$PATH:" in
     *":$1/bin:"*) ;;
     *) cmd=$1/bin/in-1;;
   esac
   if [[ -n $2 ]]; then
-    local shell_name rc_file rc_line
+    shell_name='' rc_file='' rc_line=''
     case $2 in
       bash)
         shell_name=Bash
@@ -1083,14 +1084,14 @@ local-in1-hint() {  # $1=prefix $2=shell ('' unless via --env)
     "  $cmd --rc | source      # fish" \
     "" \
     "Session installs made through it go under '$1/share/in-1/local'."
-}
+)
 
 # --local through --env (the one-liner) hands the caller's shell
 # shell code: forget stale command paths, and for a just installed
 # in-1 the same line 'in-1 --rc' prints, so the shell function, man
 # page and completion are there right away.
-emit-local() {  # $1=bash|zsh|fish
-  local clone
+emit-local() (  # $1=bash|zsh|fish
+  clone=''
   [[ $1 == fish ]] || printf 'hash -r 2>/dev/null || true\n'
   clone=$(local-in1-clone) || return 0
   if [[ $1 == fish ]]; then
@@ -1098,12 +1099,12 @@ emit-local() {  # $1=bash|zsh|fish
   else
     printf 'source %s\n' "$(sq "$clone/.rc")"
   fi
-}
+)
 
 # The --local prefix: PREFIX (the env var or a PREFIX=DIR arg), else
 # ~/.local, or /usr/local for root
-local-prefix() {
-  local prefix=${PREFIX:-}
+local-prefix() (
+  prefix=${PREFIX:-}
   if [[ -z $prefix ]]; then
     if [[ ${EUID:-$(id -u)} == 0 ]]; then
       prefix=/usr/local
@@ -1117,10 +1118,10 @@ local-prefix() {
     warn "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
   fi
   printf '%s' "$prefix"
-}
+)
 
-do-local() {  # $1=shell ('' unless via --env); rest=tool args
-  local shell=$1 prefix; shift
+do-local() (  # $1=shell ('' unless via --env); rest=tool args
+  shell=$1 prefix=''; shift
   [[ -z $shell ]] || shell=$(check-shell "$shell")
   prepare-root
   parse-tool-args "$@"
@@ -1136,7 +1137,7 @@ do-local() {  # $1=shell ('' unless via --env); rest=tool args
   esac
   local-in1-hint "$prefix" "$shell"
   [[ -z $shell ]] || emit-local "$shell"
-}
+)
 
 # Args for --uninstall: tool names (an alias resolves through
 # share/tools.mk, so no makes clone is needed) and PREFIX=DIR
@@ -1164,8 +1165,8 @@ parse-uninstall-args() {
 }
 
 # True when $1 is an in-1 wrapper whose command lives under dir $2
-is-wrapper-under() {  # $1=file $2=dir
-  local line n=0 under
+is-wrapper-under() (  # $1=file $2=dir
+  line='' n=0 under=''
   [[ -f $1 ]] || return 1
   [[ $(head -c 24 "$1" 2>/dev/null) == '#!/usr/bin/env bash'* ]] ||
     return 1
@@ -1176,14 +1177,14 @@ is-wrapper-under() {  # $1=file $2=dir
     [[ $n -gt 2 && $line == "$under"* ]] && return 0
   done < "$1"
   return 1
-}
+)
 
 # Undo --local installs: remove PREFIX/share/<tool>/ (every version)
 # and each in-1 wrapper in PREFIX/bin whose command lives under it.
 # Needs neither a root nor makes.
-do-uninstall() {
+do-uninstall() (
   parse-uninstall-args "$@"
-  local prefix name tool sdir w n i missing=''
+  prefix='' name='' tool='' sdir='' w='' n='' i='' missing=''
   prefix=$(local-prefix)
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}; tool=${req_tool[i]}
@@ -1206,16 +1207,16 @@ do-uninstall() {
       "removed $n command wrappers from '$prefix/bin' and '$sdir'"
   done
   [[ -z $missing ]]
-}
+)
 
-do-complete() {
+do-complete() (
   case $1 in
     bash)
       cat <<'...'
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
-  local opts='--env --local --list --complete --rc -U --uninstall
-    --update -R --reset --version --help'
+  local opts='--env --local --list --complete --rc --uninstall
+    --update --reset --version --help'
   local tools
   tools=$(command in-1 --list 2>/dev/null || true)
   COMPREPLY=()
@@ -1230,8 +1231,8 @@ complete -F _in_1_complete in-1
       cat <<'...'
 _in_1_complete() {
   local -a opts tools
-  opts=(--env --local --list --complete --rc -U --uninstall
-    --update -R --reset --version --help)
+  opts=(--env --local --list --complete --rc --uninstall
+    --update --reset --version --help)
   tools=(${(f)"$(command in-1 --list 2>/dev/null)"})
   _describe 'in-1' opts -- tools
 }
@@ -1246,18 +1247,18 @@ complete -c in-1 -f
 complete -c in-1 -a '(command in-1 --list 2>/dev/null)'
 complete -c in-1 -l env -d 'Print env setup code for a shell'
 complete -c in-1 -l local -d 'Install tools under PREFIX'
-complete -c in-1 -s U -l uninstall -d 'Remove --local installs of tools'
+complete -c in-1 -l uninstall -d 'Remove --local installs of tools'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l complete -d 'Print command completion for a shell'
 complete -c in-1 -l rc -d 'Print the shell setup line (source it)'
 complete -c in-1 -l update -d 'Update in-1 and makes first'
-complete -c in-1 -s R -l reset -d 'Remove makes, log, local and cache first'
+complete -c in-1 -l reset -d 'Remove makes, log, local and cache first'
 complete -c in-1 -l version -d 'Print the in-1 version'
 complete -c in-1 -l help -d 'Show help'
 ...
       ;;
     *) die "Unsupported shell '$1' (want bash, zsh or fish)";;
   esac
-}
+)
 
 main "$@"

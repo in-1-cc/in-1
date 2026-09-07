@@ -113,16 +113,16 @@ in-1 never overwrites a file in `$PREFIX/bin` that it did not create.
 ## Uninstalling
 
 ```bash
-in-1 -U rust node         # or --uninstall
+in-1 --uninstall rust node
 ```
 
 removes the `--local` installs of the named tools from `PREFIX`:
 `$PREFIX/share/<tool>` with every version in it, and the wrappers in
 `$PREFIX/bin` that in-1 wrote for it.
 Files in `$PREFIX/bin` that in-1 did not create stay.
-Aliases work here too (`in-1 -U bb` removes babashka), and
-`in-1 -U in-1` removes the command itself.
-Session installs are covered by `-R`, below.
+Aliases work here too (`in-1 --uninstall bb` removes babashka), and
+`in-1 --uninstall in-1` removes the command itself.
+Session installs are covered by `--reset`, below.
 
 ## Updating
 
@@ -152,17 +152,17 @@ connection.
 
 ## Resetting
 
-`-R` (or `--reset`) removes everything in-1 put under `IN1_ROOT`:
+`--reset` removes everything in-1 put under `IN1_ROOT`:
 `makes/`, `local/`, `log/` and `cache/`.  The in-1 clone itself
 stays, as does a cache placed elsewhere with `IN1_CACHE`.  Alone it
 does just that; with anything else it resets first and then carries
 on:
 
 ```bash
-in-1 -R                              # just reset
-in-1 -R node                         # reset, then install node
-in-1 -R --update node                # reset, update, then install
-source <(curl -sL in-1.cc) -R node   # same, from the one-liner
+in-1 --reset                              # just reset
+in-1 --reset node                         # reset, then install node
+in-1 --reset --update node                # reset, update, then install
+source <(curl -sL in-1.cc) --reset node   # same, from the one-liner
 ```
 
 After a reset `IN1_TOOLS` lists only the tools installed since.
@@ -171,17 +171,17 @@ After a reset `IN1_TOOLS` lists only the tools installed since.
 
 ```text
 in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
-in-1 --local TOOL...      Install tools under PREFIX for keeps
-in-1 -U TOOL...           Remove --local installs (--uninstall)
-in-1 --list               List available tools
-in-1 --env SHELL TOOL...  Print env setup code for SHELL
-in-1 --complete SHELL     Print in-1 command completion for SHELL
-in-1 --rc                 Print the shell setup line (source it)
-in-1 --update [ARGS]      Update in-1 and makes, then continue
-in-1 -R, --reset [ARGS]   Remove makes/, log/, local/ and cache/
-                          from IN1_ROOT, then continue
-in-1 --version            Print the in-1 version
-in-1 --help               Show help
+in-1 --local TOOL...         Install tools under PREFIX for keeps
+in-1 --uninstall TOOL...     Remove --local installs
+in-1 --list                  List available tools
+in-1 --env SHELL TOOL...     Print env setup code for SHELL
+in-1 --complete SHELL        Print in-1 command completion for SHELL
+in-1 --rc                    Print the shell setup line (source it)
+in-1 --update [ARGS]         Update in-1 and makes, then continue
+in-1 --reset [ARGS]          Remove makes/, log/, local/ and cache/
+                             from IN1_ROOT, then continue
+in-1 --version               Print the in-1 version
+in-1 --help                  Show help
 ```
 
 `in-1 --env` is the plumbing everything else uses; you can call it

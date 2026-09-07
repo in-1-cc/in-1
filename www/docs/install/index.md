@@ -161,12 +161,12 @@ own.
 
 ## Uninstall
 
-`--local` installs, the `in-1` command included, come out with `-U`
-(`--uninstall`):
+`--local` installs, the `in-1` command included, come out with
+`--uninstall`:
 
 ```bash
-in-1 -U rust node         # remove tools installed with --local
-in-1 -U in-1              # remove the command, with its session installs
+in-1 --uninstall rust node  # remove tools installed with --local
+in-1 --uninstall in-1       # remove command and session installs
 ```
 
 That removes `~/.local/share/<tool>` and the wrappers in
