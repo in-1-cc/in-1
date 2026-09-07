@@ -216,8 +216,8 @@ if have-in1-mk "in-1 as a tool"; then
     pass "the installed in-1 starts no root of its own"
   fi
 
-  # --local in-1 installs the command for keeps and says how to get
-  # the shell side of it
+  # --local in-1 installs the command for keeps and prints only the
+  # concise shell setup hint after the progress line
   pfx=$SCRATCH/pfx
   # shellcheck disable=SC2086  # in1_args holds two make args
   out=$(
@@ -232,7 +232,9 @@ if have-in1-mk "in-1 as a tool"; then
   fi
   has "$out" "source <($pfx/bin/in-1 --rc)" "--local in-1: prints the --rc line"
   has "$out" "$pfx/bin/in-1 --rc | source" "--local in-1: and the fish one"
-  has "$out" "'$pfx/share/in-1/local'" "--local in-1: names the stable root"
+  hasnt "$out" 'Installed in-1:' "--local in-1: omits the install summary"
+  hasnt "$out" 'command wrappers' "--local in-1: omits the wrapper count"
+  hasnt "$out" 'Session installs' "--local in-1: omits the root explanation"
   rc=$(ls -d "$pfx"/share/in-1/*/cache/in-1-*/.rc 2>/dev/null | head -1)
   out=$("$pfx/bin/in-1" --rc)
   is "$out" "source '$rc'" "installed in-1 --rc: points at its own .rc"
@@ -278,8 +280,14 @@ if have-in1-mk "in-1 as a tool"; then
     echo "root=$IN1_ROOT"
   ')
   has "$out" 'status=0' "one-liner --local in-1: returns 0"
-  has "$out" 'This shell is set up now' \
-    "one-liner --local in-1: says the shell is set up"
+  hasnt "$out" 'This shell is set up now' \
+    "one-liner --local in-1: omits the current-shell notice"
+  hasnt "$out" 'in-1: For the in-1 shell function' \
+    "one-liner --local in-1: prints the hint without a prefix"
+  hasnt "$out" 'command wrappers' \
+    "one-liner --local in-1: omits the wrapper count"
+  hasnt "$out" 'Session installs' \
+    "one-liner --local in-1: omits the root explanation"
   has "$out" 'every new Bash shell' \
     "one-liner --local in-1: gives Bash-specific guidance"
   has "$out" 'to ~/.bashrc:' \

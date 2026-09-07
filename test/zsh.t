@@ -46,10 +46,14 @@ if have-in1-mk "zsh: one-liner --local in-1"; then
     "zsh: one-liner --local in-1 gives Zsh-specific guidance"
   has "$out" 'to ~/.zshrc:' \
     "zsh: one-liner --local in-1 names the Zsh rc file"
-  has "$out" 'source <(in-1 --rc)' \
+  has "$out" "source <($pfx/bin/in-1 --rc)" \
     "zsh: one-liner --local in-1 gives Zsh syntax"
   hasnt "$out" '| source' \
     "zsh: one-liner --local in-1 does not mention Fish"
+  hasnt "$out" 'in-1: For the in-1 shell function' \
+    "zsh: one-liner --local in-1 prints the hint without a prefix"
+  hasnt "$out" 'command wrappers' \
+    "zsh: one-liner --local in-1 omits the wrapper count"
 fi
 
 done-testing

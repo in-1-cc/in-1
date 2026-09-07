@@ -1058,24 +1058,17 @@ local-in1-hint() (  # $1=prefix $2=shell ('' unless via --env)
         rc_line="$cmd --rc | source"
         ;;
     esac
-    warn "" \
-      "This shell is set up now." \
+    printf '\n%s\n%s\n\n  %s\n' \
       "For the in-1 shell function, man page and tab completion in" \
       "every new $shell_name shell, add this line to $rc_file:" \
-      "" \
-      "  $rc_line" \
-      "" \
-      "Session installs made through it go under '$1/share/in-1/local'."
+      "$rc_line" >&2
     return 0
   fi
-  warn "" \
+  printf '\n%s\n%s\n\n  %s\n  %s\n' \
     "For the in-1 shell function, man page and tab completion in" \
     "every new shell, add the appropriate line to its rc file:" \
-    "" \
-    "  source <($cmd --rc)     # bash / zsh" \
-    "  $cmd --rc | source      # fish" \
-    "" \
-    "Session installs made through it go under '$1/share/in-1/local'."
+    "source <($cmd --rc)     # bash / zsh" \
+    "$cmd --rc | source      # fish" >&2
 )
 
 # --local through --env (the one-liner) hands the caller's shell
@@ -1121,12 +1114,14 @@ do-local() (  # $1=shell ('' unless via --env); rest=tool args
 
   install-all "$prefix"
 
-  warn "Installed ${req_name[*]}:" \
-    "$wrap_count command wrappers in '$prefix/bin'"
-  case ":$PATH:" in
-    *":$prefix/bin:"*) ;;
-    *) warn "Note: '$prefix/bin' is not in your PATH";;
-  esac
+  if [[ ${#req_name[@]} -ne 1 || ${req_name[0]} != in-1 ]]; then
+    warn "Installed ${req_name[*]}:" \
+      "$wrap_count command wrappers in '$prefix/bin'"
+    case ":$PATH:" in
+      *":$prefix/bin:"*) ;;
+      *) warn "Note: '$prefix/bin' is not in your PATH";;
+    esac
+  fi
   local-in1-hint "$prefix" "$shell"
   [[ -z $shell ]] || emit-local "$shell"
 )

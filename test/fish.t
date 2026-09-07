@@ -74,8 +74,12 @@ if have-in1-mk "fish: one-liner --local in-1"; then
     in-1 --version
   ' 2>/dev/null)
   has "$out" 'status=0' "fish: one-liner --local in-1 returns 0"
-  has "$out" 'This shell is set up now' \
-    "fish: one-liner --local in-1 says the shell is set up"
+  hasnt "$out" 'This shell is set up now' \
+    "fish: one-liner --local in-1 omits the current-shell notice"
+  hasnt "$out" 'in-1: For the in-1 shell function' \
+    "fish: one-liner --local in-1 prints the hint without a prefix"
+  hasnt "$out" 'command wrappers' \
+    "fish: one-liner --local in-1 omits the wrapper count"
   has "$out" 'every new Fish shell' \
     "fish: one-liner --local in-1 gives Fish-specific guidance"
   has "$out" 'to ~/.config/fish/config.fish:' \
