@@ -590,6 +590,11 @@ gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
     printf 'override MAKES-LOCAL-DIR := %s\n' "$1"
     printf 'IN1-SHARE := %s/share\n' "$self_root"
     printf 'include %s/init.mk\n' "$makes"
+    if [[ $3 == in-1 ]]; then
+      printf 'IN-1-VERSION ?= main\n'
+      # shellcheck disable=SC2016  # make syntax, expanded by make
+      printf 'IN-1-REF ?= $(IN-1-VERSION)\n'
+    fi
     printf 'include %s/%s.mk\n' "$makes" "$3"
     # in-1's own per-tool additions (exported vars land in wrappers)
     if [[ -f $self_root/share/$3.mk ]]; then

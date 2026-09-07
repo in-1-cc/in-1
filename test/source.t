@@ -196,8 +196,10 @@ is "$out" "path=$no_perl:/one:/one" \
 if have-in1-mk "in-1 as a tool"; then
   make-in1-repo "$SCRATCH/repo"
   out=$(bash -c '
-    source ./rc in-1 jq '"$in1_args"' >/dev/null 2>&1; echo "status=$?"
+    source ./rc in-1 jq '"$in1_main_args"' >/dev/null 2>&1
+    echo "status=$?"
     echo "type=$(type -t in-1)"
+    echo "in1=$(type -P in-1)"
     jq --version
     in-1 bb >/dev/null 2>&1
     echo "bb=$(command -v bb)"
@@ -205,6 +207,8 @@ if have-in1-mk "in-1 as a tool"; then
   ')
   has "$out" 'status=0' "in-1 jq: returns 0"
   has "$out" 'type=function' "in-1 jq: in-1 is a shell function"
+  has "$out" "$IN1_ROOT/local/share/in-1/main/cache/in-1-main/" \
+    "in-1 defaults to the main branch with a legacy makes recipe"
   has "$out" 'jq-1.' "in-1 jq: jq runs"
   has "$out" "bb=$IN1_ROOT/local/bin/bb" "in-1 bb via the function: one root"
   has "$out" 'tools=in-1 jq bb' "IN1_TOOLS lists all three"

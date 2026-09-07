@@ -63,7 +63,7 @@ make-in1-root "$IN1_ROOT"
 # Build a throwaway in-1 repo at $1 with this working copy's files
 # (tracked and untracked) committed on the current branch, so that an
 # in-1.mk install cloning it tests the code here, not the last commit.
-# Sets in1_args to the make args that point in-1.mk at it.
+# Sets make args for its current branch and for its main branch.
 make-in1-repo() {
   local f
   git clone -q "$ROOT" "$1"
@@ -75,8 +75,13 @@ make-in1-repo() {
     done
   git -C "$1" add -A
   git -C "$1" commit -q --allow-empty -m 'Working copy'
+  if [[ $(git -C "$1" branch --show-current) != main ]]; then
+    git -C "$1" branch -f main HEAD
+  fi
   # shellcheck disable=SC2034  # for the caller
   in1_args="IN-1-REPO=$1 IN-1-REF=$(git -C "$1" branch --show-current)"
+  # shellcheck disable=SC2034  # for the caller
+  in1_main_args="IN-1-REPO=$1"
 }
 
 # The checks that install in-1 itself need in-1.mk in the makes clone
