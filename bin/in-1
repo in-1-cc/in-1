@@ -199,6 +199,13 @@ to-user() (  # $1=mode $2=shell
 
 die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }
 warn() ( printf 'in-1: %s\n' "$@" >&2 )
+note() (
+  yellow='' normal=''
+  if [[ -t 2 ]]; then
+    yellow=$'\033[33m'; normal=$'\033[0m'
+  fi
+  printf '%s*%s %s\n' "$yellow" "$normal" "$*" >&2
+)
 
 # Page stdin when writing to a terminal.  Honor PAGER; use
 # 'less -FRX' when PAGER is unset or exactly 'less'.
@@ -1018,18 +1025,8 @@ do-run() (
     prepare-root
     die "No tools specified. Try: in-1 --help"
   fi
+  note "Run 'source <(in-1 --rc)' or add it to ~/.bashrc"
   session-prepare "$@"
-  warn "Tools installed; wrappers are in '$install_root/bin'." \
-    "" \
-    "A command can not change its parent shell's environment." \
-    "To put them on PATH in your current shell run one of:" \
-    "" \
-    "  eval \"\$(in-1 --env bash ${req_name[*]})\"  # bash" \
-    "  eval \"\$(in-1 --env zsh ${req_name[*]})\"   # zsh" \
-    "  in-1 --env fish ${req_name[*]} | source    # fish" \
-    "" \
-    "Or run 'source <(in-1 --rc)' first (fish: 'in-1 --rc | source')" \
-    "to get an 'in-1' shell function that does this for you."
 )
 
 # The clone an installed in-1 lives in, given its share/in-1/<v> dir

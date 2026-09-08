@@ -67,6 +67,18 @@ has "$out" "installed to $IN1_ROOT/local/bin/jq" \
   "progress: reports the wrapper path"
 has "$out" 's)' "progress: reports elapsed time"
 
+# A direct command starts with one concise shell setup note
+note="* Run 'source <(in-1 --rc)' or add it to ~/.bashrc"
+out=$(bin/in-1 jq 2>&1)
+is "$(head -1 <<< "$out")" "$note" \
+  "direct command: shell setup note comes first"
+is "$(grep -cFx "$note" <<< "$out")" 1 \
+  "direct command: shell setup note appears once"
+hasnt "$out" 'Tools installed; wrappers are in' \
+  "direct command: old wrapper summary is gone"
+hasnt "$out" 'A command can not change its parent shell' \
+  "direct command: old shell explanation is gone"
+
 # A failed install shows an X line and the shell survives
 froot=$SCRATCH/fail
 make-in1-root "$froot"
