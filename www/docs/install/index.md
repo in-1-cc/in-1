@@ -25,13 +25,11 @@ Source the script served by `in-1.cc` with the tools you want:
     curl -sL in-1.cc | source - rust node
     ```
 
-That clones in-1 to `/tmp/in-1`, installs the tools under it and puts
-them on `PATH` in your **current shell** only.
-Open a new shell and they are gone; the downloads stay cached, so
-asking again is instant.
-Nothing else on your system changes.
-The one-liner always uses `$TMPDIR/in-1` (default `/tmp/in-1`), even
-when an installed `in-1` function has set `IN1_ROOT` in the shell.
+The bootstrap clone goes in `${TMPDIR:-/tmp}/in-1/bootstrap`.
+Tools install alongside an existing in-1, or under `${TMPDIR:-/tmp}/in-1`
+when no installed in-1 exists.
+Their wrappers always go in `PREFIX/bin` and are activated in your current shell.
+Pass `--temp` to force the temporary prefix even with a persistent in-1.
 Pass `-q` or `--quiet` for silent use in a script:
 
 ```bash
@@ -67,8 +65,8 @@ in-1 --help       # or: man in-1
 in-1 <TAB><TAB>   # tab completion
 ```
 
-It lives under `/tmp/in-1` with everything else and installs tools
-there too.
+On a fresh machine it lives at `/tmp/in-1/bin/in-1` and installs tools
+into that same public bin directory.
 It can be asked for together with other tools:
 `source <(curl -sL in-1.cc) in-1 rust node`.
 
@@ -107,8 +105,8 @@ shell, let the command point your shell rc file at its own `.rc`:
 
 The line goes through the `in-1` on `PATH`, so it keeps working when
 `in-1 --local in-1` installs a newer version.
-Session installs made through this in-1 go under
-`~/.local/share/in-1/local`, which survives version changes too.
+Subsequent `in-1 rust node` calls install wrappers into `~/.local/bin` too.
+State lives in `~/.local/share/in-1/local`, separate from the installed tools.
 
 ### From a clone
 
@@ -137,8 +135,9 @@ Or clone the repo once and source its `.rc` from your shell rc file:
 
 `~/.in-1` is just a suggestion; any directory works.
 `.rc` sets `IN1_ROOT` to wherever the clone is (unless `IN1_ROOT` is
-already set), so session installs then live under that clone instead
-of `/tmp/in-1`.
+already set), for state storage only.
+Tool installation still follows a public in-1 prefix or defaults to
+`${TMPDIR:-/tmp}/in-1`.
 
 ## Keep tools for good
 
@@ -168,12 +167,12 @@ It updates makes automatically before installs.
 
 ## Uninstall
 
-`--local` installs, the `in-1` command included, come out with
-`--uninstall`:
+`--uninstall` uses the same prefix as installation:
 
 ```bash
 in-1 --uninstall rust node  # remove tools installed with --local
-in-1 --uninstall in-1       # remove command and session installs
+in-1 --uninstall in-1       # remove the command and its state
+in-1 --temp --uninstall jq  # remove a temporary installation
 ```
 
 That removes `~/.local/share/<tool>` and the wrappers in
@@ -187,18 +186,18 @@ in-1 rust node
 in-1 --uninstall rust node
 ```
 
-That uninstall removes the tools from `$IN1_ROOT/local`.
+That uninstall removes tools from the same public prefix as `in-1 rust node`.
 The curl one-liner itself rejects `--uninstall`.
 
 For `in-1` itself that tree includes `~/.local/share/in-1/local`, the
-root of its session installs; drop the `in-1 --rc` line from your
+state directory; drop the `in-1 --rc` line from your
 shell rc file too.
 Everything else in-1 does lives in a directory; remove it and drop
 the `source` line from your shell rc file:
 
 ```bash
 rm -rf /tmp/in-1          # the one-liner's clone, installs and cache
-rm -rf ~/.in-1            # a cloned command (and its installs)
+rm -rf ~/.in-1            # a development checkout and its state
 ```
 
 ## Requirements

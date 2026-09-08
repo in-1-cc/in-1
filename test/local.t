@@ -32,9 +32,10 @@ is "$out" '' "--quiet --local suppresses successful output"
 # Through --env (the one-liner) the caller's shell forgets stale
 # command paths; fish has none to forget
 out=$(PREFIX=$prefix bin/in-1 --env bash --local jq 2>/dev/null)
-is "$out" 'hash -r 2>/dev/null || true' "--env bash --local: emits hash -r"
+has "$out" 'hash -r 2>/dev/null || true' "--env bash --local: emits hash -r"
+has "$out" "$prefix/bin" "--env bash --local: activates public bin"
 out=$(PREFIX=$prefix bin/in-1 --env fish --local jq 2>/dev/null)
-is "$out" '' "--env fish --local: emits nothing"
+has "$out" "$prefix/bin" "--env fish --local: activates public bin"
 out=$(PREFIX=$prefix bin/in-1 --env csh --local jq 2>&1 || true)
 has "$out" "Unsupported shell 'csh'" "--env csh --local: rejects the shell"
 

@@ -21,14 +21,16 @@ Run this in your shell:
     curl -sL in-1.cc | source - rust node
     ```
 
-That clones in-1 to `/tmp/in-1`, installs the tools under it and sets
+That clones in-1 to `/tmp/in-1/bootstrap`, installs tools in the selected prefix,
+and sets
 up `PATH`, `MANPATH`, shell completion and any tool environment
 variables in your **current shell**, for the duration of the shell
 session.
 
-Nothing on your system changes.
-Open a new shell and the tools are gone; the downloads stay cached, so
-asking for them again is instant.
+On a fresh machine the prefix is `${TMPDIR:-/tmp}/in-1`.
+With in-1 already installed, tools land alongside its public command wrapper.
+Use `--temp` to force temporary installs, or `--local` for a persistent prefix.
+Downloads stay cached, so asking again is fast.
 
 ## What you get
 

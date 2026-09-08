@@ -18,7 +18,7 @@ out=$(zsh -c '
   echo "TOOLS=$IN1_TOOLS"
 ')
 
-has "$out" "$IN1_ROOT/local/bin/jq" "zsh: jq resolves under IN1_ROOT"
+has "$out" "$TMPDIR/in-1/bin/jq" "zsh: jq resolves under IN1_ROOT"
 has "$out" 'jq-1.' "zsh: jq runs"
 has "$out" 'PATH-IDEMPOTENT' "zsh: re-sourcing does not grow PATH"
 has "$out" 'TOOLS=jq' "zsh: IN1_TOOLS is set"
@@ -26,7 +26,7 @@ has "$out" 'TOOLS=jq' "zsh: IN1_TOOLS is set"
 out=$(zsh -c 'source ./rc -q jq' 2>&1)
 is "$out" '' "zsh: -q one-liner is silent on success"
 out=$(zsh -c 'source ./rc --quiet jq; command -v jq' 2>&1)
-is "$out" "$IN1_ROOT/local/bin/jq" \
+is "$out" "$TMPDIR/in-1/bin/jq" \
   "zsh: --quiet still updates the shell environment"
 
 # Installed mode: .rc provides a working in-1 function
@@ -37,7 +37,7 @@ out=$(zsh -c '
   command -v jq
 ')
 has "$out" 'in-1: function' "zsh: .rc defines the in-1 function"
-has "$out" "$IN1_ROOT/local/bin/jq" "zsh: in-1 function installs jq"
+has "$out" "$TMPDIR/in-1/bin/jq" "zsh: in-1 function installs jq"
 
 # Through the one-liner, --local in-1 gives Zsh-specific rc guidance
 if have-in1-mk "zsh: one-liner --local in-1"; then

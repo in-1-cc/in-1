@@ -16,6 +16,9 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP \fB--local\fP \fITOOL\fP\&...
 
 .PP
+\fBin-1\fP \fB--temp\fP \fITOOL\fP\&...
+
+.PP
 \fBin-1\fP \fB--uninstall\fP \fITOOL\fP\&... [\fIPREFIX\fP=\fIDIR\fP]
 
 .PP
@@ -59,9 +62,13 @@ primary command of a tool also gets a version-specific wrapper,
 \fI-\fP\&.
 
 .PP
-For a session the prefix is \fI$IN1_ROOT/local\fP, where \fIIN1_ROOT\fP is
-the in-1 clone itself (\fI/tmp/in-1\fP for the one-liner); for \fB--local\fP
-it is \fIPREFIX\fP (default \fI~/.local\fP).
+The default prefix matches the public installation of in-1.
+For example, \fI~/.local/bin/in-1\fP installs tools into \fI~/.local/bin\fP\&.
+A fresh bootstrap or source checkout with no installed in-1 defaults to
+\fI$TMPDIR/in-1\fP (\fI/tmp/in-1\fP when \fITMPDIR\fP is unset).
+The bootstrap clone lives separately in \fI$TMPDIR/in-1/bootstrap\fP\&.
+\fB--local\fP selects a persistent prefix; \fB--temp\fP forces the temporary one.
+Installation, \fB--show\fP, \fB--uninstall\fP, and \fB--reset\fP share this selection.
 
 .PP
 Before an install, in-1 checks whether its own clone is behind its
@@ -69,8 +76,8 @@ origin and prints a notice if so.
 It automatically updates its makes clone when that clone is behind.
 Use \fB--update\fP to update in-1 too, or set \fIIN1_OFFLINE\fP to skip both
 update checks.
-\fB--reset\fP starts over: it removes everything in-1 put under \fIIN1_ROOT\fP
-before doing anything else.
+\fB--reset\fP removes managed tools in the selected prefix and clears state,
+while preserving in-1 itself and unrelated files.
 
 .PP
 It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
@@ -113,9 +120,9 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 .PP
 \fB--local\fP
-  Install the tools under \fIPREFIX\fP (default \fI~/.local\fP, or
-  \fI/usr/local\fP when run as root) and write a wrapper for each tool
-  command into \fIPREFIX/bin\fP\&.
+  Select the existing persistent in-1 prefix, otherwise \fI~/.local\fP
+  (\fI/usr/local\fP when root).
+  An explicit \fIPREFIX\fP overrides this default.
   These installs persist across shell sessions and need no shell
   setup, since the wrappers carry the tools' environment.
   Through the one-liner (\fBsource <(curl -sL in-1.cc) --local\fP \fITOOL\fP)
@@ -123,19 +130,29 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   \fB--local in-1\fP sources the installed in-1's \fI\&.rc\fP right away.
 
 .PP
+\fB--temp\fP
+  Always select \fI$TMPDIR/in-1\fP (default \fI/tmp/in-1\fP), with command wrappers
+  directly in its \fIbin\fP directory and state under \fIshare/in-1/local\fP\&.
+  Ignore inherited \fIPREFIX\fP and \fIIN1_ROOT\fP\&.
+  Reject a \fIPREFIX\fP=\fIDIR\fP argument or \fB--local\fP in the same invocation.
+  For example, \fBin-1 --temp --show\fP lists temporary installations.
+  An old conflicting temporary checkout is left untouched; move it aside
+  before retrying with the new layout.
+
+.PP
 \fB--uninstall\fP \fITOOL\fP\&...
   Remove the installs of the given tools from \fIPREFIX\fP:
   \fIPREFIX/share/\fP with every version in it, and every wrapper
   in \fIPREFIX/bin\fP that in-1 wrote for it.
   Files in \fIPREFIX/bin\fP that in-1 did not write stay.
-  The shell function defaults to its session prefix, \fIIN1_ROOT/local\fP\&.
-  A direct command invocation defaults to the \fB--local\fP prefix.
+  Use the same prefix as installation, whether called directly or through
+  the shell function.
   The curl one-liner rejects \fB--uninstall\fP; install the \fBin-1\fP
   command into the session first.
-  An explicit \fIPREFIX\fP overrides either default.
+  Use \fB--temp\fP or an explicit \fIPREFIX\fP to select another installation.
   Aliases work here too (\fBin-1 --uninstall bb\fP removes babashka) and
   \fBin-1 --uninstall in-1\fP removes the command itself.
-  \fB--reset\fP removes all session installs at once.
+  \fB--reset\fP removes other managed tools but preserves in-1 itself.
 
 .PP
 \fB--list\fP [\fIPATTERN\fP]
@@ -160,9 +177,8 @@ the install prefix, like the \fIPREFIX\fP environment variable.
   Omit it to show everything, or use \fB--\fP before a pattern starting with
   a dash.
   No matches produce no output and succeed; an invalid pattern fails.
-  Prefix selection follows \fB--uninstall\fP: the shell function uses the
-  session prefix, and direct invocation uses the persistent default.
-  \fIPREFIX\fP=\fIDIR\fP overrides the environment and either default.
+  Prefix selection follows installation and \fB--uninstall\fP\&.
+  \fIPREFIX\fP=\fIDIR\fP overrides the environment and default, except with \fB--temp\fP\&.
   This operation does not install or update anything, ignores \fIIN1_UPDATE\fP,
   and rejects \fB--update\fP and \fB--reset\fP\&.
 
@@ -203,11 +219,11 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 .PP
 \fB--reset\fP
-  Remove \fImakes/\fP, \fIlog/\fP, \fIlocal/\fP and \fIcache/\fP from \fIIN1_ROOT\fP
-  before doing anything else: the makes clone, every session install,
-  the logs and the download cache.
-  The in-1 clone itself stays, as does a cache placed elsewhere with
-  \fIIN1_CACHE\fP\&.
+  Remove wrapper-backed tool versions and their wrappers from the selected
+  prefix, and clear \fImakes/\fP, \fIlog/\fP and \fIcache/\fP under \fIIN1_ROOT\fP\&.
+  Preserve in-1's own installation, unrelated files, old nested installs,
+  and a cache placed elsewhere with \fIIN1_CACHE\fP\&.
+  The whole prefix is never removed.
   Alone, that is all it does; with tools or other options it then
   continues with them, so \fBin-1 --reset rust\fP installs rust from
   scratch and \fBin-1 --reset --update\fP resets and then updates.
@@ -223,14 +239,11 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 .SH ENVIRONMENT
 \fBIN1_ROOT\fP
-  The in-1 root.
-  It holds the makes clone (\fImakes/\fP), the session installs
-  (\fIlocal/\fP), logs (\fIlog/\fP) and the download cache (\fIcache/\fP).
-  Default: the clone the \fBin-1\fP command runs from, or, for an in-1
-  installed with \fB--local\fP, \fIPREFIX/share/in-1/local\fP, which survives
-  version changes.
-  The one-liner always uses \fI/tmp/in-1\fP (\fI$TMPDIR/in-1\fP when \fITMPDIR\fP
-  is set), even when \fIIN1_ROOT\fP is already set in the shell.
+  State directory for Makes, logs and the download cache.
+  Default: \fIPREFIX/share/in-1/local\fP, independent of tool versions.
+  It does not determine where command wrappers are installed.
+  The one-liner and \fB--temp\fP ignore an inherited value.
+  A sourced development checkout may use its own directory for state.
   Sourcing \fI\&.rc\fP exports it.
 
 .PP
@@ -241,11 +254,12 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 .PP
 \fBPREFIX\fP
   Install prefix.
-  Session default: \fI$IN1_ROOT/local\fP\&.
-  \fB--local\fP and a direct command invocation of \fB--uninstall\fP
-  default to \fI~/.local\fP, or \fI/usr/local\fP when root.
+  Default: the public prefix of an installed in-1, otherwise \fI$TMPDIR/in-1\fP\&.
+  \fB--local\fP falls back to \fI~/.local\fP or \fI/usr/local\fP when root.
   A relative path is anchored to the current directory.
-  A \fIPREFIX\fP=\fIDIR\fP argument sets it too.
+  A \fIPREFIX\fP=\fIDIR\fP argument takes precedence over the environment.
+  A trailing \fI/bin\fP is stripped with a warning.
+  \fB--temp\fP ignores the environment and rejects the argument form.
 
 .PP
 \fBIN1_VERSION\fP
@@ -282,17 +296,17 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 
 .SH EXAMPLES
-Try Rust and Node in the current shell:
+Try Rust and Node temporarily, even with a persistent in-1:
 
 .EX
-source <(curl -sL in-1.cc) rust node
+source <(curl -sL in-1.cc) --temp rust node
 .EE
 
 .PP
 Same, from fish:
 
 .EX
-curl -sL in-1.cc | source - rust node
+curl -sL in-1.cc | source - --temp rust node
 .EE
 
 .PP
@@ -349,7 +363,7 @@ in-1 --update node
 .EE
 
 .PP
-Throw away every install and start over with node:
+Remove other managed tools and start over with node, keeping in-1:
 
 .EX
 in-1 --reset node

@@ -27,12 +27,15 @@ self_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 # Set by --update (or IN1_UPDATE); update in-1 and makes first
 update=''
 
-# Set by --reset; remove makes/, log/, local/ and cache/ from the
-# root first
+# Set by --reset; remove managed tools and cached state, keeping in-1
 reset=''
 
 # Set by -q or --quiet; suppress output from successful operations
 quiet=''
+
+# Prefix selection is independent of shell output mode and state storage.
+placement=normal
+prefix=''
 
 main() {
   local mode=run shell='' arg upd_flag='' show='' list='' output pattern
@@ -48,7 +51,13 @@ main() {
         [[ $# -gt 0 ]] || die "--env requires a shell name"
         shell=$1; shift
         ;;
-      --local) mode=local;;
+      --local)
+        [[ $placement != temp ]] || die "--local and --temp cannot be combined"
+        placement=local
+        [[ $mode != run ]] || mode=local;;
+      --temp)
+        [[ $placement != local ]] || die "--local and --temp cannot be combined"
+        placement=temp;;
       --show) show=1;;
       --) tools+=("$@"); break;;
       --list) list=1;;
@@ -82,6 +91,21 @@ main() {
     die "--list and --show cannot be combined"
   fi
 
+  if [[ ! $list || $reset ]]; then
+    local -a remaining=()
+    for arg in ${tools[@]+"${tools[@]}"}; do
+      if [[ $arg == PREFIX=* ]]; then
+        [[ $placement != temp ]] || die "--temp takes no PREFIX=DIR argument"
+        PREFIX=${arg#*=}
+      else
+        remaining+=("$arg")
+      fi
+    done
+    tools=( ${remaining[@]+"${remaining[@]}"} )
+  fi
+  prefix=$(resolve-prefix) || return $?
+  check-prefix || return $?
+
   if [[ $list ]]; then
     [[ ${#tools[@]} -le 1 ]] || die "--list takes at most one pattern"
     pattern=${tools[0]-}
@@ -96,9 +120,6 @@ main() {
     [[ $reset || $upd_flag ]] &&
       die "--show takes no --reset or --update"
     [[ -z $shell ]] || shell=$(check-shell "$shell")
-    if [[ $shell && -z ${PREFIX-} ]]; then
-      PREFIX=${IN1_ROOT:-$self_root}/local
-    fi
     output=$(do-show ${tools[@]+"${tools[@]}"}) || return $?
     [[ -z $output ]] || printf '%s\n' "$output" | to-user "$mode" "$shell"
     return 0
@@ -107,9 +128,6 @@ main() {
   if [[ $mode == uninstall ]]; then
     [[ $reset || $upd_flag ]] &&
       die "--uninstall takes no --reset or --update"
-    if [[ $shell && -z ${PREFIX-} ]]; then
-      PREFIX=${IN1_ROOT:-$self_root}/local
-    fi
     do-uninstall ${tools[@]+"${tools[@]}"}
     return
   fi
@@ -143,8 +161,9 @@ Usage:
   curl -sL in-1.cc | source - [OPTIONS] TOOL... [VAR=VALUE]... # fish
   source <(curl -sL in-1.cc) in-1                     # in-1 itself
 
-  in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
+  in-1 TOOL... [VAR=VALUE]...  Install tools under the selected prefix
   in-1 --local TOOL...         Install tools under PREFIX for keeps
+  in-1 --temp TOOL...          Install tools under $TMPDIR/in-1
   in-1 --uninstall TOOL...     Remove tools from their install prefix
   in-1 --list [PATTERN]        List available tools and aliases
   in-1 --show [PATTERN]        Show installed tool versions and locations
@@ -154,8 +173,7 @@ Usage:
   in-1 --rc                    Print the shell setup line (source it)
   in-1 -q|--quiet ARGS...      Suppress output on success
   in-1 --update [ARGS]         Update in-1 and makes, then continue
-  in-1 --reset [ARGS]          Remove makes/, log/, local/ and cache/
-                               from IN1_ROOT, then continue
+  in-1 --reset [ARGS]          Remove managed tools and state; keep in-1
   in-1 --version               Print the in-1 version
   in-1 --help                  Show this help
 
@@ -167,8 +185,13 @@ of a tool also gets a version-specific wrapper, <cmd>-<version>.
 --list and --show accept an optional grep -E pattern, matched against
 each output line. Quote patterns, e.g. 'in-1 --list "^(rust|node)$"'.
 --show prints tool, version and installation directory, separated by tabs.
-It uses the session prefix through the shell function, otherwise the
-persistent prefix. PREFIX=DIR overrides either default.
+Install, --show, --uninstall and --reset all use the same prefix.
+By default it matches the public bin directory of the installed in-1.
+Without an installed in-1 it is $TMPDIR/in-1 (default /tmp/in-1).
+--local selects a persistent prefix (~/.local when none is installed).
+PREFIX=DIR overrides the environment and either default.
+--temp always selects $TMPDIR/in-1, ignores inherited PREFIX, and cannot
+be combined with --local or a PREFIX=DIR argument.
 
 A NAME=VALUE argument is passed through to makes as a variable, so
 pin a version with its makes variable, e.g.
@@ -186,19 +209,17 @@ the install and the setup of the current shell in one go.
 An install checks whether in-1 is behind its origin and says so.
 It automatically updates makes when its clone is behind.  --update
 also updates in-1.  --reset starts over: it removes everything in-1
-put under IN1_ROOT (the makes clone, all session installs, logs and
-downloads) before doing anything else.
+put in the selected prefix, except in-1 itself, plus Makes, logs and
+downloads under IN1_ROOT. Unrelated files and external caches stay.
 
 Environment variables:
-  IN1_ROOT        The in-1 root; holds makes/, local/, log/ and
-                  cache/.  Default: the clone this command runs from
-                  or, for an in-1 installed with --local,
-                  PREFIX/share/in-1/local.  The one-liner always uses
-                  '$TMPDIR/in-1' (default '/tmp/in-1')
+  IN1_ROOT        State directory for makes/, log/ and cache/.
+                  Default: PREFIX/share/in-1/local. Does not select
+                  the install prefix. --temp ignores inherited state.
   IN1_CACHE       Download cache dir; default '$IN1_ROOT/cache'
-  PREFIX          Install prefix; session default '$IN1_ROOT/local'.
-                  Direct --local, --uninstall and --show use '~/.local'
-                  ('/usr/local' as root)
+  PREFIX          Install prefix; normally the installed in-1 prefix.
+                  Fresh installs default to '$TMPDIR/in-1'. --local
+                  falls back to '~/.local' ('/usr/local' as root).
   IN1_REPO        in-1 repo URL to clone
   IN1_MAKES_REPO  makes repo URL to clone
   IN1_VERSION     in-1 version (git ref) to use
@@ -397,32 +418,78 @@ check-prereqs() (
   esac
 )
 
-# An in-1 installed with --local runs from
-# PREFIX/share/in-1/<version>/cache/in-1-<version>; its root is
-# PREFIX/share/in-1/local, which survives version changes.  Prints
-# nothing for any other in-1.  (.rc applies the same rule.)
-local-root() (
+# Find the public prefix, never the implementation clone's bin directory.
+installed-prefix() (
   case $self_root in
     */share/in-1/*/cache/in-1-*)
-      printf '%s' "${self_root%/share/in-1/*}/share/in-1/local";;
+      printf '%s' "${self_root%/share/in-1/*}"
+      return;;
   esac
+  # A fresh bootstrap follows an existing public installation on PATH.
+  command_path=$(type -P in-1) || return 0
+  command_path=$(abs-path "$command_path")
+  case $command_path in
+    */share/in-1/*/cache/in-1-*/bin/in-1)
+      candidate=${command_path%/share/in-1/*};;
+    */bin/in-1) candidate=${command_path%/bin/in-1};;
+    *) return 0;;
+  esac
+  if is-wrapper-under "$candidate/bin/in-1" "$candidate/share/in-1"; then
+    printf '%s' "$candidate"
+  fi
 )
 
-# The root is the in-1 clone itself (the dir this command runs from
-# unless IN1_ROOT says otherwise, or the stable dir of a --local
-# install); makes, installs, logs and the download cache all live
-# under it.
+temp-prefix() (
+  tmp=${TMPDIR:-/tmp}
+  abs-path "${tmp%/}/in-1"
+)
+
+resolve-prefix() (
+  value=''
+  if [[ $placement == temp ]]; then
+    temp-prefix
+    return
+  fi
+  value=${PREFIX:-}
+  if [[ -z $value ]]; then
+    value=$(installed-prefix)
+    if [[ $placement == local && $value == "$(temp-prefix)" ]]; then
+      value=''
+    fi
+    if [[ -z $value && $placement == local ]]; then
+      if [[ ${EUID:-$(id -u)} == 0 ]]; then value=/usr/local
+      else value=$HOME/.local; fi
+    fi
+    [[ -n $value ]] || value=$(temp-prefix)
+  fi
+  value=$(abs-path "$value")
+  while [[ $value != / && $value == */ ]]; do value=${value%/}; done
+  if [[ $value == */bin ]]; then
+    value=${value%/bin}
+    note "Stripped trailing /bin from PREFIX; using PREFIX=$value"
+  fi
+  printf '%s' "$value"
+)
+
+check-prefix() {
+  [[ $prefix == "$(temp-prefix)" ]] || return 0
+  if [[ -e $prefix/.git || -d $prefix/in-1 ]] ||
+     { [[ -e $prefix/bin/in-1 ]] &&
+       ! is-wrapper-under "$prefix/bin/in-1" "$prefix/share/in-1"; }; then
+    die "Legacy in-1 layout at '$prefix'; move it aside and retry"
+  fi
+}
+
+# State storage is independent of the public installation prefix.
 set-globals() {
-  local default
-  default=$(local-root)
-  root=$(tilde-expand "${IN1_ROOT:-${default:-$self_root}}")
+  [[ -n $prefix ]] || prefix=$(resolve-prefix)
+  root=$(abs-path "${IN1_ROOT:-$prefix/share/in-1/local}")
+  [[ $placement != temp ]] || root=$prefix/share/in-1/local
   makes=$root/makes
   cache=$(tilde-expand "${IN1_CACHE:-$root/cache}")
   # Local installs keep their state outside the executable's git clone.
-  in1_root=$root
-  if [[ ! -e $root/.git && -n $default ]]; then
-    in1_root=$self_root
-  fi
+  in1_root=$self_root
+  [[ ! -e $root/.git ]] || in1_root=$root
 }
 
 # Clone makes if it is missing.  This is plumbing, not a tool the user
@@ -430,6 +497,8 @@ set-globals() {
 # failure (or everything streams with IN1_VERBOSE=1).
 ensure-makes() (
   mkdir -p "$root/log"
+  # Allows reset of a state-only root that in-1 actually initialized.
+  [[ -e $root/.in-1-state ]] || printf 'in-1 state\n' > "$root/.in-1-state"
   [[ -d $makes ]] && return 0
   log=$root/log/makes.log
   repo=${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}
@@ -504,18 +573,46 @@ update-makes() (
   success "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
 )
 
-# Remove everything in-1 put under the root: the makes clone, the
-# session installs, the logs and the download cache.  The clone itself
-# stays.  A cache placed elsewhere by IN1_CACHE is left alone.
+# Reset managed tools in the selected prefix, preserving in-1 itself.
+# Never remove an entire prefix or an unrecognized state directory.
 do-reset() (
-  dir=''
-  [[ -x $root/bin/in-1 || $root == */share/in-1/local ]] ||
-    die "'$root' is not an in-1 clone; not resetting"
-  for dir in makes log local cache; do
+  dir='' tool='' version='' wrapper='' owned=''
+  [[ $root != / && $root != "$HOME" && $root != "$prefix" ]] ||
+    die "Unsafe state directory '$root'; not resetting"
+  if [[ -d $root ]]; then
+    [[ -x $root/bin/in-1 || $root == "$prefix/share/in-1/local" ]] ||
+      grep -Fxq 'in-1 state' "$root/.in-1-state" 2>/dev/null ||
+      die "'$root' is not an in-1 state directory; not resetting"
+  fi
+  [[ ! -L $prefix/share && ! -L $prefix/bin ]] ||
+    die "Linked bin or share directory under '$prefix'; not resetting"
+  # Determine owned version directories before removing their wrappers.
+  for tool in "$prefix"/share/*; do
+    [[ -d $tool && ! -L $tool && ${tool##*/} != in-1 ]] || continue
+    owned=''
+    for version in "$tool"/*; do
+      [[ -d $version && ! -L $version ]] || continue
+      for wrapper in "$prefix"/bin/*; do
+        is-wrapper-under "$wrapper" "$version" || continue
+        rm -rf "$version" || die "Failed to remove '$version'"
+        owned=1
+        break
+      done
+    done
+    [[ ! $owned ]] || rmdir "$tool" 2>/dev/null || true
+  done
+  for wrapper in "$prefix"/bin/*; do
+    is-wrapper-under "$wrapper" "$prefix/share" || continue
+    is-wrapper-under "$wrapper" "$prefix/share/in-1" && continue
+    rm -f "$wrapper" || die "Failed to remove '$wrapper'"
+  done
+  for dir in makes log cache; do
     [[ -e $root/$dir ]] || continue
+    [[ $self_root != "$root/$dir" && $self_root != "$root/$dir/"* ]] || continue
     rm -rf "${root:?}/$dir" || die "Failed to remove '$root/$dir'"
   done
-  success "reset: removed makes/, log/, local/ and cache/ from '$root'"
+  success "reset: removed managed tools from '$prefix' (kept in-1)" \
+    "reset: removed makes/, log/ and cache/ from '$root'"
 )
 
 check-stale() {
@@ -975,7 +1072,8 @@ emit-manpath-sh() (
 )
 
 emit-session-sh() (  # $1=bash|zsh
-  emit-prepend-sh PATH "$install_root/bin"
+  printf 'export PATH=%s\n' \
+    "$(sq "$install_root/bin:$(strip-entry "$PATH" "$install_root/bin")")"
   emit-manpath-sh
   emit-completions "$1"
   emit-extras "$1"
@@ -986,7 +1084,7 @@ emit-session-sh() (  # $1=bash|zsh
 emit-session-fish() (
   bindir=$install_root/bin dir=''
   # shellcheck disable=SC2016  # $PATH expands in the user's fish
-  printf 'contains -- %s $PATH; or set -gx PATH %s $PATH\n' \
+  printf 'set -l _in1_path; for _in1_dir in $PATH; if test "$_in1_dir" != %s; set -a _in1_path "$_in1_dir"; end; end; set -gx PATH %s $_in1_path; set -e _in1_path; set -e _in1_dir\n' \
     "$(fq "$bindir")" "$(fq "$bindir")"
   if [[ -n $man_adds ]]; then
     printf 'set -q MANPATH; or set -gx MANPATH ""\n'
@@ -1085,7 +1183,7 @@ emit-completions() (  # $1=bash|zsh|fish
 session-prepare() {  # sets install_root, installs, writes wrappers
   prepare-root
   parse-tool-args "$@"
-  install-all "$(abs-path "${PREFIX:-$root/local}")"
+  install-all "$prefix"
 }
 
 check-shell() (  # $1=shell -> bash|zsh|fish
@@ -1100,6 +1198,7 @@ do-env() (
   shell=''
   shell=$(check-shell "$1"); shift
   session-prepare "$@"
+  [[ $placement != local ]] || local-in1-hint "$prefix" "$shell"
   if [[ $shell == fish ]]; then
     emit-session-fish
   else
@@ -1185,41 +1284,18 @@ local-in1-hint() (  # $1=prefix $2=shell ('' unless via --env)
 # in-1 the same line 'in-1 --rc' prints, so the shell function, man
 # page and completion are there right away.
 emit-local() (  # $1=bash|zsh|fish
-  clone=''
-  [[ $1 == fish ]] || printf 'hash -r 2>/dev/null || true\n'
-  clone=$(local-in1-clone) || return 0
   if [[ $1 == fish ]]; then
-    printf 'source %s\n' "$(fq "$clone/.rc")"
+    emit-session-fish
   else
-    printf 'source %s\n' "$(sq "$clone/.rc")"
+    emit-session-sh "$1"
   fi
-)
-
-# The --local prefix: PREFIX (the env var or a PREFIX=DIR arg), else
-# ~/.local, or /usr/local for root
-local-prefix() (
-  prefix=${PREFIX:-}
-  if [[ -z $prefix ]]; then
-    if [[ ${EUID:-$(id -u)} == 0 ]]; then
-      prefix=/usr/local
-    else
-      prefix=$HOME/.local
-    fi
-  fi
-  prefix=$(abs-path "$prefix")
-  if [[ $prefix == */bin ]]; then
-    prefix=${prefix%/bin}
-    note "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
-  fi
-  printf '%s' "$prefix"
 )
 
 do-local() (  # $1=shell ('' unless via --env); rest=tool args
-  shell=$1 prefix=''; shift
+  shell=$1; shift
   [[ -z $shell ]] || shell=$(check-shell "$shell")
   prepare-root
   parse-tool-args "$@"
-  prefix=$(local-prefix)
 
   install-all "$prefix"
 
@@ -1285,7 +1361,7 @@ filter-rows() {  # $1=pattern; no matches are a successful empty listing
 
 # List wrapper-backed version directories without preparing a root.
 do-show() (
-  local pattern='' have_pattern='' arg prefix dir tool w
+  local pattern='' have_pattern='' arg dir tool w
   for arg; do
     if [[ $arg == PREFIX=* ]]; then
       PREFIX=${arg#*=}
@@ -1298,7 +1374,6 @@ do-show() (
   done
   # Validate even when there are no installations to filter.
   validate-pattern --show "$pattern" || return $?
-  prefix=$(local-prefix) || return $?
   {
     for dir in "$prefix"/share/*/*; do
       [[ -d $dir ]] || continue
@@ -1317,8 +1392,7 @@ do-show() (
 # Needs neither a root nor makes.
 do-uninstall() (
   parse-uninstall-args "$@"
-  prefix='' name='' tool='' sdir='' w='' n='' i='' missing=''
-  prefix=$(local-prefix)
+  name='' tool='' sdir='' w='' n='' i='' missing=''
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}; tool=${req_tool[i]}
     # Install parsing prefers a direct Makes tool over a same-named alias.
@@ -1351,7 +1425,7 @@ do-complete() (
       cat <<'...'
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
-  local opts='--env --local --list --show --complete --rc --uninstall
+  local opts='--env --local --temp --list --show --complete --rc --uninstall
     -q --quiet --update --reset --version --help'
   local entry name word
   local -a labels=()
@@ -1383,7 +1457,7 @@ complete -F _in_1_complete in-1
 _in_1_complete() {
   local -a opts names labels
   local entry name
-  opts=(--env --local --list --show --complete --rc --uninstall
+  opts=(--env --local --temp --list --show --complete --rc --uninstall
     -q --quiet --update --reset --version --help)
   for name in "${opts[@]}"; do
     [[ $name == "$PREFIX"* ]] || continue
@@ -1433,6 +1507,7 @@ complete -c in-1 -f
 complete -c in-1 -a '(_in_1_candidates)'
 complete -c in-1 -l env -d 'Print env setup code for a shell'
 complete -c in-1 -l local -d 'Install tools under PREFIX'
+complete -c in-1 -l temp -d 'Use the temporary in-1 prefix'
 complete -c in-1 -l uninstall -d 'Remove tools from their install prefix'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l show -d 'Show installed tool versions and locations'
@@ -1440,7 +1515,7 @@ complete -c in-1 -l complete -d 'Print command completion for a shell'
 complete -c in-1 -l rc -d 'Print the shell setup line (source it)'
 complete -c in-1 -s q -l quiet -d 'Suppress output on success'
 complete -c in-1 -l update -d 'Update in-1 and makes first'
-complete -c in-1 -l reset -d 'Remove makes, log, local and cache first'
+complete -c in-1 -l reset -d 'Remove managed tools and state, keeping in-1'
 complete -c in-1 -l version -d 'Print the in-1 version'
 complete -c in-1 -l help -d 'Show help'
 ...

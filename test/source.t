@@ -16,7 +16,7 @@ out=$(bash -c '
   echo "TOOLS=$IN1_TOOLS"
 ')
 
-has "$out" "$IN1_ROOT/local/bin/jq" "which jq resolves to local/bin"
+has "$out" "$TMPDIR/in-1/bin/jq" "which jq resolves to local/bin"
 has "$out" 'jq-1.' "jq runs and reports its version"
 has "$out" 'PATH-IDEMPOTENT' "re-sourcing does not grow PATH"
 has "$out" "TMPDIR=$TMPDIR" "TMPDIR does not change in the shell"
@@ -30,7 +30,7 @@ out=$(bash -euo pipefail -c '
   source "$IN1_ROOT/.rc"
   type -t in-1
 ' 2>&1)
-is "$out" "$IN1_ROOT/local/bin/jq"$'\nfunction' \
+is "$out" "$TMPDIR/in-1/bin/jq"$'\nfunction' \
   "strict Bash script: one-liner installs and .rc defines the function"
 
 # The real binary lives in a versioned share tree, wrapped in bin/
@@ -38,17 +38,17 @@ version=$(
   grep '^JQ-VERSION ?=' "$IN1_MAKES_REPO/jq.mk" | head -1
 )
 version=${version##* }
-if [[ -x $IN1_ROOT/local/share/jq/$version/bin/jq ]]; then
+if [[ -x $TMPDIR/in-1/share/jq/$version/bin/jq ]]; then
   pass "real jq under local/share/jq/$version"
 else
   fail "real jq under local/share/jq/$version"
 fi
-if [[ -x $IN1_ROOT/local/bin/jq-$version ]]; then
+if [[ -x $TMPDIR/in-1/bin/jq-$version ]]; then
   pass "primary gets a versioned wrapper jq-$version"
 else
   fail "primary gets a versioned wrapper jq-$version"
 fi
-has "$(cat "$IN1_ROOT/local/bin/jq")" '# in-1 wrapper' \
+has "$(cat "$TMPDIR/in-1/bin/jq")" '# in-1 wrapper' \
   "local/bin/jq is an in-1 wrapper"
 
 # A version is pinned by passing the tool's makes variable as an arg
@@ -59,7 +59,7 @@ out=$(bash -c "
   command -v jq-$alt
 ")
 has "$out" "jq-$alt" "make-var arg pins the version"
-if [[ -x $IN1_ROOT/local/share/jq/$alt/bin/jq ]]; then
+if [[ -x $TMPDIR/in-1/share/jq/$alt/bin/jq ]]; then
   pass "pinned version installs under local/share/jq/$alt"
 else
   fail "pinned version installs under local/share/jq/$alt"
@@ -73,7 +73,7 @@ has "$out" 'sets a make variable' "bare make-var arg explains itself"
 out=$(bash -c 'source ./rc jq >/dev/null' 2>&1)
 has "$out" '… jq v' "progress: installing line shown"
 has "$out" '√ jq v' "progress: success line shown"
-has "$out" "installed to $IN1_ROOT/local/bin/jq" \
+has "$out" "installed to $TMPDIR/in-1/bin/jq" \
   "progress: reports the wrapper path"
 has "$out" 's)' "progress: reports elapsed time"
 
@@ -96,7 +96,7 @@ is "$out" '' "direct command: --quiet overrides IN1_VERBOSE"
 out=$(bash -c 'source ./rc -q jq' 2>&1)
 is "$out" '' "one-liner: -q suppresses successful output"
 out=$(bash -c 'source ./rc --quiet jq; command -v jq' 2>&1)
-is "$out" "$IN1_ROOT/local/bin/jq" \
+is "$out" "$TMPDIR/in-1/bin/jq" \
   "one-liner: --quiet still updates the shell environment"
 out=$(bash -c 'source ./rc -q no-such-tool' 2>&1 || true)
 has "$out" 'Unknown tool' "one-liner: -q preserves errors"
@@ -141,15 +141,15 @@ out=$(bash -c '
   eval "$(bin/in-1 --env bash jq 2>/dev/null)"
   command -v jq
 ')
-has "$out" "$IN1_ROOT/local/bin/jq" "eval of in-1 --env works"
+has "$out" "$TMPDIR/in-1/bin/jq" "eval of in-1 --env works"
 out=$(bin/in-1 --env bash -q jq 2>/dev/null)
-has "$out" "$IN1_ROOT/local/bin" \
+has "$out" "$TMPDIR/in-1/bin" \
   "--quiet --env preserves shell code on stdout"
 
 # An alias installs the tool it names and labels itself
 out=$(bash -c 'source ./rc bb >/dev/null; command -v bb' 2>&1)
 has "$out" '√ bb v' "alias 'bb' reports itself, not babashka"
-has "$out" "$IN1_ROOT/local/bin/bb" \
+has "$out" "$TMPDIR/in-1/bin/bb" \
   "alias 'bb' installs and wraps babashka"
 
 # A share/<tool>.wrap snippet goes into the primary's wrappers
@@ -160,16 +160,16 @@ version=$(
 )
 version=${version##* }
 for w in jolt jolt-$version; do
-  has "$(cat "$IN1_ROOT/local/bin/$w")" 'exec rlwrap "$cmd" "$@"' \
+  has "$(cat "$TMPDIR/in-1/bin/$w")" 'exec rlwrap "$cmd" "$@"' \
     "local/bin/$w carries the jolt.wrap snippet"
 done
-if grep -q rlwrap "$IN1_ROOT/local/bin/jq"; then
+if grep -q rlwrap "$TMPDIR/in-1/bin/jq"; then
   fail "the jolt snippet stays out of other wrappers"
 else
   pass "the jolt snippet stays out of other wrappers"
 fi
 if command -v shellcheck >/dev/null 2>&1; then
-  if shellcheck "$IN1_ROOT/local/bin/jolt" "$IN1_ROOT/local/bin/jq"; then
+  if shellcheck "$TMPDIR/in-1/bin/jolt" "$TMPDIR/in-1/bin/jq"; then
     pass "generated wrappers pass shellcheck"
   else
     fail "generated wrappers pass shellcheck"
@@ -186,11 +186,11 @@ out=$(bash -c '
   jq --version
   echo "TOOLS=$IN1_TOOLS"
 ' 2>&1)
-has "$out" "$IN1_ROOT/local/bin/jq" \
+has "$out" "$TMPDIR/in-1/bin/jq" \
   "--reset jq: jq is back on PATH"
 has "$out" 'jq-1.' "--reset jq: jq runs after the reset"
 has "$out" 'TOOLS=jq' "--reset jq: IN1_TOOLS lists only jq"
-if [[ -e $IN1_ROOT/local/bin/bb ]]; then
+if [[ -e $TMPDIR/in-1/bin/bb ]]; then
   fail "--reset jq: the bb wrapper is gone"
 else
   pass "--reset jq: the bb wrapper is gone"
@@ -204,7 +204,7 @@ out=$(bash -c '
   in-1 --update jq 2>&1 >/dev/null
   command -v jq
 ')
-has "$out" "$IN1_ROOT/local/bin/jq" "in-1 function installs jq"
+has "$out" "$TMPDIR/in-1/bin/jq" "in-1 function installs jq"
 has "$out" 'not updating in-1' "in-1 --update jq: goes through --env"
 has "$out" 'makes is now at' "in-1 --update jq: updates makes"
 
@@ -253,12 +253,15 @@ if have-in1-mk "in-1 as a tool"; then
   ')
   has "$out" 'status=0' "in-1 jq: returns 0"
   has "$out" 'type=function' "in-1 jq: in-1 is a shell function"
-  has "$out" "$IN1_ROOT/local/share/in-1/main/cache/in-1-main/" \
-    "in-1 defaults to the main branch with a legacy makes recipe"
+  has "$out" "in1=$TMPDIR/in-1/bin/in-1" \
+    "in-1 resolves to its public wrapper"
+  if [[ -d $TMPDIR/in-1/share/in-1/main/cache/in-1-main ]]; then
+    pass "in-1 defaults to the main branch with a legacy makes recipe"
+  else fail "in-1 defaults to the main branch with a legacy makes recipe"; fi
   has "$out" 'jq-1.' "in-1 jq: jq runs"
-  has "$out" "bb=$IN1_ROOT/local/bin/bb" "in-1 bb via the function: one root"
+  has "$out" "bb=$TMPDIR/in-1/bin/bb" "in-1 bb via the function: one root"
   has "$out" 'tools=in-1 jq bb' "IN1_TOOLS lists all three"
-  if ls -d "$IN1_ROOT"/local/share/in-1/*/cache/in-1-*/local \
+  if ls -d "$TMPDIR"/in-1/share/in-1/*/cache/in-1-*/local \
       >/dev/null 2>&1; then
     fail "the installed in-1 starts no root of its own"
   else
@@ -303,8 +306,8 @@ if have-in1-mk "in-1 as a tool"; then
   has "$out" 'type=function' "source <(in-1 --rc): in-1 is a function"
   has "$out" "root=$stable" "source <(in-1 --rc): IN1_ROOT is the stable root"
   has "$out" $'\nin-1 ' "source <(in-1 --rc): in-1 --version runs"
-  has "$out" "jq=$stable/local/bin/jq" "in-1 jq: installs under the stable root"
-  has "$out" "reset: removed makes/, log/, local/ and cache/ from '$stable'" \
+  has "$out" "jq=$pfx/bin/jq" "in-1 jq: installs alongside the public in-1"
+  has "$out" "reset: removed makes/, log/ and cache/ from '$stable'" \
     "in-1 --reset: resets the stable root"
   if ls -d "$pfx"/share/in-1/*/cache/in-1-*/local >/dev/null 2>&1; then
     fail "the installed copy starts no root of its own"
@@ -319,8 +322,10 @@ if have-in1-mk "in-1 as a tool"; then
   out=$(
     bin/in-1 --env bash --local in-1 PREFIX="$pfx" $in1_args 2>/dev/null
   )
-  is "$out" $'hash -r 2>/dev/null || true\n'"source '$rc'" \
-    "--env bash --local in-1: emits hash -r and the source line"
+  has "$out" 'hash -r 2>/dev/null || true' \
+    "--env bash --local in-1: refreshes command lookup"
+  has "$out" "source '$ROOT/share/in-1.sh'" \
+    "--env bash --local in-1: sources shell setup"
   out=$(bash -c '
     source ./rc --local in-1 PREFIX="'"$pfx"'" '"$in1_args"' 2>&1
     echo "status=$?"
@@ -347,10 +352,10 @@ if have-in1-mk "in-1 as a tool"; then
     "one-liner --local in-1: does not mention Fish"
   has "$out" 'type=function' "one-liner --local in-1: in-1 is a function"
   has "$out" $'\nin-1 ' "one-liner --local in-1: in-1 --version runs"
-  has "$out" "root=$IN1_ROOT" "one-liner --local in-1: keeps a set IN1_ROOT"
+  has "$out" "root=$stable" "one-liner --local in-1: selects persistent state"
 
   # The shell function honors the locally installed .rc root, but a
-  # later one-liner always uses a new temporary root.
+  # later one-liner follows it unless --temp is requested.
   session_tmp=$SCRATCH/session-tmp
   out=$(
     env -u IN1_ROOT TMPDIR="$session_tmp" \
@@ -361,12 +366,14 @@ if have-in1-mk "in-1 as a tool"; then
       echo "function-root=$IN1_ROOT"
       echo "function-command=$(type -P in-1)"
       source ./rc in-1 '"$in1_args"' >/dev/null 2>&1
+      echo "normal-command=$(type -P in-1)"
+      source ./rc --temp in-1 '"$in1_args"' >/dev/null 2>&1
       echo "session-root=$IN1_ROOT"
       echo "session-command=$(type -P in-1)"
       in-1 ys >/dev/null 2>&1
       in-1 --uninstall ys 2>&1
       echo "function-uninstall-status=$?"
-      [[ ! -e $IN1_ROOT/local/share/ys ]] && echo function-uninstalled
+      [[ ! -e $TMPDIR/in-1/share/ys ]] && echo function-uninstalled
     '
   )
   stable=$pfx/share/in-1/local
@@ -375,13 +382,15 @@ if have-in1-mk "in-1 as a tool"; then
     "installed .rc selects its stable root"
   has "$out" "function-root=$stable" \
     "the in-1 function honors the stable root"
-  has "$out" "function-command=$stable/local/" \
+  has "$out" "function-command=$pfx/bin/in-1" \
     "the in-1 function selects its stable in-1"
-  has "$out" "session-root=$session_root" \
-    "a later one-liner selects its temporary root"
-  has "$out" "session-command=$session_root/local/" \
+  has "$out" "normal-command=$pfx/bin/in-1" \
+    "a later normal one-liner follows the installed prefix"
+  has "$out" "session-root=$session_root/share/in-1/local" \
+    "a later --temp one-liner selects temporary state"
+  has "$out" "session-command=$session_root/bin/in-1" \
     "the later one-liner selects its temporary in-1"
-  has "$out" "from '$session_root/local/bin'" \
+  has "$out" "from '$session_root/bin'" \
     "the session function uninstalls from its session prefix"
   has "$out" 'function-uninstall-status=0' \
     "the session function uninstall returns 0"

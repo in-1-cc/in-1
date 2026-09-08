@@ -131,18 +131,16 @@ for path in bin/bar bin/bar-2.0 bin/foo3 share/bar; do
 done
 kept bin/foo2 "--uninstall bar"
 
-# Direct commands default to the persistent prefix.
-home=$SCRATCH/home
-pfx=$home/.local
+# Without an installed in-1, both direct and shell calls default to temp.
+pfx=$TMPDIR/in-1
 fake-install foo foo 1.0 foo
-out=$(HOME=$home run bin/in-1 --uninstall foo)
+out=$(run bin/in-1 --uninstall foo)
 has "$out" "from '$pfx/bin'" \
-  "direct --uninstall defaults to the persistent prefix"
+  "direct --uninstall defaults to the temporary prefix"
 gone share/foo "direct --uninstall"
 
-# The shell function uses --env and defaults to its session prefix.
+# State storage does not select the installation prefix.
 session_root=$SCRATCH/session
-pfx=$session_root/local
 fake-install foo foo 1.0 foo
 out=$(IN1_ROOT=$session_root run bin/in-1 --env bash --uninstall foo)
 has "$out" "from '$pfx/bin'" \

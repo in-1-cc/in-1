@@ -39,7 +39,7 @@ rm -rf "$SCRATCH"
 mkdir -p "$SCRATCH"
 
 export TMPDIR=$SCRATCH
-export IN1_ROOT=$TMPDIR/in-1
+export IN1_ROOT=$TMPDIR/in-1/share/in-1/local
 export IN1_REPO=$ROOT
 export IN1_CACHE=$ROOT/.cache/test/downloads
 export IN1_MAKES_REPO=${IN1_MAKES_REPO:-$ROOT/.cache/makes}
@@ -59,6 +59,7 @@ make-in1-root() (
 )
 
 make-in1-root "$IN1_ROOT"
+make-in1-root "$TMPDIR/in-1/bootstrap"
 
 # Build a throwaway in-1 repo at $1 with this working copy's files
 # (tracked and untracked) committed on the current branch, so that an

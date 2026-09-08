@@ -13,6 +13,8 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--local** *TOOL*...
 
+**in-1** **--temp** *TOOL*...
+
 **in-1** **--uninstall** *TOOL*... [*PREFIX*=*DIR*]
 
 **in-1** **--show** [*PATTERN*] [*PREFIX*=*DIR*]
@@ -46,17 +48,21 @@ and the shell itself stays clean.  Multiple versions coexist: the
 primary command of a tool also gets a version-specific wrapper,
 *<cmd>-<version>*.
 
-For a session the prefix is *$IN1_ROOT/local*, where *IN1_ROOT* is
-the in-1 clone itself (*/tmp/in-1* for the one-liner); for **--local**
-it is *PREFIX* (default *~/.local*).
+The default prefix matches the public installation of in-1.
+For example, *~/.local/bin/in-1* installs tools into *~/.local/bin*.
+A fresh bootstrap or source checkout with no installed in-1 defaults to
+*$TMPDIR/in-1* (*/tmp/in-1* when *TMPDIR* is unset).
+The bootstrap clone lives separately in *$TMPDIR/in-1/bootstrap*.
+**--local** selects a persistent prefix; **--temp** forces the temporary one.
+Installation, **--show**, **--uninstall**, and **--reset** share this selection.
 
 Before an install, in-1 checks whether its own clone is behind its
 origin and prints a notice if so.
 It automatically updates its makes clone when that clone is behind.
 Use **--update** to update in-1 too, or set *IN1_OFFLINE* to skip both
 update checks.
-**--reset** starts over: it removes everything in-1 put under *IN1_ROOT*
-before doing anything else.
+**--reset** removes managed tools in the selected prefix and clears state,
+while preserving in-1 itself and unrelated files.
 
 It works in bash, zsh and fish, on Linux and macOS (Intel and ARM),
 and needs only **git**(1), **curl**(1), GNU **make**(1) and
@@ -94,28 +100,37 @@ the install prefix, like the *PREFIX* environment variable.
   Quiet takes precedence over *IN1_VERBOSE*.
 
 **--local**
-  Install the tools under *PREFIX* (default *~/.local*, or
-  */usr/local* when run as root) and write a wrapper for each tool
-  command into *PREFIX/bin*.
+  Select the existing persistent in-1 prefix, otherwise *~/.local*
+  (*/usr/local* when root).
+  An explicit *PREFIX* overrides this default.
   These installs persist across shell sessions and need no shell
   setup, since the wrappers carry the tools' environment.
   Through the one-liner (**source <(curl -sL in-1.cc) --local** *TOOL*)
   the current shell also forgets any stale command paths, and a
   **--local in-1** sources the installed in-1's *.rc* right away.
 
+**--temp**
+  Always select *$TMPDIR/in-1* (default */tmp/in-1*), with command wrappers
+  directly in its *bin* directory and state under *share/in-1/local*.
+  Ignore inherited *PREFIX* and *IN1_ROOT*.
+  Reject a *PREFIX*=*DIR* argument or **--local** in the same invocation.
+  For example, **in-1 --temp --show** lists temporary installations.
+  An old conflicting temporary checkout is left untouched; move it aside
+  before retrying with the new layout.
+
 **--uninstall** *TOOL*...
   Remove the installs of the given tools from *PREFIX*:
   *PREFIX/share/<tool>* with every version in it, and every wrapper
   in *PREFIX/bin* that in-1 wrote for it.
   Files in *PREFIX/bin* that in-1 did not write stay.
-  The shell function defaults to its session prefix, *IN1_ROOT/local*.
-  A direct command invocation defaults to the **--local** prefix.
+  Use the same prefix as installation, whether called directly or through
+  the shell function.
   The curl one-liner rejects **--uninstall**; install the **in-1**
   command into the session first.
-  An explicit *PREFIX* overrides either default.
+  Use **--temp** or an explicit *PREFIX* to select another installation.
   Aliases work here too (**in-1 --uninstall bb** removes babashka) and
   **in-1 --uninstall in-1** removes the command itself.
-  **--reset** removes all session installs at once.
+  **--reset** removes other managed tools but preserves in-1 itself.
 
 **--list** [*PATTERN*]
   List all available tool names and command aliases.
@@ -138,9 +153,8 @@ the install prefix, like the *PREFIX* environment variable.
   Omit it to show everything, or use **--** before a pattern starting with
   a dash.
   No matches produce no output and succeed; an invalid pattern fails.
-  Prefix selection follows **--uninstall**: the shell function uses the
-  session prefix, and direct invocation uses the persistent default.
-  *PREFIX*=*DIR* overrides the environment and either default.
+  Prefix selection follows installation and **--uninstall**.
+  *PREFIX*=*DIR* overrides the environment and default, except with **--temp**.
   This operation does not install or update anything, ignores *IN1_UPDATE*,
   and rejects **--update** and **--reset**.
 
@@ -176,11 +190,11 @@ the install prefix, like the *PREFIX* environment variable.
   on.
 
 **--reset**
-  Remove *makes/*, *log/*, *local/* and *cache/* from *IN1_ROOT*
-  before doing anything else: the makes clone, every session install,
-  the logs and the download cache.
-  The in-1 clone itself stays, as does a cache placed elsewhere with
-  *IN1_CACHE*.
+  Remove wrapper-backed tool versions and their wrappers from the selected
+  prefix, and clear *makes/*, *log/* and *cache/* under *IN1_ROOT*.
+  Preserve in-1's own installation, unrelated files, old nested installs,
+  and a cache placed elsewhere with *IN1_CACHE*.
+  The whole prefix is never removed.
   Alone, that is all it does; with tools or other options it then
   continues with them, so **in-1 --reset rust** installs rust from
   scratch and **in-1 --reset --update** resets and then updates.
@@ -194,14 +208,11 @@ the install prefix, like the *PREFIX* environment variable.
 # ENVIRONMENT
 
 **IN1_ROOT**
-  The in-1 root.
-  It holds the makes clone (*makes/*), the session installs
-  (*local/*), logs (*log/*) and the download cache (*cache/*).
-  Default: the clone the **in-1** command runs from, or, for an in-1
-  installed with **--local**, *PREFIX/share/in-1/local*, which survives
-  version changes.
-  The one-liner always uses */tmp/in-1* (*$TMPDIR/in-1* when *TMPDIR*
-  is set), even when *IN1_ROOT* is already set in the shell.
+  State directory for Makes, logs and the download cache.
+  Default: *PREFIX/share/in-1/local*, independent of tool versions.
+  It does not determine where command wrappers are installed.
+  The one-liner and **--temp** ignore an inherited value.
+  A sourced development checkout may use its own directory for state.
   Sourcing *.rc* exports it.
 
 **IN1_CACHE**
@@ -210,11 +221,12 @@ the install prefix, like the *PREFIX* environment variable.
 
 **PREFIX**
   Install prefix.
-  Session default: *$IN1_ROOT/local*.
-  **--local** and a direct command invocation of **--uninstall**
-  default to *~/.local*, or */usr/local* when root.
+  Default: the public prefix of an installed in-1, otherwise *$TMPDIR/in-1*.
+  **--local** falls back to *~/.local* or */usr/local* when root.
   A relative path is anchored to the current directory.
-  A *PREFIX*=*DIR* argument sets it too.
+  A *PREFIX*=*DIR* argument takes precedence over the environment.
+  A trailing */bin* is stripped with a warning.
+  **--temp** ignores the environment and rejects the argument form.
 
 **IN1_VERSION**
   The in-1 git ref to use.
@@ -244,13 +256,13 @@ the install prefix, like the *PREFIX* environment variable.
 
 # EXAMPLES
 
-Try Rust and Node in the current shell:
+Try Rust and Node temporarily, even with a persistent in-1:
 
-    source <(curl -sL in-1.cc) rust node
+    source <(curl -sL in-1.cc) --temp rust node
 
 Same, from fish:
 
-    curl -sL in-1.cc | source - rust node
+    curl -sL in-1.cc | source - --temp rust node
 
 Pin a version (both `go` and `go-1.23.4` end up on PATH):
 
@@ -284,7 +296,7 @@ Update in-1 and makes, then install the newest node:
 
     in-1 --update node
 
-Throw away every install and start over with node:
+Remove other managed tools and start over with node, keeping in-1:
 
     in-1 --reset node
 

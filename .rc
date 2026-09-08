@@ -15,11 +15,12 @@
 # (Or, for the current shell only, `source <(curl -sL in-1.cc) in-1`
 # does the same for the in-1 it installs.)  Then:
 #
-#   in-1 rust node       # install tools into this shell session
+#   in-1 rust node       # install alongside in-1
+#   in-1 --temp jq       # install under $TMPDIR/in-1
 #   in-1 --local jq      # install jq under ~/.local for keeps
 #   in-1 --uninstall jq  # remove that again
 #   in-1 --update        # update in-1 and makes
-#   in-1 --reset         # remove makes/, log/, local/ and cache/
+#   in-1 --reset         # remove managed tools and state, keeping in-1
 #   in-1 --reset rust    # same, then install rust from scratch
 #   in-1 --help
 #   man in-1
@@ -27,8 +28,8 @@
 # IN1_ROOT is left alone when it is already set; otherwise it becomes
 # the in-1 clone this file lives in, or, for a --local installed in-1
 # (this file under PREFIX/share/in-1/<v>/cache/in-1-<v>/), the stable
-# PREFIX/share/in-1/local.  makes, the session installs (local/), logs
-# and the download cache go under it.
+# PREFIX/share/in-1/local. Makes, logs and downloads go under it;
+# this state directory does not select the installation prefix.
 
 # Detect Bash/Zsh by their builtins without reading unset variables.
 type shopt >/dev/null 2>&1 || type setopt >/dev/null 2>&1 && eval '
@@ -39,6 +40,11 @@ else
   _in1_shell=zsh
   _in1_dir=$(cd "$(dirname "$0")" && pwd -P)
 fi
+_in1_bin=$_in1_dir/bin
+case $_in1_dir in
+  */share/in-1/*/cache/in-1-*)
+    _in1_bin=${_in1_dir%/share/in-1/*}/bin;;
+esac
 if [ -z "${IN1_ROOT-}" ]; then
   case $_in1_dir in
     */share/in-1/*/cache/in-1-*)
@@ -49,8 +55,25 @@ fi
 export IN1_ROOT
 
 case ":$PATH:" in
-  *":$_in1_dir/bin:"*) ;;
-  *) PATH=$_in1_dir/bin:$PATH;;
+  *":$_in1_bin:"*) ;;
+  *) PATH=$_in1_bin:$PATH;;
+esac
+# An installed copy must not expose its implementation checkout on PATH.
+case $_in1_dir in
+  */share/in-1/*/cache/in-1-*)
+    _in1_rest=$PATH
+    PATH=$_in1_bin
+    while :; do
+      _in1_part=${_in1_rest%%:*}
+      case $_in1_part in
+        "$_in1_bin"|"${_in1_bin%/bin}"/share/in-1/*/cache/in-1-*/bin) ;;
+        *) PATH=$PATH:$_in1_part;;
+      esac
+      case $_in1_rest in
+        *:*) _in1_rest=${_in1_rest#*:};;
+        *) break;;
+      esac
+    done;;
 esac
 export PATH
 
@@ -70,15 +93,15 @@ in-1() {
   local first="" in1_status in1_shell=bash
   [ -n "${ZSH_VERSION-}" ] && in1_shell=zsh
   for first in "$@"; do
-    case $first in --update|--reset|-q|--quiet) continue;; esac
+    case $first in --update|--reset|--local|--temp|-q|--quiet) continue;; esac
     break
   done
   case $first in
-    --show)
-      PREFIX=${PREFIX:-${IN1_ROOT}/local} command in-1 "$@";;
-    --uninstall) command in-1 --env "$in1_shell" "$@";;
     ""|-*) command in-1 "$@";;
-    *) eval "$(command in-1 --env "$in1_shell" "$@")";;
+    *)
+      local in1_output
+      in1_output=$(command in-1 --env "$in1_shell" "$@") || return $?
+      eval "$in1_output";;
   esac
   in1_status=$?
   if command -v perl >/dev/null 2>&1; then
@@ -87,12 +110,17 @@ in-1() {
   return "$in1_status"
 }
 
-unset _in1_shell _in1_dir
+unset _in1_shell _in1_dir _in1_bin _in1_rest _in1_part
 return 0
 '
 
 test -n "$FISH_VERSION" && eval '
 set -g _in1_dir (cd (dirname (status filename)) && pwd -P)
+set -g _in1_bin $_in1_dir/bin
+if string match -q "*/share/in-1/*/cache/in-1-*" $_in1_dir
+  set _in1_bin (string replace -r \
+    "/share/in-1/[^/]*/cache/in-1-[^/]*\$" /bin $_in1_dir)
+end
 if test -z "$IN1_ROOT"
   if string match -q "*/share/in-1/*/cache/in-1-*" $_in1_dir
     set -gx IN1_ROOT (string replace -r \
@@ -102,8 +130,19 @@ if test -z "$IN1_ROOT"
   end
 end
 
-contains -- $_in1_dir/bin $PATH
-or set -gx PATH $_in1_dir/bin $PATH
+contains -- $_in1_bin $PATH
+or set -gx PATH $_in1_bin $PATH
+if string match -q "*/share/in-1/*/cache/in-1-*" $_in1_dir
+  set -l paths
+  set -l prefix (string replace -r "/bin\$" "" $_in1_bin)
+  for entry in $PATH
+    if test "$entry" != "$_in1_bin"; and not string match -q \
+        "$prefix/share/in-1/*/cache/in-1-*/bin" "$entry"
+      set -a paths "$entry"
+    end
+  end
+  set -gx PATH $_in1_bin $paths
+end
 
 contains -- $_in1_dir/man $MANPATH
 or set -gx MANPATH $_in1_dir/man (manpath 2>/dev/null | string split :)
@@ -113,19 +152,11 @@ command in-1 --complete fish 2>/dev/null | source
 function in-1
   set -l first ""
   for first in $argv
-    if not contains -- "$first" --update --reset -q --quiet
+    if not contains -- "$first" --update --reset --local --temp -q --quiet
       break
     end
   end
-  if test "$first" = --show
-    set -l prefix "$IN1_ROOT/local"
-    if set -q PREFIX; and test -n "$PREFIX"
-      set prefix "$PREFIX"
-    end
-    env PREFIX="$prefix" in-1 $argv
-  else if test "$first" = --uninstall
-    command in-1 --env fish $argv
-  else if test -z "$first"; or string match -q -- "-*" "$first"
+  if test -z "$first"; or string match -q -- "-*" "$first"
     command in-1 $argv
   else
     set -l envfile (mktemp)
@@ -140,6 +171,7 @@ function in-1
 end
 
 set -e _in1_dir
+set -e _in1_bin
 '
 
 # No `return` in the fish block: when this file is sourced from inside

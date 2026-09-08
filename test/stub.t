@@ -64,7 +64,8 @@ has "$out" 'Usage' "--help: prints usage on stdout"
 out=$(bash -c 'source ./rc --version 2>/dev/null')
 has "$out" 'in-1 ' "--version: prints the version on stdout"
 out=$(bash -c 'source ./rc --rc 2>/dev/null')
-is "$out" "source '$IN1_ROOT/.rc'" "--rc: prints the source line on stdout"
+is "$out" "source '$TMPDIR/in-1/bootstrap/.rc'" \
+  "--rc: prints the bootstrap source line on stdout"
 if command -v fish >/dev/null 2>&1; then
   out=$(fish -c 'source ./rc --list 2>/dev/null | grep -cx rust')
   is "$out" 1 "fish: --list lists tools on stdout"
@@ -93,7 +94,7 @@ mkdir -p "$old/in-1"
 out=$(
   TMPDIR=$old_tmp bash -c 'source ./rc jq 2>&1; echo "status=$? alive"'
 )
-has "$out" 'not an in-1 clone' "old layout: explains itself"
+has "$out" 'move it aside' "old layout: explains itself"
 has "$out" 'status=1 alive' "old layout: returns 1, shell survives"
 if [[ ! -e $old/bin ]]; then
   pass "old layout: root left untouched"
@@ -105,13 +106,15 @@ if command -v fish >/dev/null 2>&1; then
   out=$(
     TMPDIR=$old_tmp fish -c 'source ./rc jq 2>&1; echo "status=$status"'
   )
-  has "$out" 'not an in-1 clone' "fish: old layout explains itself"
+  has "$out" 'move it aside' "fish: old layout explains itself"
   has "$out" 'status=1' "fish: old layout returns 1"
 else
   pass "fish not available; check skipped"
 fi
 
 # A missing or empty one-liner root gets the clone (from IN1_REPO here).
+make-in1-repo "$SCRATCH/bootstrap-repo"
+export IN1_REPO=$SCRATCH/bootstrap-repo
 for kind in root empty; do
   fresh_tmp=$SCRATCH/fresh-$kind
   fresh=$fresh_tmp/in-1
@@ -120,7 +123,8 @@ for kind in root empty; do
     TMPDIR=$fresh_tmp bash -c \
       'source ./rc no-such-tool 2>&1; echo "s=$?"'
   )
-  if [[ -x $fresh/bin/in-1 && -d $fresh/.git && -d $fresh/makes ]]; then
+  if [[ -x $fresh/bootstrap/bin/in-1 && -d $fresh/bootstrap/.git &&
+        -d $fresh/share/in-1/local/makes ]]; then
     pass "clone lands in $kind: bin/in-1, .git and makes/"
   else
     fail "clone lands in $kind: bin/in-1, .git and makes/"
@@ -193,7 +197,7 @@ fi
 # completion while IN1_ROOT stays the one-liner's root
 if have-in1-mk "in-1 as a tool"; then
   make-in1-repo "$SCRATCH/repo"
-  nested="$IN1_ROOT/local/share/in-1/*/cache/in-1-*"
+  nested="$TMPDIR/in-1/share/in-1/*/cache/in-1-*"
   out=$(bash -c '
     source ./rc in-1 '"$in1_args"' 2>&1; echo "status=$?"
     echo "type=$(type -t in-1)"
@@ -208,11 +212,11 @@ if have-in1-mk "in-1 as a tool"; then
   has "$out" '√ in-1 v' "in-1 tool: progress line"
   has "$out" 'status=0' "in-1 tool: returns 0"
   has "$out" 'type=function' "in-1 tool: in-1 is a shell function"
-  has "$out" "bin=$IN1_ROOT/local/" "in-1 tool: the command is under local/"
+  has "$out" "bin=$TMPDIR/in-1/" "in-1 tool: the command is under local/"
   has "$out" $'\nin-1 ' "in-1 tool: in-1 --version runs"
   has "$out" "root=$IN1_ROOT" "in-1 tool: IN1_ROOT stays the one-liner root"
   has "$out" 'tools=in-1' "in-1 tool: IN1_TOOLS lists in-1"
-  has "$out" "$IN1_ROOT/local/share/in-1/" "in-1 tool: man dir on MANPATH"
+  has "$out" "$TMPDIR/in-1/share/in-1/" "in-1 tool: man dir on MANPATH"
   has "$out" 'list=1' "in-1 tool: in-1 --list works through the function"
   has "$out" 'residue=0' "in-1 tool: no _in1 residue"
   # shellcheck disable=SC2086  # the glob is the point

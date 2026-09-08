@@ -26,7 +26,7 @@ mkdir -p "$pfx/share/unrelated/1" "$pfx/share/babashka/failed"
 printf '\177ELF\0binary\n' > "$pfx/bin/foreign"
 printf '#!/usr/bin/env bash\ncmd=%q\n' \
   "$pfx/share/unrelated/1/bin/tool" > "$pfx/bin/unmarked"
-fake-install "$IN1_ROOT/local" session 3.0 session
+fake-install "$TMPDIR/in-1" session 3.0 session
 
 expected=$(printf 'babashka\t1.0\t%s/share/babashka/1.0\n' "$pfx"
   printf 'babashka\t2.0\t%s/share/babashka/2.0\n' "$pfx"
@@ -69,7 +69,7 @@ is "$(find "$SCRATCH" -type f -exec cksum {} + | sort)" "$before" \
 [[ ! -e $IN1_ROOT/makes && ! -e $IN1_ROOT/log ]] &&
   pass 'Listing does not prepare a root'
 
-session=$(printf 'session\t3.0\t%s/local/share/session/3.0' "$IN1_ROOT")
+session=$(printf 'session\t3.0\t%s/in-1/share/session/3.0' "$TMPDIR")
 for shell in bash zsh fish; do
   if ! command -v "$shell" >/dev/null; then
     pass "$shell unavailable; skipped"

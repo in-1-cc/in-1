@@ -1,114 +1,93 @@
 #!/usr/bin/env bash
 
-# --reset removes makes/, log/, local/ and cache/ from the root and
-# then carries on with whatever else was asked.  Offline: the makes
-# clone comes from the local repo.
-
+# shellcheck disable=SC1091
 source test/init
-
 export IN1_OFFLINE=1
+pfx=$TMPDIR/in-1
 
-seed-root() (
-  mkdir -p "$IN1_ROOT/log" "$IN1_ROOT/local/bin" "$IN1_ROOT/cache"
-  touch "$IN1_ROOT/log/x.log" "$IN1_ROOT/local/bin/x" "$IN1_ROOT/cache/y"
+fake-install() (
+  dir=$pfx/share/$1/$2
+  mkdir -p "$pfx/bin" "$dir/bin"
+  printf '#!/usr/bin/env bash\nexit 0\n' > "$dir/bin/$1"
+  {
+    printf '#!/usr/bin/env bash\n# in-1 wrapper\n'
+    printf 'cmd=%q\n' "$dir/bin/$1"
+    printf 'exec "$cmd" "$@"\n'
+  } > "$pfx/bin/$1-$2"
 )
 
-gone() {  # $1=label
-  local d missing=1
-  for d in makes log local cache; do
-    [[ -e $IN1_ROOT/$d ]] && missing=''
-  done
-  if [[ $missing ]]; then
-    pass "$1: makes/, log/, local/ and cache/ are gone"
-  else
-    fail "$1: makes/, log/, local/ and cache/ are gone"
-  fi
-  if [[ -x $IN1_ROOT/bin/in-1 && -e $IN1_ROOT/share ]]; then
-    pass "$1: the clone itself stays"
-  else
-    fail "$1: the clone itself stays"
-  fi
+seed() {
+  fake-install foo 1
+  fake-install foo 2
+  fake-install in-1 current
+  mkdir -p "$IN1_ROOT/log" "$IN1_ROOT/cache" "$IN1_ROOT/local"
+  mkdir -p "$pfx/share/foreign/1" "$pfx/share/empty"
+  touch "$IN1_ROOT/log/x" "$IN1_ROOT/cache/y" "$IN1_ROOT/local/legacy"
+  touch "$pfx/bin/foreign" "$pfx/share/foreign/1/keep"
 }
 
-# Get a makes clone in place, then seed the other dirs
+check-reset() {
+  if [[ ! -e $pfx/bin/foo-1 && ! -e $pfx/bin/foo-2 && ! -e $pfx/share/foo ]]; then
+    pass "$1: managed versions and wrappers removed"
+  else fail "$1: managed versions and wrappers removed"; fi
+  if [[ -e $pfx/bin/in-1-current && -e $pfx/share/in-1/current ]]; then
+    pass "$1: in-1 installation preserved"
+  else fail "$1: in-1 installation preserved"; fi
+  if [[ -e $pfx/bin/foreign && -e $pfx/share/foreign/1/keep &&
+        -d $pfx/share/empty && -e $IN1_ROOT/local/legacy ]]; then
+    pass "$1: unrelated files and legacy installs preserved"
+  else fail "$1: unrelated files and legacy installs preserved"; fi
+  if [[ ! -e $IN1_ROOT/cache && ! -e $IN1_ROOT/log && ! -e $IN1_ROOT/makes ]]; then
+    pass "$1: state cleared"
+  else fail "$1: state cleared"; fi
+  if [[ -x $IN1_ROOT/bin/in-1 ]]; then pass "$1: source checkout preserved"
+  else fail "$1: source checkout preserved"; fi
+}
+
 bin/in-1 --list >/dev/null
-seed-root
-[[ -d $IN1_ROOT/makes && -e $IN1_ROOT/cache/y ]] ||
-  die "seeding the root failed"
+seed
+out=$(bin/in-1 --reset 2>&1)
+has "$out" "removed managed tools from '$pfx' (kept in-1)" 'Reset summary'
+check-reset reset
 
-out=$(bin/in-1 --reset 2>&1 && echo "status=$?" || echo "status=$?")
-has "$out" "√ reset: removed makes/, log/, local/ and cache/ from '$IN1_ROOT'" \
-  "bare --reset: reports what it removed"
-has "$out" 'status=0' "bare --reset: returns 0"
-gone "bare --reset"
+seed
+is "$(bin/in-1 -q --reset 2>&1)" '' 'Quiet reset prints nothing'
+check-reset quiet
 
-seed-root
-out=$(bin/in-1 -q --reset 2>&1)
-is "$out" '' "--quiet --reset suppresses successful output"
-gone "--quiet --reset"
-
-# --reset resets, then lists (makes is cloned again)
-seed-root
+seed
 out=$(bin/in-1 --reset --list 2>/dev/null)
-has "$out" 'rust' "--reset --list: lists tools"
-if [[ -d $IN1_ROOT/makes && ! -e $IN1_ROOT/cache/y ]]; then
-  pass "--reset --list: fresh makes clone, cache gone"
-else
-  fail "--reset --list: fresh makes clone, cache gone"
-fi
+has "$out" rust 'Reset continues to list'
+[[ -d $IN1_ROOT/makes && ! -e $IN1_ROOT/cache ]] &&
+  pass 'Listing recreates Makes after reset'
 
-# --reset with a tool resets first, then goes on to the install
-seed-root
+seed
 out=$(bin/in-1 --reset no-such-tool 2>&1 || true)
-has "$out" 'reset: removed' "--reset TOOL: resets first"
-has "$out" 'Unknown tool' "--reset TOOL: then continues"
-if [[ ! -e $IN1_ROOT/local/bin/x ]]; then
-  pass "--reset TOOL: seeded install is gone"
-else
-  fail "--reset TOOL: seeded install is gone"
-fi
+has "$out" 'reset: removed' 'Reset precedes installation'
+has "$out" 'Unknown tool' 'Installation runs after reset'
 
-# --reset via --env with no tool prints nothing and succeeds
-seed-root
-out=$(
-  bin/in-1 --env bash --reset 2>/dev/null &&
-    echo "status=$?" || echo "status=$?"
-)
-is "$out" 'status=0' "--env bash --reset: no output, returns 0"
-gone "--env bash --reset"
+seed
+is "$(bin/in-1 --env bash --reset 2>/dev/null)" '' 'Env reset emits no shell code'
+check-reset env
 
-# A root that is not an in-1 clone is refused, untouched
-notclone=$SCRATCH/notclone
-mkdir -p "$notclone/local/bin" "$notclone/cache"
-touch "$notclone/cache/y"
-out=$(
-  IN1_ROOT=$notclone bin/in-1 --reset 2>&1 && echo "status=$?" ||
-    echo "status=$?"
-)
-has "$out" 'not an in-1 clone' "not a clone: refused"
-has "$out" 'status=1' "not a clone: returns 1"
-if [[ -e $notclone/cache/y && -d $notclone/local/bin ]]; then
-  pass "not a clone: nothing removed"
-else
-  fail "not a clone: nothing removed"
-fi
+seed
+notstate=$SCRATCH/notstate
+mkdir -p "$notstate/cache"
+touch "$notstate/cache/keep"
+out=$(IN1_ROOT=$notstate bin/in-1 --reset 2>&1 || true)
+has "$out" 'not an in-1 state directory' 'Unrecognized state rejected'
+[[ -e $notstate/cache/keep && -e $pfx/bin/foo-1 ]] &&
+  pass 'Refusal happens before any tool deletion'
 
-# The stable root of a --local installed in-1 is no clone either, but
-# it is in-1's own dir, so it resets
-stable=$SCRATCH/pfx/share/in-1/local
-mkdir -p "$stable/local/bin" "$stable/cache"
-touch "$stable/cache/y"
-out=$(
-  IN1_ROOT=$stable bin/in-1 --reset 2>&1 && echo "status=$?" ||
-    echo "status=$?"
-)
-has "$out" "reset: removed makes/, log/, local/ and cache/ from '$stable'" \
-  "stable root: resets"
-has "$out" 'status=0' "stable root: returns 0"
-if [[ ! -e $stable/cache/y && ! -e $stable/local ]]; then
-  pass "stable root: local/ and cache/ removed"
-else
-  fail "stable root: local/ and cache/ removed"
-fi
+# --temp ignores inherited persistent state and PREFIX.
+out=$(PREFIX=$SCRATCH/persistent IN1_ROOT=$notstate bin/in-1 --temp --reset 2>&1)
+has "$out" "removed managed tools from '$pfx'" 'Temp reset selects temporary tools'
+[[ -e $notstate/cache/keep ]] && pass 'Temp reset preserves persistent state'
+
+seed
+outside=$SCRATCH/external-cache
+mkdir -p "$outside"
+touch "$outside/keep"
+IN1_CACHE=$outside bin/in-1 -q --reset
+[[ -e $outside/keep ]] && pass 'External download cache preserved'
 
 done-testing

@@ -18,8 +18,8 @@
 # Docs:   https://in-1.cc/home/
 # Source: https://github.com/in-1-cc/in-1
 #
-# This clones in-1 (default /tmp/in-1), installs the requested tools
-# under that clone and sets up PATH, MANPATH, completions and tool env
+# This clones in-1 (default /tmp/in-1/bootstrap), installs the tools
+# in the selected prefix and sets up PATH, MANPATH, completions and tool env
 # vars in your current shell for the duration of the shell session.
 
 # Detect Bash/Zsh by their builtins without reading unset variables.
@@ -27,7 +27,8 @@ type shopt >/dev/null 2>&1 || type setopt >/dev/null 2>&1 && eval '
 _in1_boot() {
   local pin=${IN1_VERSION:-@IN1_VERSION@}
   local tmp=${TMPDIR:-/tmp}
-  local root=${tmp%/}/in-1
+  local base=${tmp%/}/in-1
+  local root=$base/bootstrap
   local repo=${IN1_REPO:-https://github.com/in-1-cc/in-1}
   local shell=bash fresh="" out arg red="" normal=""
 
@@ -53,11 +54,19 @@ _in1_boot() {
     return 1
   }
 
-  # The root is the in-1 clone itself
+  if [ -e "$base/.git" ] || [ -d "$base/in-1" ] ||
+     { [ -e "$base/bin/in-1" ] &&
+       ! grep -Fqx "# in-1 wrapper" "$base/bin/in-1"; }; then
+    printf "%sX%s %s\n" "$red" "$normal" \
+      "Legacy in-1 layout at $base; move it aside and retry" >&2
+    return 1
+  fi
+
+  # Keep the bootstrap clone separate from public command wrappers.
   if [ ! -x "$root/bin/in-1" ]; then
     if [ -d "$root" ] && [ -n "$(ls -A "$root" 2>/dev/null)" ]; then
       printf "%sX%s %s\n" "$red" "$normal" \
-        "$root is not an in-1 clone (old layout?); remove it and retry" >&2
+        "$root is not an in-1 clone; move it aside and retry" >&2
       return 1
     fi
     mkdir -p "$(dirname "$root")" || return 1
@@ -86,7 +95,7 @@ _in1_boot() {
     fi
   fi
 
-  out=$(IN1_ROOT="$root" bash "$root/bin/in-1" \
+  out=$(env -u IN1_ROOT bash "$root/bin/in-1" \
     --env "$shell" "$@") || return 1
   eval "$out"
 }
@@ -109,7 +118,8 @@ function _in1_boot
   test -n "$pin"; or set pin @IN1_VERSION@
   set -l tmp "$TMPDIR"
   test -n "$tmp"; or set tmp /tmp
-  set -l root (string trim -r -c / -- $tmp)/in-1
+  set -l base (string trim -r -c / -- $tmp)/in-1
+  set -l root $base/bootstrap
   set -l repo "$IN1_REPO"
   test -n "$repo"; or set repo https://github.com/in-1-cc/in-1
   set -l fresh ""
@@ -133,10 +143,18 @@ function _in1_boot
     return 1
   end
 
+  if test -e $base/.git; or test -d $base/in-1; or begin
+      test -e $base/bin/in-1; and not grep -Fqx "# in-1 wrapper" $base/bin/in-1
+    end
+    printf "%sX%s %s\n" "$red" "$normal" \
+      "Legacy in-1 layout at $base; move it aside and retry" >&2
+    return 1
+  end
+
   if not test -x $root/bin/in-1
     if test -d $root; and test (count (ls -A $root 2>/dev/null)) -gt 0
       printf "%sX%s %s\n" "$red" "$normal" \
-        "$root is not an in-1 clone (old layout?); remove it and retry" >&2
+        "$root is not an in-1 clone; move it aside and retry" >&2
       return 1
     end
     mkdir -p (dirname $root); or return 1
@@ -162,7 +180,7 @@ function _in1_boot
   end
 
   set -l envfile (mktemp)
-  if env IN1_ROOT=$root bash $root/bin/in-1 --env fish $argv > $envfile
+  if env -u IN1_ROOT bash $root/bin/in-1 --env fish $argv > $envfile
     source $envfile
     rm -f $envfile
   else

@@ -18,7 +18,7 @@ out=$(fish -c '
   echo "TOOLS=$IN1_TOOLS"
 ' 2>/dev/null)
 
-has "$out" "$IN1_ROOT/local/bin/jq" "fish: jq resolves under IN1_ROOT"
+has "$out" "$TMPDIR/in-1/bin/jq" "fish: jq resolves under IN1_ROOT"
 has "$out" 'jq-1.' "fish: jq runs"
 has "$out" 'PATH-IDEMPOTENT' "fish: re-sourcing does not grow PATH"
 has "$out" 'TOOLS=jq' "fish: IN1_TOOLS is set"
@@ -29,7 +29,7 @@ out=$(fish --no-config -c '
   cat ./rc | source - --quiet jq
   command -v jq
 ' 2>&1)
-is "$out" "$IN1_ROOT/local/bin/jq" \
+is "$out" "$TMPDIR/in-1/bin/jq" \
   "fish: --quiet still updates the shell environment"
 
 # The piped form documented for fish
@@ -37,7 +37,7 @@ out=$(fish -c '
   cat ./rc | source - jq >/dev/null 2>&1
   command -v jq
 ' 2>/dev/null)
-has "$out" "$IN1_ROOT/local/bin/jq" "fish: piped source form works"
+has "$out" "$TMPDIR/in-1/bin/jq" "fish: piped source form works"
 
 # Installed mode: .rc provides a working in-1 function
 out=$(fish -c '
@@ -49,7 +49,7 @@ out=$(fish -c '
   command -v jq
 ' 2>/dev/null)
 has "$out" 'function' "fish: .rc defines the in-1 function"
-has "$out" "$IN1_ROOT/local/bin/jq" "fish: in-1 function installs jq"
+has "$out" "$TMPDIR/in-1/bin/jq" "fish: in-1 function installs jq"
 has "$out" 'makes is now at' "fish: in-1 --update jq goes through --env"
 
 # The --rc line sets up the same function
