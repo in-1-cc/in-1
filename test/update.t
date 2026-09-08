@@ -69,8 +69,9 @@ is "$(head-of "$mclone")" "$old_makes" \
   "IN1_OFFLINE=1 leaves makes unchanged"
 
 out=$(bin/in-1 --update 2>&1)
-has "$out" 'in-1 is now at version' "--update: reports the in-1 version"
-has "$out" 'makes is now at' "--update: reports the makes commit"
+is "$out" "√ in-1 is now at version $(git -C "$clone" describe --tags --always)
+√ makes is now at $(git -C "$mclone" rev-parse --short HEAD)" \
+  "--update: reports both versions with success checks"
 is "$(head-of "$clone")" "$(head-of "$origin")" "--update: in-1 up to date"
 is "$(head-of "$mclone")" "$(head-of "$morigin")" "--update: makes up to date"
 out=$(bin/in-1 no-such-tool 2>&1 || true)
@@ -103,6 +104,30 @@ if git -C "$clone" symbolic-ref -q HEAD >/dev/null; then
   fail "IN1_VERSION with --update leaves HEAD detached"
 else
   pass "IN1_VERSION with --update leaves HEAD detached"
+fi
+
+# A persistent install keeps state outside the clone that must update.
+make-in1-repo "$SCRATCH/installed-origin"
+installed=$SCRATCH/prefix/share/in-1/main/cache/in-1-main
+git clone -q "$SCRATCH/installed-origin" "$installed"
+stable=$SCRATCH/prefix/share/in-1/local
+mkdir -p "$stable/local/bin"
+touch "$stable/local/bin/keep"
+commit "$SCRATCH/installed-origin" 'Newer installed in-1'
+out=$(IN1_ROOT=$stable "$installed/bin/in-1" no-such-tool 2>&1 || true)
+has "$out" 'in-1 is 1 commit(s) behind' \
+  "persistent install: checks the executable clone for updates"
+out=$(IN1_ROOT=$stable "$installed/bin/in-1" --update 2>&1)
+has "$out" 'in-1 is now at version' \
+  "persistent install: updates in-1"
+hasnt "$out" 'not a git clone' \
+  "persistent install: does not try to update the state directory"
+is "$(head-of "$installed")" "$(head-of "$SCRATCH/installed-origin")" \
+  "persistent install: executable clone reaches origin"
+if [[ -f $stable/local/bin/keep && -d $stable/makes/.git ]]; then
+  pass "persistent install: retains state and makes under the stable root"
+else
+  fail "persistent install: retains state and makes under the stable root"
 fi
 
 done-testing

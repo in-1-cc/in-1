@@ -136,8 +136,10 @@ the install prefix, like the *PREFIX* environment variable.
   after **in-1 --local in-1** installs a newer version.
 
 **--update**
-  Update the in-1 clone (*IN1_ROOT*) and its makes clone before
+  Update the in-1 clone and the makes clone under *IN1_ROOT* before
   doing anything else.
+  When *IN1_ROOT* is a persistent install's state directory, update
+  the clone containing the running command instead of that directory.
   Alone, that is all it does; with tools or other options it then
   continues with them, so **in-1 --update rust** gets the newest in-1 and
   makes and then installs rust.

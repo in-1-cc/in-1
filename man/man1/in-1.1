@@ -159,8 +159,10 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 .PP
 \fB--update\fP
-  Update the in-1 clone (\fIIN1_ROOT\fP) and its makes clone before
+  Update the in-1 clone and the makes clone under \fIIN1_ROOT\fP before
   doing anything else.
+  When \fIIN1_ROOT\fP is a persistent install's state directory, update
+  the clone containing the running command instead of that directory.
   Alone, that is all it does; with tools or other options it then
   continues with them, so \fBin-1 --update rust\fP gets the newest in-1 and
   makes and then installs rust.

@@ -205,6 +205,14 @@ to-user() (  # $1=mode $2=shell
 die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }
 warn() ( printf 'in-1: %s\n' "$@" >&2 )
 info() ( [[ $quiet ]] || warn "$@" )
+success() (
+  [[ $quiet ]] && return 0
+  green='' normal=''
+  if [[ -t 2 ]]; then
+    green=$'\033[32m'; normal=$'\033[0m'
+  fi
+  printf '%s√%s %s\n' "$green" "$normal" "$*" >&2
+)
 note() (
   [[ $quiet ]] && return 0
   yellow='' normal=''
@@ -351,6 +359,11 @@ set-globals() {
   root=$(tilde-expand "${IN1_ROOT:-${default:-$self_root}}")
   makes=$root/makes
   cache=$(tilde-expand "${IN1_CACHE:-$root/cache}")
+  # Local installs keep their state outside the executable's git clone.
+  in1_root=$root
+  if [[ ! -e $root/.git && -n $default ]]; then
+    in1_root=$self_root
+  fi
 }
 
 # Clone makes if it is missing.  This is plumbing, not a tool the user
@@ -409,27 +422,27 @@ do-update() (
 )
 
 update-in1() (
-  if [[ ! -e $root/.git ]]; then
-    info "'$root' is not a git clone; not updating in-1"
+  if [[ ! -e $in1_root/.git ]]; then
+    info "'$in1_root' is not a git clone; not updating in-1"
     return 0
   fi
-  git-fetch "$root" || die "Failed to fetch in-1 from origin"
+  git-fetch "$in1_root" || die "Failed to fetch in-1 from origin"
   if [[ ${IN1_VERSION-} ]]; then
-    git -C "$root" checkout -q "$IN1_VERSION" ||
+    git -C "$in1_root" checkout -q "$IN1_VERSION" ||
       die "Failed to checkout '$IN1_VERSION'"
   else
     branch=''
-    branch=$(default-branch "$root")
-    git -C "$root" checkout -q "$branch" ||
+    branch=$(default-branch "$in1_root")
+    git -C "$in1_root" checkout -q "$branch" ||
       die "Failed to checkout '$branch'"
-    git -C "$root" pull -q || die "Failed to pull latest in-1"
+    git -C "$in1_root" pull -q || die "Failed to pull latest in-1"
   fi
-  info "in-1 is now at version $(get-version "$root")"
+  success "in-1 is now at version $(get-version "$in1_root")"
 )
 
 update-makes() (
   git -C "$makes" pull -q || die "Failed to pull latest makes"
-  info "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
+  success "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
 )
 
 # Remove everything in-1 put under the root: the makes clone, the
@@ -448,7 +461,7 @@ do-reset() (
 
 check-stale() {
   [[ ${IN1_OFFLINE-} ]] && return 0
-  stale-notice in-1 "$root"
+  stale-notice in-1 "$in1_root"
   update-stale-makes
 }
 

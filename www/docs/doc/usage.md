@@ -154,7 +154,7 @@ It also checks its makes clone and updates that automatically when it
 is behind:
 
 ```text
-in-1: makes is now at 1a2b3c4
+√ makes is now at 1a2b3c4
 ```
 
 Use `--update` to update in-1 as well as makes before carrying on with
@@ -170,6 +170,10 @@ The in-1 clone moves to the latest default branch (or to
 `IN1_VERSION` if set).  The one-liner pins a fresh clone to the
 version it was published with, but leaves a clone that is already on
 a branch alone, so an update sticks.
+
+For a persistent install, `--update` updates the clone containing the
+running command when `IN1_ROOT` is its state directory.
+Makes and session installs stay under `IN1_ROOT`.
 
 Set `IN1_OFFLINE=1` to skip both update checks, including the
 automatic makes update, for instance on a flaky connection.
