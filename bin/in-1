@@ -310,20 +310,41 @@ meta() (  # $1=key -> value ('' if unset)
   done < "$f"
 )
 
-# Alias names declared in share/tools.mk via "<name>-isa := <tool>"
-list-aliases() (
-  f=$self_root/share/tools.mk line='' k=''
+# Emit alias/tool pairs from the command names in each -bin entry.
+alias-pairs() (
+  f=$self_root/share/tools.mk line='' k='' v='' name='' tool=''
   [[ -f $f ]] || return 0
   while IFS= read -r line; do
     line=${line%%#*}
     case $line in
-      *-isa[[:space:]]*:=*|*-isa:=*) ;;
+      *-bin[[:space:]]*:=*|*-bin:=*) ;;
       *) continue;;
     esac
     k=${line%%:=*}
     k=${k//[[:space:]]/}
-    printf '%s\n' "${k%-isa}"
+    tool=${k%-bin}
+    v=${line#*:=}
+    read -r -a names <<< "$v"
+    for name in "${names[@]}"; do
+      [[ $name == "$tool" ]] && continue
+      printf '%s %s\n' "$name" "$tool"
+    done
   done < "$f"
+)
+
+list-aliases() (
+  while read -r name tool; do
+    printf '%s\n' "$name"
+  done < <(alias-pairs)
+)
+
+alias-tool() (  # $1=alias -> tool ('' if unset)
+  while read -r name tool; do
+    if [[ $name == "$1" ]]; then
+      printf '%s' "$tool"
+      return 0
+    fi
+  done < <(alias-pairs)
 )
 
 check-prereqs() (
@@ -603,7 +624,7 @@ parse-tool-args() {
     if [[ -f $makes/$name.mk ]]; then
       tool=$name
     else
-      tool=$(meta "$name-isa")
+      tool=$(alias-tool "$name")
       [[ -n $tool ]] ||
         die "Unknown tool '$name'." \
           "Run \`in-1 --list\` to see available tools."
@@ -623,8 +644,8 @@ parse-tool-args() {
 
 # The primary command shown/versioned for a requested name
 primary-of() (  # $1=name
-  p=''
-  p=$(meta "$1-bin")
+  p='' rest=''
+  read -r p rest <<< "$(meta "$1-bin")"
   [[ -n $p ]] || p=$1
   printf '%s' "$p"
 )
@@ -1188,7 +1209,7 @@ parse-uninstall-args() {
     name=$arg
     [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
       die "Invalid tool name '$name'"
-    tool=$(meta "$name-isa")
+    tool=$(alias-tool "$name")
     req_name+=("$name")
     req_tool+=("${tool:-$name}")
   done

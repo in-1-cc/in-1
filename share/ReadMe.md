@@ -47,15 +47,15 @@ install; `gloat.mk` exports `GLOAT_ROOT` so gloat knows it is set up;
 directly (values are literal, so `*` and friends are never
 expanded).  Keys:
 
-- `<tool>-bin` - the primary command shown on the success line and
-  given a version-specific wrapper (`<cmd>-<version>`).
-  Defaults to the tool name.
+- `<tool>-bin` - command names separated by spaces.
+  The first is shown on the success line and given a version-specific
+  wrapper (`<cmd>-<version>`), defaulting to the tool name.
+  All listed names are aliases for the tool.
+  An alias uses its own name as the displayed and version-wrapped command.
 - `<tool>-also` - literal text shown after `also: ` on the success
   line.
-- `<name>-isa` - makes `<name>` an alias: `in-1 <name>` installs the
-  named tool.
-- `<name>-bin` - the command shown for an alias.
 
 Example: `rust-bin := rustc` makes `in-1 rust` report rustc and write
-`rustc` and `rustc-1.98.0`; `cargo-isa := rust` makes `in-1 cargo`
-install rust.
+`rustc` and `rustc-1.98.0` and lets `in-1 rustc` install rust.
+`rust-bin := rustc cargo` also lets `in-1 cargo` install rust.
+Direct Makes tool names take precedence over aliases.

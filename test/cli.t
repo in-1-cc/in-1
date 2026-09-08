@@ -14,7 +14,7 @@ fi
 
 has "$out" 'cargo' "--list includes the cargo alias"
 has "$out" 'bb' "--list includes the bb alias"
-for alias in clj glj lg; do
+for alias in alr bb cargo clj gfortran glj lg rustc yaml ys ysd; do
   if grep -qx "$alias" <<< "$out"; then
     pass "--list includes the $alias alias"
   else

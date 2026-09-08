@@ -92,6 +92,17 @@ out=$(bin/in-1 -q --uninstall quiet PREFIX="$pfx" 2>&1)
 is "$out" '' "--quiet --uninstall suppresses successful output"
 gone share/quiet "--quiet --uninstall"
 
+# Primary command aliases and extra aliases resolve without a Makes clone.
+for pair in alr:alire gfortran:fortran glj:glojure lg:let-go \
+  rustc:rust cargo:rust clj:clojure yaml:yamlstar ysd:yamlschema; do
+  alias=${pair%%:*}
+  tool=${pair#*:}
+  fake-install "$alias" "$tool" 1.0 "$alias"
+  out=$(run bin/in-1 --uninstall "$alias" PREFIX="$pfx")
+  has "$out" 'status=0' "alias $alias: uninstall succeeds"
+  gone "share/$tool" "alias $alias"
+done
+
 # A direct tool wins over same-named alias metadata.
 out=$(run bin/in-1 --uninstall ys PREFIX="$pfx")
 has "$out" 'Uninstalled ys:' "--uninstall ys: reports the uninstall"

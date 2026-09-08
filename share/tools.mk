@@ -3,41 +3,31 @@
 # Flat make ':=' variables.  Values are literal; in-1 reads them
 # directly, so make never expands '*' and friends.
 #
-#   <tool>-bin   primary command shown and version-wrapped
-#                (default: the tool name)
+#   <tool>-bin   command names separated by spaces; first is primary
+#                (default: the tool name); all are aliases for the tool
 #   <tool>-also  literal note shown after "also: " on the success line
-#   <name>-isa   make `in-1 <name>` install this tool (an alias)
-#   <name>-bin   the command shown for that alias
 
 alire-bin := alr
-alr-isa := alire
 
 babashka-bin := bb
-bb-isa := babashka
 
-cargo-isa := rust
-cargo-bin := cargo
-
-clj-isa := clojure
+clojure-bin := clj
 clojure-also := clj
 
-fortran-bin := fpm
-fortran-also := gfortran
-
-glj-isa := glojure
+fortran-bin := gfortran
+fortran-also := fpm
 
 glojure-bin := glj
 
 let-go-bin := lg
-lg-isa := let-go
 
-rust-bin := rustc
-rust-also := cargo* and rust* commands
+rust-bin := rustc cargo
+rust-also := cargo* rust*
 
-yaml-isa := yamlstar
+uv-also := uvx
+
 yamlstar-bin := yaml
 
 yamlscript-bin := ys
-ys-isa := yamlscript
 
-ysd-isa := yamlschema
+yamlschema-bin := ysd
