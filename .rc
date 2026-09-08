@@ -30,7 +30,8 @@
 # PREFIX/share/in-1/local.  makes, the session installs (local/), logs
 # and the download cache go under it.
 
-test -n "$BASH_VERSION$ZSH_VERSION" && eval '
+# Detect Bash/Zsh by their builtins without reading unset variables.
+type shopt >/dev/null 2>&1 || type setopt >/dev/null 2>&1 && eval '
 if [ -n "${BASH_VERSION-}" ]; then
   _in1_shell=bash
   _in1_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)

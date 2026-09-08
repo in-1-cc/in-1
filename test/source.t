@@ -23,6 +23,16 @@ has "$out" "TMPDIR=$TMPDIR" "TMPDIR does not change in the shell"
 has "$out" 'LANG=C' "LANG does not leak into the shell"
 has "$out" 'TOOLS=jq' "IN1_TOOLS is set"
 
+# Match script use with errexit, nounset, pipefail and process substitution.
+out=$(bash -euo pipefail -c '
+  source <(cat ./rc) -q jq
+  command -v jq
+  source "$IN1_ROOT/.rc"
+  type -t in-1
+' 2>&1)
+is "$out" "$IN1_ROOT/local/bin/jq"$'\nfunction' \
+  "strict Bash script: one-liner installs and .rc defines the function"
+
 # The real binary lives in a versioned share tree, wrapped in bin/
 version=$(
   grep '^JQ-VERSION ?=' "$IN1_MAKES_REPO/jq.mk" | head -1
