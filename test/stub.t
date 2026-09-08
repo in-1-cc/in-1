@@ -32,9 +32,25 @@ fi
 # Sourcing with no args fails but must not kill the shell
 out=$(bash -c 'source ./rc 2>&1; echo "status=$? alive"')
 has "$out" 'status=1 alive' "no args: returns 1, shell survives"
-has "$out" 'No tools specified' "no args: prints an error"
+has "$out" 'X No tools specified' "no args: prints an error"
 has "$out" 'Try: in-1 --help' "no args: points at explicit help"
 hasnt "$out" 'Usage' "no args: does not print usage"
+
+# Bootstrap errors stay visible with quiet mode in every supported shell.
+for shell in bash zsh fish; do
+  command -v "$shell" >/dev/null || continue
+  shell_args=()
+  [[ $shell == fish ]] && shell_args=(--no-config)
+  if out=$("$shell" ${shell_args[@]+"${shell_args[@]}"} -c \
+    'source ./rc -q --uninstall foo' 2>&1); then
+    fail "$shell: bootstrap failure returns nonzero under --quiet"
+  else
+    pass "$shell: bootstrap failure returns nonzero under --quiet"
+  fi
+  is "$out" 'X --uninstall must be run by the in-1 command
+X Try: in-1 --uninstall TOOL...' \
+    "$shell: bootstrap errors use plain X prefixes when redirected"
+done
 
 # Informational options through the one-liner reach the user's
 # stdout (the eval runs a printf), not stderr

@@ -37,7 +37,7 @@ seed-root
   die "seeding the root failed"
 
 out=$(bin/in-1 --reset 2>&1 && echo "status=$?" || echo "status=$?")
-has "$out" "reset: removed makes/, log/, local/ and cache/ from '$IN1_ROOT'" \
+has "$out" "√ reset: removed makes/, log/, local/ and cache/ from '$IN1_ROOT'" \
   "bare --reset: reports what it removed"
 has "$out" 'status=0' "bare --reset: returns 0"
 gone "bare --reset"

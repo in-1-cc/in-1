@@ -137,8 +137,12 @@ set -e _in1_dir
 # No `return` in the fish block: when this file is sourced from inside
 # a function (the in-1 extra does that), a fish `return` would leave
 # that function instead of this file.  bash and zsh returned above.
-test -n "$FISH_VERSION" ||
-  echo "ERROR: in-1/.rc requires bash, zsh or fish" >&2
+test -n "$FISH_VERSION" || eval '
+  test ! -t 2 || printf "\033[31m" >&2
+  printf X >&2
+  test ! -t 2 || printf "\033[0m" >&2
+  printf " in-1/.rc requires bash, zsh or fish\n" >&2
+'
 test -n "$FISH_VERSION"
 
 # vim: ft=sh:

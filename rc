@@ -29,33 +29,40 @@ _in1_boot() {
   local tmp=${TMPDIR:-/tmp}
   local root=${tmp%/}/in-1
   local repo=${IN1_REPO:-https://github.com/in-1-cc/in-1}
-  local shell=bash fresh="" out arg
+  local shell=bash fresh="" out arg red="" normal=""
+
+  if test -t 2; then
+    red=$(printf "\033[31m")
+    normal=$(printf "\033[0m")
+  fi
 
   [ -n "${ZSH_VERSION-}" ] && shell=zsh
 
   for arg in "$@"; do
     if [ "$arg" = --uninstall ]; then
-      echo "in-1: --uninstall must be run by the in-1 command" >&2
-      echo "in-1: Try: in-1 --uninstall TOOL..." >&2
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "--uninstall must be run by the in-1 command" >&2
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "Try: in-1 --uninstall TOOL..." >&2
       return 1
     fi
   done
 
   command -v git >/dev/null 2>&1 || {
-    echo "in-1: git is required" >&2
+    printf "%sX%s %s\n" "$red" "$normal" "git is required" >&2
     return 1
   }
 
   # The root is the in-1 clone itself
   if [ ! -x "$root/bin/in-1" ]; then
     if [ -d "$root" ] && [ -n "$(ls -A "$root" 2>/dev/null)" ]; then
-      echo "in-1: $root is not an in-1 clone (old layout?);" \
-        "remove it and retry" >&2
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "$root is not an in-1 clone (old layout?); remove it and retry" >&2
       return 1
     fi
     mkdir -p "$(dirname "$root")" || return 1
     git clone -q "$repo" "$root" || {
-      echo "in-1: failed to clone $repo" >&2
+      printf "%sX%s %s\n" "$red" "$normal" "failed to clone $repo" >&2
       return 1
     }
     fresh=1
@@ -72,7 +79,8 @@ _in1_boot() {
         >/dev/null 2>&1 ||
         git -C "$root" fetch -q --tags origin 2>/dev/null
       git -C "$root" checkout -q "$pin" || {
-        echo "in-1: failed to checkout in-1 version $pin" >&2
+        printf "%sX%s %s\n" "$red" "$normal" \
+          "failed to checkout in-1 version $pin" >&2
         return 1
       }
     fi
@@ -105,27 +113,35 @@ function _in1_boot
   set -l repo "$IN1_REPO"
   test -n "$repo"; or set repo https://github.com/in-1-cc/in-1
   set -l fresh ""
+  set -l red ""
+  set -l normal ""
+  if test -t 2
+    set red (printf "\033[31m")
+    set normal (printf "\033[0m")
+  end
 
   if contains -- --uninstall $argv
-    echo "in-1: --uninstall must be run by the in-1 command" >&2
-    echo "in-1: Try: in-1 --uninstall TOOL..." >&2
+    printf "%sX%s %s\n" "$red" "$normal" \
+      "--uninstall must be run by the in-1 command" >&2
+    printf "%sX%s %s\n" "$red" "$normal" \
+      "Try: in-1 --uninstall TOOL..." >&2
     return 1
   end
 
   command -q git; or begin
-    echo "in-1: git is required" >&2
+    printf "%sX%s %s\n" "$red" "$normal" "git is required" >&2
     return 1
   end
 
   if not test -x $root/bin/in-1
     if test -d $root; and test (count (ls -A $root 2>/dev/null)) -gt 0
-      echo "in-1: $root is not an in-1 clone (old layout?);" \
-        "remove it and retry" >&2
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "$root is not an in-1 clone (old layout?); remove it and retry" >&2
       return 1
     end
     mkdir -p (dirname $root); or return 1
     git clone -q $repo $root; or begin
-      echo "in-1: failed to clone $repo" >&2
+      printf "%sX%s %s\n" "$red" "$normal" "failed to clone $repo" >&2
       return 1
     end
     set fresh 1
@@ -138,7 +154,8 @@ function _in1_boot
         >/dev/null 2>&1
       or git -C $root fetch -q --tags origin 2>/dev/null
       git -C $root checkout -q $pin; or begin
-        echo "in-1: failed to checkout in-1 version $pin" >&2
+        printf "%sX%s %s\n" "$red" "$normal" \
+          "failed to checkout in-1 version $pin" >&2
         return 1
       end
     end
@@ -160,7 +177,10 @@ functions -e _in1_boot
 return $_in1_status
 '
 
-echo "ERROR: in-1.cc requires bash, zsh or fish" >&2
+test ! -t 2 || printf '\033[31m' >&2
+printf X >&2
+test ! -t 2 || printf '\033[0m' >&2
+printf ' in-1.cc requires bash, zsh or fish\n' >&2
 false
 
 # vim: ft=sh:

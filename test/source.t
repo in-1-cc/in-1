@@ -78,7 +78,7 @@ has "$out" "installed to $IN1_ROOT/local/bin/jq" \
 has "$out" 's)' "progress: reports elapsed time"
 
 # A direct command starts with one concise shell setup note
-note="* Run 'source <(in-1 --rc)' or add it to ~/.bashrc"
+note="⚠︎ Run 'source <(in-1 --rc)' or add it to ~/.bashrc"
 out=$(bin/in-1 jq 2>&1)
 is "$(head -1 <<< "$out")" "$note" \
   "direct command: shell setup note comes first"
@@ -119,7 +119,7 @@ out=$(
 )
 has "$out" 'X jq v9.9.9 NOT installed' \
   "quiet failure: result remains visible"
-has "$out" 'Full log:' "quiet failure: log path remains visible"
+has "$out" 'X Full log:' "quiet failure: log path remains visible"
 hasnt "$out" '… jq v9.9.9 installing' \
   "quiet failure: progress remains hidden"
 

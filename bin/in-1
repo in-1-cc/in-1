@@ -202,16 +202,26 @@ to-user() (  # $1=mode $2=shell
   fi
 )
 
-die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }
-warn() ( printf 'in-1: %s\n' "$@" >&2 )
-info() ( [[ $quiet ]] || warn "$@" )
+error() {
+  local red='' normal=''
+  if [[ -t 2 ]]; then
+    red=$'\033[31m'; normal=$'\033[0m'
+  fi
+  local message
+  for message; do
+    printf '%sX%s %s\n' "$red" "$normal" "$message" >&2
+  done
+}
+die() { error "$@"; exit 1; }
 success() (
   [[ $quiet ]] && return 0
   green='' normal=''
   if [[ -t 2 ]]; then
     green=$'\033[32m'; normal=$'\033[0m'
   fi
-  printf '%s√%s %s\n' "$green" "$normal" "$*" >&2
+  for message; do
+    printf '%s√%s %s\n' "$green" "$normal" "$message" >&2
+  done
 )
 note() (
   [[ $quiet ]] && return 0
@@ -219,7 +229,9 @@ note() (
   if [[ -t 2 ]]; then
     yellow=$'\033[33m'; normal=$'\033[0m'
   fi
-  printf '%s*%s %s\n' "$yellow" "$normal" "$*" >&2
+  for message; do
+    printf '%s⚠︎%s %s\n' "$yellow" "$normal" "$message" >&2
+  done
 )
 
 # Page stdin when writing to a terminal.  Honor PAGER; use
@@ -400,7 +412,7 @@ ensure-makes() (
       die "Failed to clone the makes repo"
   elif ! git clone -q "$repo" "$makes" &> "$log"; then
     tail -20 "$log" >&2
-    warn "Full log: $log"
+    error "Full log: $log"
     die "Failed to clone the makes repo"
   fi
 )
@@ -444,7 +456,7 @@ do-update() (
 
 update-in1() (
   if [[ ! -e $in1_root/.git ]]; then
-    info "'$in1_root' is not a git clone; not updating in-1"
+    note "'$in1_root' is not a git clone; not updating in-1"
     return 0
   fi
   git-fetch "$in1_root" || die "Failed to fetch in-1 from origin"
@@ -477,7 +489,7 @@ do-reset() (
     [[ -e $root/$dir ]] || continue
     rm -rf "${root:?}/$dir" || die "Failed to remove '$root/$dir'"
   done
-  info "reset: removed makes/, log/, local/ and cache/ from '$root'"
+  success "reset: removed makes/, log/, local/ and cache/ from '$root'"
 )
 
 check-stale() {
@@ -507,7 +519,7 @@ stale-notice() {  # $1=label $2=dir
   n=$(git -C "$2" rev-list --count \
     "HEAD..origin/$(default-branch "$2")" 2>/dev/null) || return 0
   [[ $n -gt 0 ]] || return 0
-  info "$1 is $n commit(s) behind; run 'in-1 --update' to update"
+  note "$1 is $n commit(s) behind; run 'in-1 --update' to update"
 }
 
 # Run a command quietly with a progress line:
@@ -551,7 +563,7 @@ progress-run() (  # $1=label $2=logfile $3=disp $4=note; rest=command
     "$(elapsed "$start" "$end")"
   if [[ $rc -ne 0 ]]; then
     tail -20 "$log" >&2
-    warn "Full log: $log"
+    error "Full log: $log"
   fi
   return $rc
 )
@@ -833,7 +845,7 @@ write-one-wrapper() {  # $1=real-cmd $2=wrapper-path $3=path-prefix
   local i
   if [[ -e $2 ]] &&
      ! grep -q '^# in-1 wrapper$' "$2" 2>/dev/null; then
-    info "Skipping existing non-wrapper file '$2'"
+    note "Skipping existing non-wrapper file '$2'"
     return 0
   fi
   {
@@ -1126,14 +1138,14 @@ local-in1-hint() (  # $1=prefix $2=shell ('' unless via --env)
         rc_line="$cmd --rc | source"
         ;;
     esac
-    printf '\n%s\n%s\n\n  %s\n' \
-      "For the in-1 shell function, man page and tab completion in" \
+    note "For the in-1 shell function, man page and tab completion in"
+    printf '%s\n\n  %s\n' \
       "every new $shell_name shell, add this line to $rc_file:" \
       "$rc_line" >&2
     return 0
   fi
-  printf '\n%s\n%s\n\n  %s\n  %s\n' \
-    "For the in-1 shell function, man page and tab completion in" \
+  note "For the in-1 shell function, man page and tab completion in"
+  printf '%s\n\n  %s\n  %s\n' \
     "every new shell, add the appropriate line to its rc file:" \
     "source <($cmd --rc)     # bash / zsh" \
     "$cmd --rc | source      # fish" >&2
@@ -1168,7 +1180,7 @@ local-prefix() (
   prefix=$(abs-path "$prefix")
   if [[ $prefix == */bin ]]; then
     prefix=${prefix%/bin}
-    info "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
+    note "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
   fi
   printf '%s' "$prefix"
 )
@@ -1183,11 +1195,11 @@ do-local() (  # $1=shell ('' unless via --env); rest=tool args
   install-all "$prefix"
 
   if [[ ${#req_name[@]} -ne 1 || ${req_name[0]} != in-1 ]]; then
-    info "Installed ${req_name[*]}:" \
+    success "Installed ${req_name[*]}:" \
       "$wrap_count command wrappers in '$prefix/bin'"
     case ":$PATH:" in
       *":$prefix/bin:"*) ;;
-      *) info "Note: '$prefix/bin' is not in your PATH";;
+      *) note "'$prefix/bin' is not in your PATH";;
     esac
   fi
   local-in1-hint "$prefix" "$shell"
@@ -1255,11 +1267,11 @@ do-uninstall() (
       rm -rf "${prefix:?}/share/${tool:?}" ||
         die "Failed to remove '$sdir'"
     elif [[ $n -eq 0 ]]; then
-      warn "'$name' is not installed under '$prefix'"
+      error "'$name' is not installed under '$prefix'"
       missing=1
       continue
     fi
-    info "Uninstalled $name:" \
+    success "Uninstalled $name:" \
       "removed $n command wrappers from '$prefix/bin' and '$sdir'"
   done
   [[ -z $missing ]]

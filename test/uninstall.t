@@ -65,7 +65,7 @@ printf '\177ELF\0not-a-wrapper\n' > "$pfx/bin/binary"
 chmod +x "$pfx/bin/binary"
 
 out=$(run bin/in-1 --uninstall foo PREFIX="$pfx")
-has "$out" 'Uninstalled foo:' "--uninstall foo: reports the uninstall"
+has "$out" '√ Uninstalled foo:' "--uninstall foo: reports the uninstall"
 has "$out" "removed 3 command wrappers from '$pfx/bin'" \
   "--uninstall foo: counts the wrappers"
 has "$out" 'status=0' "--uninstall foo: returns 0"
@@ -113,7 +113,7 @@ done
 
 # Not installed: says so, returns 1, and the rest still happens
 out=$(run bin/in-1 --uninstall nope foo PREFIX="$pfx")
-has "$out" "'nope' is not installed under '$pfx'" \
+has "$out" "X 'nope' is not installed under '$pfx'" \
   "--uninstall nope: not installed"
 has "$out" "'foo' is not installed under '$pfx'" \
   "--uninstall nope foo: both named"

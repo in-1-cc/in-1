@@ -36,7 +36,7 @@ hasnt "$out" 'behind' "up to date: no notice"
 commit "$origin" 'Newer in-1'
 commit "$morigin" 'Newer makes'
 out=$(bin/in-1 no-such-tool 2>&1 || true)
-has "$out" "in-1 is 1 commit(s) behind; run 'in-1 --update' to update" \
+has "$out" "⚠︎ in-1 is 1 commit(s) behind; run 'in-1 --update' to update" \
   "behind: in-1 notice"
 has "$out" 'makes is now at' "behind: makes updates automatically"
 is "$(head-of "$mclone")" "$(head-of "$morigin")" \
