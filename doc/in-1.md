@@ -15,7 +15,11 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--uninstall** *TOOL*... [*PREFIX*=*DIR*]
 
-**in-1** **--list** | **--version** | **--help**
+**in-1** **--show** [*PATTERN*] [*PREFIX*=*DIR*]
+
+**in-1** **--list** [*PATTERN*]
+
+**in-1** **--version** | **--help**
 
 **in-1** **--env** *SHELL* *TOOL*...
 
@@ -86,7 +90,7 @@ the install prefix, like the *PREFIX* environment variable.
   Suppress notes, progress and status output from successful
   operations.
   Failure diagnostics remain visible, and explicit output options such
-  as **--list**, **--version** and **--help** still print their output.
+  as **--list**, **--show**, **--version** and **--help** still print output.
   Quiet takes precedence over *IN1_VERBOSE*.
 
 **--local**
@@ -113,11 +117,32 @@ the install prefix, like the *PREFIX* environment variable.
   **in-1 --uninstall in-1** removes the command itself.
   **--reset** removes all session installs at once.
 
-**--list**
+**--list** [*PATTERN*]
   List all available tool names and command aliases.
   Aliases appear as **bb (babashka)**; direct tool names are unannotated.
   Tab completion displays alias targets when there are multiple matches,
   but inserts only the command name.
+  The optional pattern filters displayed lines using case-sensitive
+  **grep -E** syntax, including alias labels.
+  Omit it to list everything; no matches succeed with no output.
+  Invalid patterns fail.
+  Use **--** before a pattern starting with a dash.
+
+**--show** [*PATTERN*]
+  Show installed tools as tab-separated rows: canonical tool name,
+  version, and absolute installation directory, sorted by name and version.
+  Only existing version directories referenced by an in-1 wrapper count;
+  unrelated directories and unreferenced leftovers are omitted.
+  The optional pattern filters whole rows using case-sensitive **grep -E**
+  syntax, so names, versions and paths can all be matched.
+  Omit it to show everything, or use **--** before a pattern starting with
+  a dash.
+  No matches produce no output and succeed; an invalid pattern fails.
+  Prefix selection follows **--uninstall**: the shell function uses the
+  session prefix, and direct invocation uses the persistent default.
+  *PREFIX*=*DIR* overrides the environment and either default.
+  This operation does not install or update anything, ignores *IN1_UPDATE*,
+  and rejects **--update** and **--reset**.
 
 **--env** *SHELL*
   Install the tools, then print environment setup code for *SHELL*

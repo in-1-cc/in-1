@@ -64,16 +64,18 @@ eval "$(command in-1 --complete "$_in1_shell" 2>/dev/null)"
 
 # Wrap the in-1 command in a function so that session installs can
 # modify the current shell environment.  The first argument that is
-# not --update or --reset decides: a tool name means a session
+# not --update, --reset or a quiet flag decides: a tool name means a session
 # install.
 in-1() {
   local first="" in1_status in1_shell=bash
   [ -n "${ZSH_VERSION-}" ] && in1_shell=zsh
   for first in "$@"; do
-    case $first in --update|--reset) continue;; esac
+    case $first in --update|--reset|-q|--quiet) continue;; esac
     break
   done
   case $first in
+    --show)
+      PREFIX=${PREFIX:-${IN1_ROOT}/local} command in-1 "$@";;
     --uninstall) command in-1 --env "$in1_shell" "$@";;
     ""|-*) command in-1 "$@";;
     *) eval "$(command in-1 --env "$in1_shell" "$@")";;
@@ -111,11 +113,17 @@ command in-1 --complete fish 2>/dev/null | source
 function in-1
   set -l first ""
   for first in $argv
-    if not contains -- "$first" --update --reset
+    if not contains -- "$first" --update --reset -q --quiet
       break
     end
   end
-  if test "$first" = --uninstall
+  if test "$first" = --show
+    set -l prefix "$IN1_ROOT/local"
+    if set -q PREFIX; and test -n "$PREFIX"
+      set prefix "$PREFIX"
+    end
+    env PREFIX="$prefix" in-1 $argv
+  else if test "$first" = --uninstall
     command in-1 --env fish $argv
   else if test -z "$first"; or string match -q -- "-*" "$first"
     command in-1 $argv

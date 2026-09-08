@@ -129,6 +129,39 @@ else
   pass "fish not available; check skipped"
 fi
 
+all=$(bin/in-1 --list)
+is "$(bin/in-1 --list '')" "$all" '--list empty pattern lists everything'
+is "$(bin/in-1 --list '^(rust|node)$')" $'node\nrust' \
+  '--list supports extended regex alternation'
+is "$(bin/in-1 --list '^bb [(]babashka[)]$')" 'bb (babashka)' \
+  '--list matches the displayed alias label'
+is "$(bin/in-1 --list '^RUST$')" '' '--list matching is case sensitive'
+is "$(bin/in-1 --list -- -missing)" '' '--list allows leading dash patterns'
+is "$(bin/in-1 -q --list '^rust$')" rust '--list quiet retains matches'
+status=0
+out=$(bin/in-1 --list '[' 2>&1) || status=$?
+is "$status" 1 '--list invalid regex fails'
+has "$out" 'X Invalid --list pattern' '--list reports invalid regex'
+status=0
+out=$(bin/in-1 --list rust node 2>&1) || status=$?
+is "$status" 1 '--list rejects excess patterns'
+has "$out" 'at most one pattern' '--list explains excess arguments'
+status=0
+out=$(bin/in-1 --show --list 2>&1) || status=$?
+is "$status" 1 '--show and --list cannot be combined'
+for shell in bash zsh fish; do
+  command -v "$shell" >/dev/null || continue
+  code=$(bin/in-1 --env "$shell" --list '^rust$')
+  if [[ $shell == fish ]]; then
+    out=$(fish --no-config -c "$code")
+  else
+    out=$("$shell" -c "$code")
+  fi
+  is "$out" rust "$shell: filtered --list is sourceable"
+  is "$(bin/in-1 --env "$shell" --list '^no-such-tool$')" '' \
+    "$shell: empty --list emits no shell code"
+done
+
 out=$(bin/in-1 --complete elvish 2>&1 || true)
 has "$out" "Unsupported shell 'elvish'" "--complete rejects unknown shells"
 
