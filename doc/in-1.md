@@ -115,6 +115,9 @@ the install prefix, like the *PREFIX* environment variable.
 
 **--list**
   List all available tool names and command aliases.
+  Aliases appear as **bb (babashka)**; direct tool names are unannotated.
+  Tab completion displays alias targets when there are multiple matches,
+  but inserts only the command name.
 
 **--env** *SHELL*
   Install the tools, then print environment setup code for *SHELL*

@@ -13,9 +13,9 @@ else
 fi
 
 has "$out" 'cargo' "--list includes the cargo alias"
-has "$out" 'bb' "--list includes the bb alias"
+has "$out" 'bb (babashka)' "--list labels the bb alias with its tool"
 for alias in alr bb cargo clj gfortran glj lg rustc yaml ys ysd; do
-  if grep -qx "$alias" <<< "$out"; then
+  if grep -qE "^$alias( \([^)]+\))?$" <<< "$out"; then
     pass "--list includes the $alias alias"
   else
     fail "--list includes the $alias alias"

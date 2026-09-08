@@ -59,3 +59,6 @@ Example: `rust-bin := rustc` makes `in-1 rust` report rustc and write
 `rustc` and `rustc-1.98.0` and lets `in-1 rustc` install rust.
 `rust-bin := rustc cargo` also lets `in-1 cargo` install rust.
 Direct Makes tool names take precedence over aliases.
+`--list` displays aliases as `name (tool)`.
+Completion uses these labels only when displaying multiple matches;
+the inserted value is always the command name.

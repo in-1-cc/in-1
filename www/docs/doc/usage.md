@@ -63,6 +63,9 @@ source <(curl -sL in-1.cc) bb      # installs babashka
 ```
 
 `in-1 --list` shows the available aliases along with the tools.
+Aliases are shown as `bb (babashka)`; direct tool names are unannotated.
+Tab completion shows alias targets when there are multiple matches,
+but inserts only the command name.
 
 ## Installed mode
 

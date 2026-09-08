@@ -344,12 +344,6 @@ alias-pairs() (
   done < "$f"
 )
 
-list-aliases() (
-  while read -r name tool; do
-    printf '%s\n' "$name"
-  done < <(alias-pairs)
-)
-
 alias-tool() (  # $1=alias -> tool ('' if unset)
   while read -r name tool; do
     if [[ $name == "$1" ]]; then
@@ -604,7 +598,10 @@ list-tools() (
       case $filter in *" $name "*) continue;; esac
       printf '%s\n' "$name"
     done
-    list-aliases
+    while read -r name tool; do
+      [[ -f $makes/$name.mk ]] && continue
+      printf '%s (%s)\n' "$name" "$tool"
+    done < <(alias-pairs)
   } | sort -u
 )
 
@@ -1285,12 +1282,27 @@ _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
   local opts='--env --local --list --complete --rc --uninstall
     -q --quiet --update --reset --version --help'
-  local tools
-  tools=$(command in-1 --list 2>/dev/null || true)
+  local entry name word
+  local -a labels=()
   COMPREPLY=()
-  while IFS= read -r word; do
+  for word in $opts; do
+    [[ $word == "$cur"* ]] || continue
     COMPREPLY+=("$word")
-  done < <(compgen -W "$opts $tools" -- "$cur")
+    labels+=("$word")
+  done
+  while IFS= read -r entry; do
+    name=${entry%% *}
+    [[ $name == "$cur"* ]] || continue
+    COMPREPLY+=("$name")
+    labels+=("$entry")
+  done < <(command in-1 --list 2>/dev/null)
+  # Readline has no separate display labels. Print them only for a
+  # listing request; insertion and menu completion use the bare names.
+  if [[ ${COMP_TYPE:-0} -eq 63 && ${#COMPREPLY[@]} -gt 1 ]]; then
+    printf '\n' >&2
+    printf '  %s\n' "${labels[@]}" >&2
+    COMPREPLY=()
+  fi
 }
 complete -F _in_1_complete in-1
 ...
@@ -1298,11 +1310,26 @@ complete -F _in_1_complete in-1
     zsh)
       cat <<'...'
 _in_1_complete() {
-  local -a opts tools
+  local -a opts names labels
+  local entry name
   opts=(--env --local --list --complete --rc --uninstall
     -q --quiet --update --reset --version --help)
-  tools=(${(f)"$(command in-1 --list 2>/dev/null)"})
-  _describe 'in-1' opts -- tools
+  for name in "${opts[@]}"; do
+    [[ $name == "$PREFIX"* ]] || continue
+    names+=("$name")
+    labels+=("$name")
+  done
+  for entry in "${(@f)$(command in-1 --list 2>/dev/null)}"; do
+    name=${entry%% *}
+    [[ -n $name && $name == "$PREFIX"* ]] || continue
+    names+=("$name")
+    labels+=("$entry")
+  done
+  if (( ${#names} > 1 )); then
+    compadd -d labels -a names
+  else
+    compadd -a names
+  fi
 }
 if (( $+functions[compdef] )); then
   compdef _in_1_complete in-1
@@ -1311,8 +1338,28 @@ fi
       ;;
     fish)
       cat <<'...'
+function _in_1_candidates
+  set -l cur (commandline -ct)
+  set -l names
+  set -l labels
+  for entry in (command in-1 --list 2>/dev/null)
+    set -l parts (string split -m 1 ' ' -- "$entry")
+    set -l name $parts[1]
+    string match -q -- "$cur*" "$name"; or continue
+    set -a names "$name"
+    set -a labels "$entry"
+  end
+  for i in (seq (count $names))
+    if test (count $names) -gt 1; and string match -q '* (*)' "$labels[$i]"
+      set -l tool (string replace -r '^.*\(([^)]+)\)$' '$1' "$labels[$i]")
+      printf '%s\t%s\n' "$names[$i]" "$tool"
+    else
+      printf '%s\n' "$names[$i]"
+    end
+  end
+end
 complete -c in-1 -f
-complete -c in-1 -a '(command in-1 --list 2>/dev/null)'
+complete -c in-1 -a '(_in_1_candidates)'
 complete -c in-1 -l env -d 'Print env setup code for a shell'
 complete -c in-1 -l local -d 'Install tools under PREFIX'
 complete -c in-1 -l uninstall -d 'Remove tools from their install prefix'
