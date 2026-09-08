@@ -146,10 +146,11 @@ installs it for keeps.  Then 'source <(in-1 --rc)' (bash, zsh) or
 shell the same.  'source <(curl -sL in-1.cc) --local in-1' does both
 the install and the setup of the current shell in one go.
 
-An install checks whether in-1 or makes is behind its origin and
-says so; nothing updates unless you pass --update.  --reset starts over: it
-removes everything in-1 put under IN1_ROOT (the makes clone, all
-session installs, logs and downloads) before doing anything else.
+An install checks whether in-1 is behind its origin and says so.
+It automatically updates makes when its clone is behind.  --update
+also updates in-1.  --reset starts over: it removes everything in-1
+put under IN1_ROOT (the makes clone, all session installs, logs and
+downloads) before doing anything else.
 
 Environment variables:
   IN1_ROOT        The in-1 root; holds makes/, local/, log/ and
@@ -165,7 +166,7 @@ Environment variables:
   IN1_MAKES_REPO  makes repo URL to clone
   IN1_VERSION     in-1 version (git ref) to use
   IN1_UPDATE      Set to 1 for the same effect as --update
-  IN1_OFFLINE     Set to 1 to skip the is-it-behind check
+  IN1_OFFLINE     Set to 1 to skip update checks
   IN1_VERBOSE     Set to 1 to stream full install output instead of
                   the quiet progress lines
 
@@ -357,9 +358,10 @@ ensure-makes() (
 )
 
 # Everything an install needs in place: prereqs, globals, a reset if
-# asked (--reset), the makes clone; then either update in-1 and makes
-# or just say whether they are behind.  Runs before tool args are
-# parsed so an update can bring in a newly added tool.
+# asked (--reset), the makes clone; then update both repositories when
+# asked, or check in-1 and automatically update makes when needed.
+# Runs before tool args are parsed so an update can bring in a newly
+# added tool.
 prepare-root() {
   check-prereqs
   set-globals
@@ -433,7 +435,19 @@ do-reset() (
 check-stale() {
   [[ ${IN1_OFFLINE-} ]] && return 0
   stale-notice in-1 "$root"
-  stale-notice makes "$makes"
+  update-stale-makes
+}
+
+# Update makes when its default remote branch is ahead.  A failed fetch
+# leaves the existing clone usable, just as the stale notice does.
+update-stale-makes() {
+  local n
+  [[ -e $makes/.git ]] || return 0
+  git-fetch "$makes" || return 0
+  n=$(git -C "$makes" rev-list --count \
+    "HEAD..origin/$(default-branch "$makes")" 2>/dev/null) || return 0
+  [[ $n -gt 0 ]] || return 0
+  update-makes
 }
 
 # One line if the clone in $2 is behind its origin; silent otherwise

@@ -45,10 +45,11 @@ For a session the prefix is *$IN1_ROOT/local*, where *IN1_ROOT* is
 the in-1 clone itself (*/tmp/in-1* for the one-liner); for **--local**
 it is *PREFIX* (default *~/.local*).
 
-Before an install, in-1 checks whether its own clone or its makes
-clone is behind its origin and prints one line per repo if so.
-Nothing is updated unless you ask with **--update**; set *IN1_OFFLINE* to
-skip the check.
+Before an install, in-1 checks whether its own clone is behind its
+origin and prints a notice if so.
+It automatically updates its makes clone when that clone is behind.
+Use **--update** to update in-1 too, or set *IN1_OFFLINE* to skip both
+update checks.
 **--reset** starts over: it removes everything in-1 put under *IN1_ROOT*
 before doing anything else.
 
@@ -192,7 +193,8 @@ the install prefix, like the *PREFIX* environment variable.
   Set to 1 for the same effect as **--update**.
 
 **IN1_OFFLINE**
-  Set to 1 to skip the is-it-behind check before installs.
+  Set to 1 to skip the update checks before installs, including the
+  automatic makes update.
 
 **IN1_VERBOSE**
   Set to 1 to stream the full install output instead of the quiet

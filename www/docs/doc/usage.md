@@ -91,7 +91,7 @@ lives in, or for a `--local` installed in-1 to the stable
 ```bash
 in-1 rust node            # session install, same as the one-liner
 in-1 --list               # all available tools
-in-1 --update             # update in-1 and makes
+in-1 --update             # update in-1
 man in-1
 ```
 
@@ -139,15 +139,17 @@ Aliases work here too (`in-1 --uninstall bb` removes babashka), and
 
 ## Updating
 
-Before an install, in-1 checks whether its own clone or its makes
-clone is behind its origin, and says so:
+Before an install, in-1 checks whether its own clone is behind its
+origin, and says so.
+It also checks its makes clone and updates that automatically when it
+is behind:
 
 ```text
-in-1: makes is 3 commit(s) behind; run 'in-1 --update' to update
+in-1: makes is now at 1a2b3c4
 ```
 
-Nothing is updated unless you ask.  `--update` updates both clones
-first and then carries on with whatever else you asked for:
+Use `--update` to update in-1 as well as makes before carrying on with
+whatever else you asked for:
 
 ```bash
 in-1 --update                             # just update
@@ -160,8 +162,8 @@ The in-1 clone moves to the latest default branch (or to
 version it was published with, but leaves a clone that is already on
 a branch alone, so an update sticks.
 
-Set `IN1_OFFLINE=1` to skip the check, for instance on a flaky
-connection.
+Set `IN1_OFFLINE=1` to skip both update checks, including the
+automatic makes update, for instance on a flaky connection.
 
 ## Resetting
 
@@ -248,7 +250,8 @@ in-1 --env fish rust | source      # fish
 :   Set to `1` for the same effect as `--update`.
 
 `IN1_OFFLINE`
-:   Set to `1` to skip the is-it-behind check before installs.
+:   Set to `1` to skip update checks before installs, including the
+    automatic makes update.
 
 `IN1_VERBOSE`
 :   Set to `1` to stream the full install output instead of the

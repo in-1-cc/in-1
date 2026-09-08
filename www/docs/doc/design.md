@@ -100,10 +100,11 @@ downloads across reboots.
 `in-1 --reset` removes all four directories and leaves just the clone,
 so starting over never needs an `rm -rf`.
 
-Before an install, in-1 fetches both clones and reports if either is
-behind its origin; it never updates on its own.  The one-liner pins a
-fresh clone to its published version but leaves a clone that is
-already on a branch where it is, so after `--update` you stay on the latest.
+Before an install, in-1 fetches both clones, reports if its own clone
+is behind its origin, and automatically updates makes when needed.
+The one-liner pins a fresh clone to its published version but leaves a
+clone that is already on a branch where it is, so after `--update` you
+stay on the latest.
 
 ## Metadata
 

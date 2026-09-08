@@ -57,10 +57,11 @@ the in-1 clone itself (\fI/tmp/in-1\fP for the one-liner); for \fB--local\fP
 it is \fIPREFIX\fP (default \fI~/.local\fP).
 
 .PP
-Before an install, in-1 checks whether its own clone or its makes
-clone is behind its origin and prints one line per repo if so.
-Nothing is updated unless you ask with \fB--update\fP; set \fIIN1_OFFLINE\fP to
-skip the check.
+Before an install, in-1 checks whether its own clone is behind its
+origin and prints a notice if so.
+It automatically updates its makes clone when that clone is behind.
+Use \fB--update\fP to update in-1 too, or set \fIIN1_OFFLINE\fP to skip both
+update checks.
 \fB--reset\fP starts over: it removes everything in-1 put under \fIIN1_ROOT\fP
 before doing anything else.
 
@@ -224,7 +225,8 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 .PP
 \fBIN1_OFFLINE\fP
-  Set to 1 to skip the is-it-behind check before installs.
+  Set to 1 to skip the update checks before installs, including the
+  automatic makes update.
 
 .PP
 \fBIN1_VERBOSE\fP

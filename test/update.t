@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 
-# The is-it-behind notice and --update/--update, against local clones so no
-# network is needed.  IN1_ROOT is a clone of a clone of this working
-# copy; makes likewise.  The working copy's bin/in-1 drives it.
+# The in-1 is-it-behind notice, automatic makes updates and --update,
+# against local clones so no network is needed.  IN1_ROOT is a clone
+# of a clone of this working copy; makes likewise.  The working copy's
+# bin/in-1 drives it.
 
 source test/init
 
@@ -37,15 +38,16 @@ commit "$morigin" 'Newer makes'
 out=$(bin/in-1 no-such-tool 2>&1 || true)
 has "$out" "in-1 is 1 commit(s) behind; run 'in-1 --update' to update" \
   "behind: in-1 notice"
-has "$out" "makes is 1 commit(s) behind; run 'in-1 --update' to update" \
-  "behind: makes notice"
+has "$out" 'makes is now at' "behind: makes updates automatically"
+is "$(head-of "$mclone")" "$(head-of "$morigin")" \
+  "behind: makes is up to date"
 has "$out" 'Unknown tool' "behind: install still proceeds"
 
 out=$(bin/in-1 2>&1 || true)
 has "$out" "in-1 is 1 commit(s) behind" \
   "bare command: prints the in-1 update notice"
-has "$out" "makes is 1 commit(s) behind" \
-  "bare command: prints the makes update notice"
+hasnt "$out" 'makes is now at' \
+  "bare command: does not update current makes"
 hasnt "$out" 'Usage:' \
   "bare command: update notices suppress help"
 has "$out" 'No tools specified' \
@@ -58,6 +60,13 @@ hasnt "$out" 'behind' "--list does not check"
 
 out=$(IN1_OFFLINE=1 bin/in-1 no-such-tool 2>&1 || true)
 hasnt "$out" 'behind' "IN1_OFFLINE=1 skips the check"
+
+commit "$morigin" 'Newer makes while offline'
+old_makes=$(head-of "$mclone")
+out=$(IN1_OFFLINE=1 bin/in-1 no-such-tool 2>&1 || true)
+hasnt "$out" 'makes is now at' "IN1_OFFLINE=1 skips the makes update"
+is "$(head-of "$mclone")" "$old_makes" \
+  "IN1_OFFLINE=1 leaves makes unchanged"
 
 out=$(bin/in-1 --update 2>&1)
 has "$out" 'in-1 is now at version' "--update: reports the in-1 version"

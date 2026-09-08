@@ -55,7 +55,7 @@ this shell:
 ```bash
 in-1 rust node    # install tools into this shell session
 in-1 --list       # see all available tools
-in-1 --update     # update in-1 and makes
+in-1 --update     # update in-1
 in-1 --help       # or: man in-1
 in-1 <TAB><TAB>   # tab completion
 ```
@@ -152,12 +152,12 @@ create.
 ## Update
 
 ```bash
-in-1 --update         # update in-1 and makes
+in-1 --update         # update in-1
 in-1 --update node    # update, then install node
 ```
 
-in-1 tells you when either clone is behind, but never updates on its
-own.
+in-1 tells you when its own clone is behind.
+It updates makes automatically before installs.
 
 ## Uninstall
 
