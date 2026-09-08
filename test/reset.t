@@ -42,6 +42,11 @@ has "$out" "reset: removed makes/, log/, local/ and cache/ from '$IN1_ROOT'" \
 has "$out" 'status=0' "bare --reset: returns 0"
 gone "bare --reset"
 
+seed-root
+out=$(bin/in-1 -q --reset 2>&1)
+is "$out" '' "--quiet --reset suppresses successful output"
+gone "--quiet --reset"
+
 # --reset resets, then lists (makes is cloned again)
 seed-root
 out=$(bin/in-1 --reset --list 2>/dev/null)

@@ -22,6 +22,12 @@ From fish:
 curl -sL in-1.cc | source - rust node
 ```
 
+For silent use in a script:
+
+```bash
+source <(curl -sL in-1.cc) -q rust node
+```
+
 
 ## Description
 

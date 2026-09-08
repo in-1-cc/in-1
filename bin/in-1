@@ -31,6 +31,9 @@ update=''
 # root first
 reset=''
 
+# Set by -q or --quiet; suppress output from successful operations
+quiet=''
+
 main() {
   local mode=run shell='' arg upd_flag=''
   local -a tools=()
@@ -55,6 +58,7 @@ main() {
         do-complete "$1"; return 0
         ;;
       --uninstall) mode=uninstall;;
+      -q|--quiet) quiet=1;;
       --update) update=1; upd_flag=1;;
       --reset) reset=1;;
       --version)
@@ -110,8 +114,8 @@ usage() (
 in-1 - instant dev tools for your current shell
 
 Usage:
-  source <(curl -sL in-1.cc) TOOL... [VAR=VALUE]...   # bash / zsh
-  curl -sL in-1.cc | source - TOOL... [VAR=VALUE]...  # fish
+  source <(curl -sL in-1.cc) [OPTIONS] TOOL... [VAR=VALUE]...  # bash / zsh
+  curl -sL in-1.cc | source - [OPTIONS] TOOL... [VAR=VALUE]... # fish
   source <(curl -sL in-1.cc) in-1                     # in-1 itself
 
   in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
@@ -122,6 +126,7 @@ Usage:
                                (bash, zsh or fish)
   in-1 --complete SHELL        Print in-1 command completion for SHELL
   in-1 --rc                    Print the shell setup line (source it)
+  in-1 -q|--quiet ARGS...      Suppress output on success
   in-1 --update [ARGS]         Update in-1 and makes, then continue
   in-1 --reset [ARGS]          Remove makes/, log/, local/ and cache/
                                from IN1_ROOT, then continue
@@ -199,7 +204,9 @@ to-user() (  # $1=mode $2=shell
 
 die() { printf 'in-1: %s\n' "$@" >&2; exit 1; }
 warn() ( printf 'in-1: %s\n' "$@" >&2 )
+info() ( [[ $quiet ]] || warn "$@" )
 note() (
+  [[ $quiet ]] && return 0
   yellow='' normal=''
   if [[ -t 2 ]]; then
     yellow=$'\033[33m'; normal=$'\033[0m'
@@ -354,7 +361,7 @@ ensure-makes() (
   [[ -d $makes ]] && return 0
   log=$root/log/makes.log
   repo=${IN1_MAKES_REPO:-$MAKES_REPO_DEFAULT}
-  if [[ ${IN1_VERBOSE-} ]]; then
+  if [[ ${IN1_VERBOSE-} && -z $quiet ]]; then
     git clone -q "$repo" "$makes" 1>&2 ||
       die "Failed to clone the makes repo"
   elif ! git clone -q "$repo" "$makes" &> "$log"; then
@@ -403,7 +410,7 @@ do-update() (
 
 update-in1() (
   if [[ ! -e $root/.git ]]; then
-    warn "'$root' is not a git clone; not updating in-1"
+    info "'$root' is not a git clone; not updating in-1"
     return 0
   fi
   git-fetch "$root" || die "Failed to fetch in-1 from origin"
@@ -417,12 +424,12 @@ update-in1() (
       die "Failed to checkout '$branch'"
     git -C "$root" pull -q || die "Failed to pull latest in-1"
   fi
-  warn "in-1 is now at version $(get-version "$root")"
+  info "in-1 is now at version $(get-version "$root")"
 )
 
 update-makes() (
   git -C "$makes" pull -q || die "Failed to pull latest makes"
-  warn "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
+  info "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
 )
 
 # Remove everything in-1 put under the root: the makes clone, the
@@ -436,7 +443,7 @@ do-reset() (
     [[ -e $root/$dir ]] || continue
     rm -rf "${root:?}/$dir" || die "Failed to remove '$root/$dir'"
   done
-  warn "reset: removed makes/, log/, local/ and cache/ from '$root'"
+  info "reset: removed makes/, log/, local/ and cache/ from '$root'"
 )
 
 check-stale() {
@@ -466,7 +473,7 @@ stale-notice() {  # $1=label $2=dir
   n=$(git -C "$2" rev-list --count \
     "HEAD..origin/$(default-branch "$2")" 2>/dev/null) || return 0
   [[ $n -gt 0 ]] || return 0
-  warn "$1 is $n commit(s) behind; run 'in-1 --update' to update"
+  info "$1 is $n commit(s) behind; run 'in-1 --update' to update"
 }
 
 # Run a command quietly with a progress line:
@@ -478,12 +485,15 @@ stale-notice() {  # $1=label $2=dir
 progress-run() (  # $1=label $2=logfile $3=disp $4=note; rest=command
   label=$1 log=$2 disp=$3 note=$4 rc=0 pid='' tick=0 start='' end=''
   shift 4
-  if [[ ${IN1_VERBOSE-} ]]; then
+  if [[ ${IN1_VERBOSE-} && -z $quiet ]]; then
     "$@" 1>&2 || rc=$?
     return $rc
   fi
   start=$(now)
-  if [[ -t 2 ]]; then
+  if [[ $quiet ]]; then
+    "$@" &> "$log" || rc=$?
+    end=$(now)
+  elif [[ -t 2 ]]; then
     printf '… %s installing' "$label" >&2
     "$@" &> "$log" &
     pid=$!
@@ -522,8 +532,10 @@ progress-line() (  # $1=rc $2=label $3=disp $4=note $5=timing
     g=$'\033[32m'; r=$'\033[31m'; z=$'\033[0m'
   fi
   if [[ $rc -eq 0 ]]; then
-    printf '%s√%s %s installed%s (%ss)%s\n' \
-      "$g" "$z" "$label" "$to" "$timing" "$also" >&2
+    if [[ -z $quiet ]]; then
+      printf '%s√%s %s installed%s (%ss)%s\n' \
+        "$g" "$z" "$label" "$to" "$timing" "$also" >&2
+    fi
   else
     printf '%sX%s %s NOT installed (%ss)\n' \
       "$r" "$z" "$label" "$timing" >&2
@@ -787,7 +799,7 @@ write-one-wrapper() {  # $1=real-cmd $2=wrapper-path $3=path-prefix
   local i
   if [[ -e $2 ]] &&
      ! grep -q '^# in-1 wrapper$' "$2" 2>/dev/null; then
-    warn "Skipping existing non-wrapper file '$2'"
+    info "Skipping existing non-wrapper file '$2'"
     return 0
   fi
   {
@@ -1055,6 +1067,7 @@ local-in1-clone() (
 # changes; so does that in-1's root, PREFIX/share/in-1/local.
 local-in1-hint() (  # $1=prefix $2=shell ('' unless via --env)
   cmd=in-1
+  [[ $quiet ]] && return 0
   local-in1-clone >/dev/null || return 0
   case ":$PATH:" in
     *":$1/bin:"*) ;;
@@ -1121,7 +1134,7 @@ local-prefix() (
   prefix=$(abs-path "$prefix")
   if [[ $prefix == */bin ]]; then
     prefix=${prefix%/bin}
-    warn "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
+    info "Stripped trailing /bin from PREFIX; using PREFIX=$prefix"
   fi
   printf '%s' "$prefix"
 )
@@ -1136,11 +1149,11 @@ do-local() (  # $1=shell ('' unless via --env); rest=tool args
   install-all "$prefix"
 
   if [[ ${#req_name[@]} -ne 1 || ${req_name[0]} != in-1 ]]; then
-    warn "Installed ${req_name[*]}:" \
+    info "Installed ${req_name[*]}:" \
       "$wrap_count command wrappers in '$prefix/bin'"
     case ":$PATH:" in
       *":$prefix/bin:"*) ;;
-      *) warn "Note: '$prefix/bin' is not in your PATH";;
+      *) info "Note: '$prefix/bin' is not in your PATH";;
     esac
   fi
   local-in1-hint "$prefix" "$shell"
@@ -1212,7 +1225,7 @@ do-uninstall() (
       missing=1
       continue
     fi
-    warn "Uninstalled $name:" \
+    info "Uninstalled $name:" \
       "removed $n command wrappers from '$prefix/bin' and '$sdir'"
   done
   [[ -z $missing ]]
@@ -1225,7 +1238,7 @@ do-complete() (
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
   local opts='--env --local --list --complete --rc --uninstall
-    --update --reset --version --help'
+    -q --quiet --update --reset --version --help'
   local tools
   tools=$(command in-1 --list 2>/dev/null || true)
   COMPREPLY=()
@@ -1241,7 +1254,7 @@ complete -F _in_1_complete in-1
 _in_1_complete() {
   local -a opts tools
   opts=(--env --local --list --complete --rc --uninstall
-    --update --reset --version --help)
+    -q --quiet --update --reset --version --help)
   tools=(${(f)"$(command in-1 --list 2>/dev/null)"})
   _describe 'in-1' opts -- tools
 }
@@ -1260,6 +1273,7 @@ complete -c in-1 -l uninstall -d 'Remove tools from their install prefix'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l complete -d 'Print command completion for a shell'
 complete -c in-1 -l rc -d 'Print the shell setup line (source it)'
+complete -c in-1 -s q -l quiet -d 'Suppress output on success'
 complete -c in-1 -l update -d 'Update in-1 and makes first'
 complete -c in-1 -l reset -d 'Remove makes, log, local and cache first'
 complete -c in-1 -l version -d 'Print the in-1 version'

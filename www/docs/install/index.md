@@ -32,6 +32,13 @@ asking again is instant.
 Nothing else on your system changes.
 The one-liner always uses `$TMPDIR/in-1` (default `/tmp/in-1`), even
 when an installed `in-1` function has set `IN1_ROOT` in the shell.
+Pass `-q` or `--quiet` for silent use in a script:
+
+```bash
+source <(curl -sL in-1.cc) -q rust node
+```
+
+Failures still print their diagnostics and return a nonzero status.
 
 ## Install the `in-1` command
 

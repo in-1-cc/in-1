@@ -16,6 +16,15 @@ Install tools into your current shell session:
     curl -sL in-1.cc | source - rust node
     ```
 
+For silent use in a script, pass `-q` or `--quiet`:
+
+```bash
+source <(curl -sL in-1.cc) -q rust node
+```
+
+Successful notes, progress and status output are suppressed.
+Failure diagnostics remain visible.
+
 Each bare argument is a tool name (or an [alias](#aliases)).  A
 `NAME=VALUE` argument is passed through to makes as a variable, so you
 pin a version with the tool's makes variable:
@@ -192,6 +201,7 @@ in-1 --list                  List available tools
 in-1 --env SHELL TOOL...     Print env setup code for SHELL
 in-1 --complete SHELL        Print in-1 command completion for SHELL
 in-1 --rc                    Print the shell setup line (source it)
+in-1 -q|--quiet ARGS...      Suppress output on success
 in-1 --update [ARGS]         Update in-1 and makes, then continue
 in-1 --reset [ARGS]          Remove makes/, log/, local/ and cache/
                              from IN1_ROOT, then continue
@@ -256,6 +266,7 @@ in-1 --env fish rust | source      # fish
 `IN1_VERBOSE`
 :   Set to `1` to stream the full install output instead of the
     quiet per-tool progress lines.
+    `-q` and `--quiet` take precedence when either is used.
 
 Any makes version variable can also be passed in the environment,
 e.g. `NODE-VERSION=22.11.0 in-1 node` does what the `NAME=VALUE`

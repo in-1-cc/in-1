@@ -23,6 +23,15 @@ has "$out" 'jq-1.' "fish: jq runs"
 has "$out" 'PATH-IDEMPOTENT' "fish: re-sourcing does not grow PATH"
 has "$out" 'TOOLS=jq' "fish: IN1_TOOLS is set"
 
+out=$(fish --no-config -c 'cat ./rc | source - -q jq' 2>&1)
+is "$out" '' "fish: -q one-liner is silent on success"
+out=$(fish --no-config -c '
+  cat ./rc | source - --quiet jq
+  command -v jq
+' 2>&1)
+is "$out" "$IN1_ROOT/local/bin/jq" \
+  "fish: --quiet still updates the shell environment"
+
 # The piped form documented for fish
 out=$(fish -c '
   cat ./rc | source - jq >/dev/null 2>&1

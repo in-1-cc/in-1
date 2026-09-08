@@ -6,10 +6,11 @@ in-1 \- instant dev tools for your current shell
 
 
 .SH SYNOPSIS
-\fBsource <(curl -sL in-1.cc)\fP \fITOOL\fP\&... [\fIVAR\fP=\fIVALUE\fP]...
+\fBsource <(curl -sL in-1.cc)\fP [\fB-q\fP | \fB--quiet\fP] \fITOOL\fP\&...
+[\fIVAR\fP=\fIVALUE\fP]...
 
 .PP
-\fBin-1\fP \fITOOL\fP\&... [\fIVAR\fP=\fIVALUE\fP]...
+\fBin-1\fP [\fB-q\fP | \fB--quiet\fP] \fITOOL\fP\&... [\fIVAR\fP=\fIVALUE\fP]...
 
 .PP
 \fBin-1\fP \fB--local\fP \fITOOL\fP\&...
@@ -97,6 +98,14 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 
 
 .SH OPTIONS
+\fB-q\fP, \fB--quiet\fP
+  Suppress notes, progress and status output from successful
+  operations.
+  Failure diagnostics remain visible, and explicit output options such
+  as \fB--list\fP, \fB--version\fP and \fB--help\fP still print their output.
+  Quiet takes precedence over \fIIN1_VERBOSE\fP\&.
+
+.PP
 \fB--local\fP
   Install the tools under \fIPREFIX\fP (default \fI~/.local\fP, or
   \fI/usr/local\fP when run as root) and write a wrapper for each tool
@@ -232,6 +241,7 @@ the install prefix, like the \fIPREFIX\fP environment variable.
 \fBIN1_VERBOSE\fP
   Set to 1 to stream the full install output instead of the quiet
   per-tool progress lines.
+  \fB-q\fP and \fB--quiet\fP take precedence when either is used.
 
 .PP
 \fBIN1_TOOLS\fP

@@ -6,9 +6,10 @@ in-1 - instant dev tools for your current shell
 
 # SYNOPSIS
 
-**source <(curl -sL in-1.cc)** *TOOL*... [*VAR*=*VALUE*]...
+**source <(curl -sL in-1.cc)** [**-q** | **--quiet**] *TOOL*...
+[*VAR*=*VALUE*]...
 
-**in-1** *TOOL*... [*VAR*=*VALUE*]...
+**in-1** [**-q** | **--quiet**] *TOOL*... [*VAR*=*VALUE*]...
 
 **in-1** **--local** *TOOL*...
 
@@ -80,6 +81,13 @@ version-specific wrapper.  *PREFIX*=*DIR* is the exception: it sets
 the install prefix, like the *PREFIX* environment variable.
 
 # OPTIONS
+
+**-q**, **--quiet**
+  Suppress notes, progress and status output from successful
+  operations.
+  Failure diagnostics remain visible, and explicit output options such
+  as **--list**, **--version** and **--help** still print their output.
+  Quiet takes precedence over *IN1_VERBOSE*.
 
 **--local**
   Install the tools under *PREFIX* (default *~/.local*, or
@@ -199,6 +207,7 @@ the install prefix, like the *PREFIX* environment variable.
 **IN1_VERBOSE**
   Set to 1 to stream the full install output instead of the quiet
   per-tool progress lines.
+  **-q** and **--quiet** take precedence when either is used.
 
 **IN1_TOOLS**
   Set by in-1 in the shell; lists the active tools.

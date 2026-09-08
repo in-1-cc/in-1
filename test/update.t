@@ -76,6 +76,15 @@ is "$(head-of "$mclone")" "$(head-of "$morigin")" "--update: makes up to date"
 out=$(bin/in-1 no-such-tool 2>&1 || true)
 hasnt "$out" 'behind' "after --update: no notice"
 
+commit "$origin" 'Quiet newer in-1'
+commit "$morigin" 'Quiet newer makes'
+out=$(bin/in-1 -q --update 2>&1)
+is "$out" '' "--quiet --update suppresses successful output"
+is "$(head-of "$clone")" "$(head-of "$origin")" \
+  "--quiet --update updates in-1"
+is "$(head-of "$mclone")" "$(head-of "$morigin")" \
+  "--quiet --update updates makes"
+
 commit "$origin" 'Newer in-1 again'
 out=$(bin/in-1 --update no-such-tool 2>&1 || true)
 has "$out" 'in-1 is now at version' "--update TOOL: updates first"

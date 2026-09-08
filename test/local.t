@@ -26,6 +26,8 @@ has "$out" 'jq-1.' "wrapper runs the real jq"
 out=$(PREFIX=$prefix bin/in-1 --local jq 2>&1) &&
   pass "rerunning --local succeeds" ||
   fail "rerunning --local succeeds"
+out=$(PREFIX=$prefix bin/in-1 -q --local jq 2>&1)
+is "$out" '' "--quiet --local suppresses successful output"
 
 # Through --env (the one-liner) the caller's shell forgets stale
 # command paths; fish has none to forget

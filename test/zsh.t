@@ -23,6 +23,12 @@ has "$out" 'jq-1.' "zsh: jq runs"
 has "$out" 'PATH-IDEMPOTENT' "zsh: re-sourcing does not grow PATH"
 has "$out" 'TOOLS=jq' "zsh: IN1_TOOLS is set"
 
+out=$(zsh -c 'source ./rc -q jq' 2>&1)
+is "$out" '' "zsh: -q one-liner is silent on success"
+out=$(zsh -c 'source ./rc --quiet jq; command -v jq' 2>&1)
+is "$out" "$IN1_ROOT/local/bin/jq" \
+  "zsh: --quiet still updates the shell environment"
+
 # Installed mode: .rc provides a working in-1 function
 out=$(zsh -c '
   source "$IN1_ROOT/.rc"

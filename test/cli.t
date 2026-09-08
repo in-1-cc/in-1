@@ -53,6 +53,7 @@ has "$out" 'IN1_ROOT' "--help documents IN1_ROOT"
 has "$out" '--update [ARGS]' "--help documents --update"
 has "$out" '--uninstall TOOL...' "--help documents --uninstall"
 has "$out" '--reset [ARGS]' "--help documents --reset"
+has "$out" '-q|--quiet' "--help documents -q and --quiet"
 hasnt "$out" '-U TOOL...' "--help does not document -U"
 hasnt "$out" '-R, --reset' "--help does not document -R"
 has "$out" '--local in-1' "--help documents installing in-1 itself"
@@ -61,14 +62,20 @@ out=$(bin/in-1 --complete bash)
 has "$out" '--reset' "--complete bash offers --reset"
 has "$out" '--uninstall' "--complete bash offers --uninstall"
 has "$out" '--rc' "--complete bash offers --rc"
+has "$out" '-q' "--complete bash offers -q"
+has "$out" '--quiet' "--complete bash offers --quiet"
 hasnt "$out" '-U' "--complete bash does not offer -U"
 hasnt "$out" '-R' "--complete bash does not offer -R"
 
 out=$(bin/in-1 --complete zsh)
+has "$out" '-q' "--complete zsh offers -q"
+has "$out" '--quiet' "--complete zsh offers --quiet"
 hasnt "$out" '-U' "--complete zsh does not offer -U"
 hasnt "$out" '-R' "--complete zsh does not offer -R"
 
 out=$(bin/in-1 --complete fish)
+has "$out" '-s q' "--complete fish offers -q"
+has "$out" '-l quiet' "--complete fish offers --quiet"
 hasnt "$out" '-s U' "--complete fish does not offer -U"
 hasnt "$out" '-s R' "--complete fish does not offer -R"
 
@@ -86,6 +93,9 @@ hasnt "$out" 'Usage' "--local without tools does not print usage"
 
 out=$(bin/in-1 --upgrade 2>&1 || true)
 has "$out" "Unknown option '--upgrade'" "--upgrade is gone"
+
+out=$(bin/in-1 -q --version)
+has "$out" 'in-1 ' "--quiet preserves explicit --version output"
 
 out=$(bin/in-1 -U jq 2>&1 || true)
 has "$out" "Unknown option '-U'" "-U is gone"

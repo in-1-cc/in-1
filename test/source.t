@@ -79,6 +79,18 @@ hasnt "$out" 'Tools installed; wrappers are in' \
 hasnt "$out" 'A command can not change its parent shell' \
   "direct command: old shell explanation is gone"
 
+out=$(bin/in-1 -q jq 2>&1)
+is "$out" '' "direct command: -q suppresses successful output"
+out=$(IN1_VERBOSE=1 bin/in-1 --quiet jq 2>&1)
+is "$out" '' "direct command: --quiet overrides IN1_VERBOSE"
+out=$(bash -c 'source ./rc -q jq' 2>&1)
+is "$out" '' "one-liner: -q suppresses successful output"
+out=$(bash -c 'source ./rc --quiet jq; command -v jq' 2>&1)
+is "$out" "$IN1_ROOT/local/bin/jq" \
+  "one-liner: --quiet still updates the shell environment"
+out=$(bash -c 'source ./rc -q no-such-tool' 2>&1 || true)
+has "$out" 'Unknown tool' "one-liner: -q preserves errors"
+
 # A failed install shows an X line and the shell survives
 froot=$SCRATCH/fail
 make-in1-root "$froot"
@@ -91,6 +103,15 @@ out=$(
 has "$out" 'X jq v9.9.9 NOT installed' "progress: failure line shown"
 has "$out" 'Full log:' "progress: failure points at the log"
 has "$out" 'status=1 alive' "failed install returns 1, shell survives"
+
+out=$(
+  IN1_ROOT=$froot bin/in-1 -q jq JQ-VERSION=9.9.9 2>&1 || true
+)
+has "$out" 'X jq v9.9.9 NOT installed' \
+  "quiet failure: result remains visible"
+has "$out" 'Full log:' "quiet failure: log path remains visible"
+hasnt "$out" '… jq v9.9.9 installing' \
+  "quiet failure: progress remains hidden"
 
 # A relative PREFIX anchors to the caller's cwd, not the makes root
 out=$(
@@ -111,6 +132,9 @@ out=$(bash -c '
   command -v jq
 ')
 has "$out" "$IN1_ROOT/local/bin/jq" "eval of in-1 --env works"
+out=$(bin/in-1 --env bash -q jq 2>/dev/null)
+has "$out" "$IN1_ROOT/local/bin" \
+  "--quiet --env preserves shell code on stdout"
 
 # An alias installs the tool it names and labels itself
 out=$(bash -c 'source ./rc bb >/dev/null; command -v bb' 2>&1)

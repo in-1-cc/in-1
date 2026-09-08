@@ -87,6 +87,11 @@ for path in bin/bb bin/bb-1.0 share/babashka; do
   gone "$path" "--uninstall bb"
 done
 
+fake-install quiet quiet 1.0 quiet
+out=$(bin/in-1 -q --uninstall quiet PREFIX="$pfx" 2>&1)
+is "$out" '' "--quiet --uninstall suppresses successful output"
+gone share/quiet "--quiet --uninstall"
+
 # A direct tool wins over same-named alias metadata.
 out=$(run bin/in-1 --uninstall ys PREFIX="$pfx")
 has "$out" 'Uninstalled ys:' "--uninstall ys: reports the uninstall"

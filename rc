@@ -4,12 +4,13 @@
 # in-1.cc - instant dev tools for your current shell
 #
 # Usage:
-#   source <(curl -sL in-1.cc) TOOL... [VAR=VALUE]...   # bash / zsh
-#   curl -sL in-1.cc | source - TOOL... [VAR=VALUE]...  # fish
+#   source <(curl -sL in-1.cc) [OPTIONS] TOOL... [VAR=VALUE]...  # bash / zsh
+#   curl -sL in-1.cc | source - [OPTIONS] TOOL... [VAR=VALUE]... # fish
 #
 # For example:
 #   source <(curl -sL in-1.cc) rust node
 #   source <(curl -sL in-1.cc) perl PERL-VERSION=5.42.0
+#   source <(curl -sL in-1.cc) -q rust  # silent on success
 #   source <(curl -sL in-1.cc) --update rust   # update in-1 first
 #   source <(curl -sL in-1.cc) --reset rust  # start clean first
 #   source <(curl -sL in-1.cc) in-1        # the in-1 command itself
