@@ -1441,12 +1441,10 @@ _in_1_complete() {
     COMPREPLY+=("$name")
     labels+=("$entry")
   done < <(command in-1 --list 2>/dev/null)
-  # Readline has no separate display labels. Print them only for a
-  # listing request; insertion and menu completion use the bare names.
+  # Let Readline display and sort labels for listing requests only.
+  # Insertion and menu completion always use the bare names.
   if [[ ${COMP_TYPE:-0} -eq 63 && ${#COMPREPLY[@]} -gt 1 ]]; then
-    printf '\n' >&2
-    printf '  %s\n' "${labels[@]}" >&2
-    COMPREPLY=()
+    COMPREPLY=("${labels[@]}")
   fi
 }
 complete -F _in_1_complete in-1

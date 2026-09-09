@@ -31,10 +31,18 @@ out=$(bash -c '
   eval "$("$ROOT/bin/in-1" --complete bash)"
   COMP_WORDS=(in-1 bb); COMP_CWORD=1; COMP_TYPE=63
   _in_1_complete
-  test ${#COMPREPLY[@]} -eq 0
+  printf "%s\n" "${COMPREPLY[@]}"
 ' 2>&1)
-is "$out" $'\n  bb (babashka)\n  bbb (example)' \
-  "Bash: multiple-match listing displays alias labels"
+is "$out" $'bb (babashka)\nbbb (example)' \
+  "Bash: listing returns labels without printing outside Readline"
+
+out=$(bash -c '
+  eval "$("$ROOT/bin/in-1" --complete bash)"
+  COMP_WORDS=(in-1 bb); COMP_CWORD=1; COMP_TYPE=37
+  _in_1_complete
+  printf "%s\n" "${COMPREPLY[@]}"
+' 2>&1)
+is "$out" $'bb\nbbb' "Bash: menu completion inserts only names"
 
 if command -v zsh >/dev/null; then
   # Observe the distinct insertion and display arrays sent to Zsh.
