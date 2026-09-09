@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+# Safe, headless probes. Exit 77 means no runtime probe is defined.
+set -euo pipefail
+ulimit -c 0
+tool=$1
+pfx=$2
+repo=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
+bin=$pfx/bin
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/in1-smoke.XXXXXXXX")
+case $tool in
+  cabal) "$bin/cabal" --version;;
+  carp) "$bin/carp" --version;;
+  ghc) "$bin/ghc" -e 'putStrLn "in-1 smoke"';;
+  gcc)
+    "$bin/gcc" "$repo/test/smoke/hello.c" -o "$scratch/hello"
+    lib=$("$bin/gcc" -print-file-name=libssp.so.0)
+    LD_LIBRARY_PATH=${lib%/*}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} \
+      "$scratch/hello";;
+  cobol)
+    "$bin/cobc" -x -free "$repo/test/smoke/indexed.cob" -o "$scratch/indexed"
+    "$bin/cobcrun" --version
+    lib=$(find "$pfx/share/cobol" -path '*/lib/libcob.so' -print -quit)
+    gcc_lib=$(find "$pfx/share/cobol" -path '*/lib64/libssp.so.0' -print -quit)
+    (cd "$scratch"
+      LD_LIBRARY_PATH=${lib%/*}:${gcc_lib%/*}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH} \
+        ./indexed);;
+  erlang) "$bin/erl" -noshell -eval 'io:format("in-1 smoke~n"), halt().';;
+  elixir) "$bin/elixir" -e 'IO.puts("in-1 smoke")';;
+  elm) "$bin/elm" --version;;
+  groovy) "$bin/groovy" -e 'assert 2 + 2 == 4; println "in-1 smoke"';;
+  haxe) "$bin/haxe" --version;;
+  j) printf "echo 2 + 2\nexit 0\n" | "$bin/jconsole";;
+  luarocks) "$bin/luarocks" --version;;
+  moonscript) "$bin/moon" -e 'print "in-1 smoke"';;
+  sml) printf 'print "in-1 smoke\\n"; OS.Process.exit OS.Process.success;\n' |
+    "$bin/sml";;
+  gmp|berkeleydb|libys|libyamlstar)
+    [[ -n $("$repo/bin/in-1" --show "^$tool " PREFIX="$pfx") ]];;
+  *) printf 'No safe runtime probe defined for %s\n' "$tool"; exit 77;;
+esac

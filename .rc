@@ -104,9 +104,22 @@ in-1() {
       eval "$in1_output";;
   esac
   in1_status=$?
-  if command -v perl >/dev/null 2>&1; then
-    export PATH=$(perl -e '"'"'print join(":", grep {!$seen{$_}++} split(/:/, $ENV{PATH}))'"'"')
-  fi
+  # Preserve the first occurrence of every component, including an empty one.
+  local in1_rest=$PATH in1_part in1_path="" in1_seen=:
+  local in1_sep=""
+  while :; do
+    in1_part=${in1_rest%%:*}
+    case $in1_seen in
+      *":$in1_part:"*) ;;
+      *)
+        in1_path=$in1_path$in1_sep$in1_part
+        in1_sep=:
+        in1_seen=$in1_seen$in1_part:;;
+    esac
+    case $in1_rest in *:*) in1_rest=${in1_rest#*:};; *) break;; esac
+  done
+  PATH=$in1_path
+  export PATH
   return "$in1_status"
 }
 

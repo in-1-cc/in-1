@@ -20,7 +20,7 @@ CMD SHLVL PWD OLDPWD _ SHELL SHELLOPTS BASHOPTS TMPDIR LANG LC_ALL
 HOME TERM PS1 COLUMNS LINES'
 
 tool_filter='agents clean claude docker docker-or-podman git help init
-local podman shell'
+local makefile makes podman rlwrap shell system zild'
 
 self_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 
@@ -593,6 +593,11 @@ do-reset() (
     owned=''
     for version in "$tool"/*; do
       [[ -d $version && ! -L $version ]] || continue
+      if is-library-install "$version"; then
+        rm -rf "$version" || die "Failed to remove '$version'"
+        owned=1
+        continue
+      fi
       for wrapper in "$prefix"/bin/*; do
         is-wrapper-under "$wrapper" "$version" || continue
         rm -rf "$version" || die "Failed to remove '$version'"
@@ -686,9 +691,9 @@ progress-run() (  # $1=label $2=logfile $3=disp $4=note; rest=command
     "$@" &> "$log" || rc=$?
     end=$(now)
   fi
-  progress-line "$rc" "$label" "$disp" "$note" \
-    "$(elapsed "$start" "$end")"
   if [[ $rc -ne 0 ]]; then
+    progress-line "$rc" "$label" "$disp" "$note" \
+      "$(elapsed "$start" "$end")"
     tail -20 "$log" >&2
     error "Full log: $log"
   fi
@@ -738,6 +743,11 @@ list-tools() (
   } | sort -u
 )
 
+is-tool() {  # Exclude plumbing modules from direct requests too.
+  local filter=" ${tool_filter//$'\n'/ } "
+  [[ $filter != *" $1 "* ]]
+}
+
 # Parse args into req_name / req_tool (bare tool or alias names) and
 # make_args (any NAME=VALUE argument, passed through to make).  A pin
 # is just the tool's make variable, e.g. `perl PERL-VERSION=5.42.0`.
@@ -773,6 +783,7 @@ parse-tool-args() {
       [[ -f $makes/$tool.mk ]] ||
         die "Alias '$name' maps to unknown tool '$tool'"
     fi
+    is-tool "$tool" || die "'$name' is a Makes helper, not an installable tool"
     req_name+=("$name")
     req_tool+=("$tool")
   done
@@ -814,6 +825,14 @@ gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
     # shellcheck disable=SC2016  # make syntax, expanded by make
     printf 'in1-ver:\n\t@echo $(or $($(PRIMARY)-VERSION),$(%s-VERSION))\n' \
       "$(uc "$3")"
+    artifact=$(meta "$3-lib")
+    if [[ -n $artifact ]]; then
+      [[ $artifact =~ ^[A-Za-z0-9_-]+$ ]] || die "Invalid library metadata"
+      # shellcheck disable=SC2016  # Expanded by make, not the shell.
+      printf 'SHELL-DEPS += $(%s)\n' "$artifact"
+      # shellcheck disable=SC2016
+      printf 'in1-artifact:\n\t@printf "%%s\\n" "$(%s)"\n' "$artifact"
+    fi
   } > "$2"
 )
 
@@ -1023,7 +1042,8 @@ write-wrappers() {  # $1=version $2=primary $3=tool
       fi
     done
   done
-  if [[ -n $primary_real ]]; then
+  if [[ -n $2 ]]; then
+    [[ -n $primary_real ]] || die "Required executable '$2' was not installed"
     if write-one-wrapper "$primary_real" \
         "$install_root/bin/$2-$1" "$pfx" "$snip"; then
       cmd=$install_root/bin/$2
@@ -1032,7 +1052,11 @@ write-wrappers() {  # $1=version $2=primary $3=tool
         rm -f "$cmd" || die "Failed to replace '$cmd'"
         ln -s "$2-$1" "$cmd" || die "Failed to link '$cmd'"
         wrap_count=$((wrap_count + 1))
+      else
+        die "Primary command '$cmd' conflicts with an existing file"
       fi
+    else
+      die "Versioned command '$2-$1' conflicts with an existing file"
     fi
   fi
   return 0
@@ -1047,7 +1071,7 @@ install-all() {  # $1=install-root
   man_adds=''
   comp_dirs=()
   wrap_count=0
-  local i name tool version idir mf primary disp note
+  local i name tool version idir mf primary disp note start artifact kind
   local envfile=$root/log/in-1-env.$$
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}
@@ -1058,9 +1082,17 @@ install-all() {  # $1=install-root
     idir=$install_root/share/$tool/$version
     mf=$root/log/$tool.mk
     gen-makefile "$idir" "$mf" "$tool"
+    kind='command'
+    if [[ -n $(meta "$tool-lib") ]]; then
+      kind=library
+      primary=''
+    fi
     disp=$install_root/bin/$primary
     note=$(meta "$name-also")
-    progress-run "$primary v$version" "$root/log/$tool.log" \
+    # A failed retry must not retain a stale completion marker.
+    rm -f "$idir/.in-1-installed"
+    start=$(now)
+    progress-run "${primary:-$tool} v$version" "$root/log/$tool.log" \
       "$disp" "$note" \
       make --no-print-directory -C "$root" -f "$mf" \
       ${make_args[@]+"${make_args[@]}"} shell CMD=: ||
@@ -1070,8 +1102,27 @@ install-all() {  # $1=install-root
     rm -f "$envfile"
     compute-exports
     write-wrappers "$version" "$primary" "$tool"
+    if [[ $kind == library ]]; then
+      artifact=$(make -s -C "$root" -f "$mf" \
+        ${make_args[@]+"${make_args[@]}"} in1-artifact) ||
+        die "Could not resolve '$tool' library artifact"
+      [[ $artifact == "$idir/"* && -s $artifact ]] ||
+        die "Required library '$artifact' was not installed"
+      disp=$artifact
+    else
+      artifact=$install_root/bin/$primary
+      if [[ ! -x $artifact ]] || ! is-wrapper-under "$artifact" "$idir"; then
+        die "Primary command '$artifact' was not installed correctly"
+      fi
+    fi
     collect-manpath
     comp_dirs+=("$idir")
+    printf '%s\n%s\n' "in-1 $kind" "${artifact#"$idir/"}" \
+      > "$idir/.in-1-installed.tmp" || die "Could not record '$tool' installation"
+    mv "$idir/.in-1-installed.tmp" "$idir/.in-1-installed" ||
+      die "Could not finish '$tool' installation"
+    progress-line 0 "${primary:-$tool} v$version" "$disp" "$note" \
+      "$(elapsed "$start" "$(now)")"
   done
 }
 
@@ -1396,7 +1447,17 @@ filter-rows() {  # $1=pattern; no matches are a successful empty listing
   grep -E -- "$1" || [[ $? -eq 1 ]]
 }
 
-# List wrapper-backed version directories without preparing a root.
+# Recognize completed libraries without executing marker contents.
+is-library-install() (
+  kind='' artifact=''
+  [[ -f $1/.in-1-installed ]] || return 1
+  { IFS= read -r kind; IFS= read -r artifact; } < "$1/.in-1-installed"
+  [[ $kind == 'in-1 library' && -n $artifact ]] || return 1
+  case $artifact in /*|..|../*|*/../*|*/..) return 1;; esac
+  [[ -s $1/$artifact ]]
+)
+
+# List completed libraries and wrapper-backed command installations.
 align-show-rows() (
   names=() versions=() locations=()
   name_width=0 version_width=0
@@ -1429,6 +1490,11 @@ do-show() (
   {
     for dir in "$prefix"/share/*/*; do
       [[ -d $dir ]] || continue
+      if is-library-install "$dir"; then
+        tool=${dir%/*}
+        printf '%s\t%s\t%s\n' "${tool##*/}" "${dir##*/}" "$dir"
+        continue
+      fi
       for w in "$prefix"/bin/*; do
         is-wrapper-under "$w" "$dir" || continue
         tool=${dir%/*}

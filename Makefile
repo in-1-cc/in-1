@@ -16,7 +16,7 @@ include $M/shell.mk
 MAKES-CLEAN += www/site www/docs/index.html www/docs/rc
 MAKES-REALCLEAN += makes/ local/ log/ cache/
 
-SHELL-FILES := rc .rc bin/in-1 \
+SHELL-FILES := rc .rc bin/in-1 util/smoke \
   $(wildcard share/*.sh share/*.bash share/*.wrap)
 
 v ?=
