@@ -58,15 +58,16 @@ for shell in bash zsh fish; do
   command -v "$shell" >/dev/null || continue
   if [[ $shell == fish ]]; then
     out=$(fish --no-config -c '
-      set -gx PATH $clone/bin $pfx/bin $PATH
+      set -gx PATH $clone/bin $pfx/share/in-1/main/bin $pfx/bin $PATH
       source $clone/.rc
       command -s in-1
       in-1 --show permanent-tool
       in-1 --temp --show temporary-tool
+      printf "%s\n" $PATH
     ')
   else
     out=$("$shell" -c '
-      PATH=$clone/bin:$pfx/bin:$PATH
+      PATH=$clone/bin:$pfx/share/in-1/main/bin:$pfx/bin:$PATH
       source "$clone/.rc"
       command -v in-1 | tail -1
       type -p in-1 2>/dev/null || true
@@ -77,6 +78,8 @@ for shell in bash zsh fish; do
   fi
   has "$out" "$pfx/bin" "$shell: public bin is used"
   hasnt "$out" "$clone/bin" "$shell: internal clone bin removed"
+  hasnt "$out" "$pfx/share/in-1/main/bin" \
+    "$shell: internal version bin removed"
   has "$out" permanent-tool "$shell: show follows persistent prefix"
   has "$out" temporary-tool "$shell: temp selection reaches command"
 done

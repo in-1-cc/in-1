@@ -1072,8 +1072,25 @@ emit-manpath-sh() (
 )
 
 emit-session-sh() (  # $1=bash|zsh
-  printf 'export PATH=%s\n' \
-    "$(sq "$install_root/bin:$(strip-entry "$PATH" "$install_root/bin")")"
+  # Use the caller's PATH, not the wrapper's private dependency PATH.
+  printf '_in1_bin=%s\n' "$(sq "$install_root/bin")"
+  cat <<'...'
+_in1_rest=$PATH
+PATH=$_in1_bin
+while :; do
+  _in1_part=${_in1_rest%%:*}
+  case $_in1_part in
+    "$_in1_bin"|*/share/in-1/*/bin) ;;
+    *) PATH=$PATH:$_in1_part;;
+  esac
+  case $_in1_rest in
+    *:*) _in1_rest=${_in1_rest#*:};;
+    *) break;;
+  esac
+done
+export PATH
+unset _in1_bin _in1_rest _in1_part
+...
   emit-manpath-sh
   emit-completions "$1"
   emit-extras "$1"
@@ -1084,7 +1101,7 @@ emit-session-sh() (  # $1=bash|zsh
 emit-session-fish() (
   bindir=$install_root/bin dir=''
   # shellcheck disable=SC2016  # $PATH expands in the user's fish
-  printf 'set -l _in1_path; for _in1_dir in $PATH; if test "$_in1_dir" != %s; set -a _in1_path "$_in1_dir"; end; end; set -gx PATH %s $_in1_path; set -e _in1_path; set -e _in1_dir\n' \
+  printf 'set -l _in1_path; for _in1_dir in $PATH; if test "$_in1_dir" != %s; and not string match -q "*/share/in-1/*/bin" "$_in1_dir"; set -a _in1_path "$_in1_dir"; end; end; set -gx PATH %s $_in1_path; set -e _in1_path; set -e _in1_dir\n' \
     "$(fq "$bindir")" "$(fq "$bindir")"
   if [[ -n $man_adds ]]; then
     printf 'set -q MANPATH; or set -gx MANPATH ""\n'

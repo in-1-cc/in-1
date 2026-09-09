@@ -66,7 +66,7 @@ case $_in1_dir in
     while :; do
       _in1_part=${_in1_rest%%:*}
       case $_in1_part in
-        "$_in1_bin"|"${_in1_bin%/bin}"/share/in-1/*/cache/in-1-*/bin) ;;
+        "$_in1_bin"|"${_in1_bin%/bin}"/share/in-1/*/bin) ;;
         *) PATH=$PATH:$_in1_part;;
       esac
       case $_in1_rest in
@@ -137,7 +137,7 @@ if string match -q "*/share/in-1/*/cache/in-1-*" $_in1_dir
   set -l prefix (string replace -r "/bin\$" "" $_in1_bin)
   for entry in $PATH
     if test "$entry" != "$_in1_bin"; and not string match -q \
-        "$prefix/share/in-1/*/cache/in-1-*/bin" "$entry"
+        "$prefix/share/in-1/*/bin" "$entry"
       set -a paths "$entry"
     end
   end
