@@ -342,7 +342,7 @@ if have-in1-mk "in-1 as a tool"; then
     "one-liner --local in-1: omits the wrapper count"
   hasnt "$out" 'Session installs' \
     "one-liner --local in-1: omits the root explanation"
-  has "$out" 'every new Bash shell' \
+  has "$out" $'\n  every new Bash shell' \
     "one-liner --local in-1: gives Bash-specific guidance"
   has "$out" 'to ~/.bashrc:' \
     "one-liner --local in-1: names the Bash rc file"

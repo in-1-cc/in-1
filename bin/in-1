@@ -1267,13 +1267,13 @@ local-in1-hint() (  # $1=prefix $2=shell ('' unless via --env)
         ;;
     esac
     note "For the in-1 shell function, man page and tab completion in"
-    printf '%s\n\n  %s\n' \
+    printf '  %s\n\n  %s\n' \
       "every new $shell_name shell, add this line to $rc_file:" \
       "$rc_line" >&2
     return 0
   fi
   note "For the in-1 shell function, man page and tab completion in"
-  printf '%s\n\n  %s\n  %s\n' \
+  printf '  %s\n\n  %s\n  %s\n' \
     "every new shell, add the appropriate line to its rc file:" \
     "source <($cmd --rc)     # bash / zsh" \
     "$cmd --rc | source      # fish" >&2
