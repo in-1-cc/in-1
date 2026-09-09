@@ -577,6 +577,7 @@ update-makes() (
 # Never remove an entire prefix or an unrecognized state directory.
 do-reset() (
   dir='' tool='' version='' wrapper='' owned=''
+  wrappers=()
   [[ $root != / && $root != "$HOME" && $root != "$prefix" ]] ||
     die "Unsafe state directory '$root'; not resetting"
   if [[ -d $root ]]; then
@@ -604,6 +605,9 @@ do-reset() (
   for wrapper in "$prefix"/bin/*; do
     is-wrapper-under "$wrapper" "$prefix/share" || continue
     is-wrapper-under "$wrapper" "$prefix/share/in-1" && continue
+    wrappers+=("$wrapper")
+  done
+  for wrapper in "${wrappers[@]}"; do
     rm -f "$wrapper" || die "Failed to remove '$wrapper'"
   done
   for dir in makes log cache; do
@@ -964,15 +968,23 @@ fq() (
   printf "'%s'" "$s"
 )
 
+# Only replace files already managed by in-1, including managed symlinks.
+can-write-wrapper() {
+  if [[ -e $1 || -L $1 ]] &&
+     ! grep -q '^# in-1 wrapper$' "$1" 2>/dev/null; then
+    note "Skipping existing non-wrapper file '$1'"
+    return 1
+  fi
+}
+
 # Write one env-baking wrapper (live PATH prepend).  Uses the current
 # out_names/out_values for the tool's env vars.  $4, if given, is a
 # bash snippet run before the exec; $cmd holds the real command.
 write-one-wrapper() {  # $1=real-cmd $2=wrapper-path $3=path-prefix
   local i
-  if [[ -e $2 ]] &&
-     ! grep -q '^# in-1 wrapper$' "$2" 2>/dev/null; then
-    note "Skipping existing non-wrapper file '$2'"
-    return 0
+  can-write-wrapper "$2" || return 1
+  if [[ -L $2 ]]; then
+    rm -f "$2" || die "Failed to replace '$2'"
   fi
   {
     printf '#!/usr/bin/env bash\n'
@@ -987,14 +999,14 @@ write-one-wrapper() {  # $1=real-cmd $2=wrapper-path $3=path-prefix
     [[ -n ${4-} ]] && cat "$4"
     # shellcheck disable=SC2016  # $cmd expands when the wrapper runs
     printf 'exec "$cmd" "$@"\n'
-  } > "$2"
-  chmod +x "$2"
+  } > "$2" || die "Failed to write '$2'"
+  chmod +x "$2" || die "Failed to make '$2' executable"
   wrap_count=$((wrap_count + 1))
 }
 
 # Write wrappers into $install_root/bin for every command a tool
-# installed; the primary command also gets a <primary>-<version> one.
-# The primary's wrappers include share/<tool>.wrap when it exists.
+# installed; the primary command links to its <primary>-<version> wrapper.
+# The primary's wrapper includes share/<tool>.wrap when it exists.
 write-wrappers() {  # $1=version $2=primary $3=tool
   local pfx dir f cmd primary_real='' snip=''
   pfx=$(join-colon ${added_dirs[@]+"${added_dirs[@]}"})
@@ -1006,16 +1018,24 @@ write-wrappers() {  # $1=version $2=primary $3=tool
       [[ $cmd == .* ]] && continue
       if [[ $cmd == "$2" ]]; then
         primary_real=$f
-        write-one-wrapper "$f" "$install_root/bin/$cmd" "$pfx" "$snip"
       else
-        write-one-wrapper "$f" "$install_root/bin/$cmd" "$pfx"
+        write-one-wrapper "$f" "$install_root/bin/$cmd" "$pfx" || true
       fi
     done
   done
   if [[ -n $primary_real ]]; then
-    write-one-wrapper "$primary_real" \
-      "$install_root/bin/$2-$1" "$pfx" "$snip"
+    if write-one-wrapper "$primary_real" \
+        "$install_root/bin/$2-$1" "$pfx" "$snip"; then
+      cmd=$install_root/bin/$2
+      if can-write-wrapper "$cmd"; then
+        # Unlink first so an existing symlink cannot overwrite an old version.
+        rm -f "$cmd" || die "Failed to replace '$cmd'"
+        ln -s "$2-$1" "$cmd" || die "Failed to link '$cmd'"
+        wrap_count=$((wrap_count + 1))
+      fi
+    fi
   fi
+  return 0
 }
 
 # Install every requested tool into its own share/<tool>/<version>
@@ -1417,8 +1437,12 @@ do-uninstall() (
     [[ -e $prefix/share/$name ]] && tool=$name
     sdir=$prefix/share/$tool
     n=0
+    wrappers=()
     for w in "$prefix"/bin/*; do
       is-wrapper-under "$w" "$sdir" || continue
+      wrappers+=("$w")
+    done
+    for w in "${wrappers[@]}"; do
       rm -f "$w" || die "Failed to remove '$w'"
       n=$((n + 1))
     done

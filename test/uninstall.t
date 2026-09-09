@@ -31,6 +31,8 @@ fake-install() (
     fake-wrapper "$dir/$cmd" "$pfx/bin/$cmd"
   done
   fake-wrapper "$dir/$1" "$pfx/bin/$name-$ver"
+  rm -f "$pfx/bin/$name"
+  ln -s "$name-$ver" "$pfx/bin/$name"
 )
 
 # Run a command, capturing its output and status (a failure must not
@@ -40,7 +42,7 @@ run() (
 )
 
 gone() {
-  if [[ -e $pfx/$1 ]]; then
+  if [[ -e $pfx/$1 || -L $pfx/$1 ]]; then
     fail "$2: $1 is gone"
   else
     pass "$2: $1 is gone"

@@ -57,9 +57,11 @@ Each tool version installs into \fI/share//\fP,
 and in-1 writes a small wrapper for every command it provides into
 \fI/bin\fP\&.  The wrapper carries the tool's own environment
 (CARGO_HOME, ...), so \fBwhich <cmd>\fR is always \fI/bin/\fP
-and the shell itself stays clean.  Multiple versions coexist: the
-primary command of a tool also gets a version-specific wrapper,
-\fI-\fP\&.
+and the shell itself stays clean.
+Multiple versions coexist: the primary command is a relative symlink
+to its version-specific wrapper, \fI-\fP\&.
+Installing another version updates the symlink without changing older
+version-specific wrappers.
 
 .PP
 The default prefix matches the public installation of in-1.

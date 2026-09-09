@@ -14,6 +14,7 @@ fake-install() (
     printf 'cmd=%q\n' "$dir/bin/$1"
     printf 'exec "$cmd" "$@"\n'
   } > "$pfx/bin/$1-$2"
+  ln -sfn "$1-$2" "$pfx/bin/$1"
 )
 
 seed() {
@@ -27,10 +28,12 @@ seed() {
 }
 
 check-reset() {
-  if [[ ! -e $pfx/bin/foo-1 && ! -e $pfx/bin/foo-2 && ! -e $pfx/share/foo ]]; then
+  if [[ ! -e $pfx/bin/foo-1 && ! -e $pfx/bin/foo-2 &&
+        ! -L $pfx/bin/foo && ! -e $pfx/share/foo ]]; then
     pass "$1: managed versions and wrappers removed"
   else fail "$1: managed versions and wrappers removed"; fi
-  if [[ -e $pfx/bin/in-1-current && -e $pfx/share/in-1/current ]]; then
+  if [[ -e $pfx/bin/in-1-current && -L $pfx/bin/in-1 &&
+        -e $pfx/share/in-1/current ]]; then
     pass "$1: in-1 installation preserved"
   else fail "$1: in-1 installation preserved"; fi
   if [[ -e $pfx/bin/foreign && -e $pfx/share/foreign/1/keep &&

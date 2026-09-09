@@ -44,9 +44,11 @@ Each tool version installs into *<prefix>/share/<tool>/<version>*,
 and in-1 writes a small wrapper for every command it provides into
 *<prefix>/bin*.  The wrapper carries the tool's own environment
 (CARGO_HOME, ...), so `which <cmd>` is always *<prefix>/bin/<cmd>*
-and the shell itself stays clean.  Multiple versions coexist: the
-primary command of a tool also gets a version-specific wrapper,
-*<cmd>-<version>*.
+and the shell itself stays clean.
+Multiple versions coexist: the primary command is a relative symlink
+to its version-specific wrapper, *<cmd>-<version>*.
+Installing another version updates the symlink without changing older
+version-specific wrappers.
 
 The default prefix matches the public installation of in-1.
 For example, *~/.local/bin/in-1* installs tools into *~/.local/bin*.
