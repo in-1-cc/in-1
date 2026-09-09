@@ -1397,6 +1397,21 @@ filter-rows() {  # $1=pattern; no matches are a successful empty listing
 }
 
 # List wrapper-backed version directories without preparing a root.
+align-show-rows() (
+  names=() versions=() locations=()
+  name_width=0 version_width=0
+  while IFS=$'\t' read -r name version location; do
+    names+=("$name") versions+=("$version") locations+=("$location")
+    if [[ ${#name} -gt $name_width ]]; then name_width=${#name}; fi
+    if [[ ${#version} -gt $version_width ]]; then version_width=${#version}; fi
+  done
+  for ((i=0; i<${#names[@]}; i++)); do
+    printf '%-*s  %-*s  %s\n' \
+      "$name_width" "${names[i]}" "$version_width" "${versions[i]}" \
+      "${locations[i]}"
+  done
+)
+
 do-show() (
   local pattern='' have_pattern='' arg dir tool w
   for arg; do
@@ -1421,7 +1436,7 @@ do-show() (
         break
       done
     done
-  } | LC_ALL=C sort -u | filter-rows "$pattern"
+  } | LC_ALL=C sort -u | filter-rows "$pattern" | align-show-rows
 )
 
 # Undo --local installs: remove PREFIX/share/<tool>/ (every version)

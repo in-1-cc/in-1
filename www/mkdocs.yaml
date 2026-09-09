@@ -12,7 +12,7 @@ theme:
   name: material
   custom_dir: overrides
   features:
-  - navigation.instant
+  # Full page loads keep the installer URL out of the instant page cache.
   - navigation.tracking
   - navigation.tabs
   - navigation.sections

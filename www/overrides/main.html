@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  {% if page and page.file.src_uri == "home/index.md" %}
+    {# Keep relative links anchored to the generated homepage location. #}
+    <base href="{{ page.url | url }}">
+    <script>
+      // Freeze the base before changing the document's address.
+      const homepage = new URL(document.baseURI);
+      document.querySelector("base").href = homepage.href;
+      // Only rewrite the address, never request the installer again.
+      history.replaceState(history.state, "",
+        new URL("../", homepage).pathname +
+        location.search + location.hash);
+    </script>
+  {% endif %}
+{% endblock %}

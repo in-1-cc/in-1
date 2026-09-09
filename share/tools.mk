@@ -11,6 +11,8 @@ alire-bin := alr
 
 babashka-bin := bb
 
+ballerina-bin := bal
+
 clojure-bin := clj
 clojure-also := clj
 

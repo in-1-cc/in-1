@@ -39,6 +39,10 @@ The site root (`site/index.html`) is the sourceable `../rc` script
 with its `@IN1_VERSION@` token stamped to the current
 `git describe`, so `curl -sL in-1.cc` returns the installer while
 browsers follow the meta-refresh comment to the docs.
+The homepage then changes the browser address to `/` without loading it.
+A base URL preserves relative links to the generated `/home/` page.
+Instant navigation is disabled so its page cache does not confuse the
+installer at `/` with the homepage displayed at that address.
 
 
 ## Publish

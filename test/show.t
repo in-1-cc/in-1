@@ -28,9 +28,9 @@ printf '#!/usr/bin/env bash\ncmd=%q\n' \
   "$pfx/share/unrelated/1/bin/tool" > "$pfx/bin/unmarked"
 fake-install "$TMPDIR/in-1" session 3.0 session
 
-expected=$(printf 'babashka\t1.0\t%s/share/babashka/1.0\n' "$pfx"
-  printf 'babashka\t2.0\t%s/share/babashka/2.0\n' "$pfx"
-  printf 'jq\t1.7\t%s/share/jq/1.7\n' "$pfx")
+expected=$(printf 'babashka  1.0  %s/share/babashka/1.0\n' "$pfx"
+  printf 'babashka  2.0  %s/share/babashka/2.0\n' "$pfx"
+  printf 'jq        1.7  %s/share/jq/1.7\n' "$pfx")
 out=$(bin/in-1 --show PREFIX="$pfx")
 is "$out" "$expected" 'Lists sorted tool versions once, not aliases or leftovers'
 is "$(PREFIX=$pfx bin/in-1 --show)" "$expected" 'Uses PREFIX environment'
@@ -43,7 +43,7 @@ is "$(bin/in-1 --show '^(babashka|jq)' PREFIX="$pfx")" "$expected" \
 is "$(bin/in-1 --show 'prefix with spaces' PREFIX="$pfx")" "$expected" \
   'Matches locations as well as names'
 is "$(bin/in-1 --show '/jq/1[.]7$' PREFIX="$pfx")" \
-  "$(printf 'jq\t1.7\t%s/share/jq/1.7' "$pfx")" 'Filters a version path'
+  "$(printf 'jq  1.7  %s/share/jq/1.7' "$pfx")" 'Filters a version path'
 is "$(bin/in-1 --show BABASHKA PREFIX="$pfx")" '' 'Matching is case sensitive'
 is "$(bin/in-1 --show PREFIX="$pfx" -- -missing)" '' 'Allows leading dash patterns'
 is "$(bin/in-1 --show PREFIX="$SCRATCH/missing")" '' 'Missing prefix is empty'
@@ -69,7 +69,7 @@ is "$(find "$SCRATCH" -type f -exec cksum {} + | sort)" "$before" \
 [[ ! -e $IN1_ROOT/makes && ! -e $IN1_ROOT/log ]] &&
   pass 'Listing does not prepare a root'
 
-session=$(printf 'session\t3.0\t%s/in-1/share/session/3.0' "$TMPDIR")
+session=$(printf 'session  3.0  %s/in-1/share/session/3.0' "$TMPDIR")
 for shell in bash zsh fish; do
   if ! command -v "$shell" >/dev/null; then
     pass "$shell unavailable; skipped"
@@ -94,5 +94,13 @@ for shell in bash zsh fish; do
     "$shell: empty sourceable output stays empty"
   has "$(bin/in-1 --complete "$shell")" show "$shell: completion includes show"
 done
+
+aligned=$SCRATCH/aligned
+fake-install "$aligned" babashka 1.13.220 bb
+fake-install "$aligned" in-1 main in-1
+expected=$(printf 'babashka  1.13.220  %s/share/babashka/1.13.220\n' "$aligned"
+  printf 'in-1      main      %s/share/in-1/main\n' "$aligned")
+is "$(bin/in-1 --show PREFIX="$aligned")" "$expected" \
+  'Pads both name and version columns to the longest displayed value'
 
 done-testing
