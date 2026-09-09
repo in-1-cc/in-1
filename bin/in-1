@@ -654,15 +654,38 @@ stale-notice() {  # $1=label $2=dir
   note "$1 is $n commit(s) behind; run 'in-1 --update' to update"
 }
 
+# Read just the catalog's flat slug/time fields, without requiring a runtime
+# that may itself be getting installed. Missing or invalid times add no hint.
+install-time-hint() (  # $1=resolved Makes tool slug
+  slug='' seconds='' line=''
+  [[ -n $1 && -r $makes/langs.yaml ]] || return 0
+  while IFS= read -r line || [[ -n $line ]]; do
+    if [[ $line =~ ^[^[:space:]#] ]]; then
+      slug=''; seconds=''
+    elif [[ $line =~ ^\ \ slug:\ ([^[:space:]]+)[[:space:]]*$ ]]; then
+      slug=${BASH_REMATCH[1]}
+    elif [[ $line =~ ^\ \ time:\ ([0-9]+)(\.[0-9]+)?s[[:space:]]*$ ]]; then
+      seconds=${BASH_REMATCH[1]}
+    fi
+    if [[ $slug == "$1" && -n $seconds ]]; then
+      if (( 10#$seconds >= 10 )); then
+        printf ' (may take %ssecs or more)' "$((10#$seconds))"
+      fi
+      return 0
+    fi
+  done < "$makes/langs.yaml"
+)
+
 # Run a command quietly with a progress line:
 #   … LABEL installing....
 # erased on completion and replaced by a green check or red X result
 # line reporting where it installed and how long it took.  All output
 # goes to the log file, shown only on failure.  IN1_VERBOSE=1 streams
 # everything instead.
-progress-run() (  # $1=label $2=logfile $3=disp $4=note; rest=command
+progress-run() (  # $1=label $2=logfile $3=disp $4=note $5=hint; rest=command
   label=$1 log=$2 disp=$3 note=$4 rc=0 pid='' tick=0 start='' end=''
-  shift 4
+  hint=$5
+  shift 5
   if [[ ${IN1_VERBOSE-} && -z $quiet ]]; then
     "$@" 1>&2 || rc=$?
     return $rc
@@ -672,7 +695,7 @@ progress-run() (  # $1=label $2=logfile $3=disp $4=note; rest=command
     "$@" &> "$log" || rc=$?
     end=$(now)
   elif [[ -t 2 ]]; then
-    printf '… %s installing' "$label" >&2
+    printf '… %s installing%s' "$label" "$hint" >&2
     "$@" &> "$log" &
     pid=$!
     while kill -0 "$pid" 2>/dev/null; do
@@ -687,7 +710,7 @@ progress-run() (  # $1=label $2=logfile $3=disp $4=note; rest=command
     end=$(now)
     printf '\r\033[K' >&2
   else
-    printf '… %s installing\n' "$label" >&2
+    printf '… %s installing%s\n' "$label" "$hint" >&2
     "$@" &> "$log" || rc=$?
     end=$(now)
   fi
@@ -1093,7 +1116,7 @@ install-all() {  # $1=install-root
     rm -f "$idir/.in-1-installed"
     start=$(now)
     progress-run "${primary:-$tool} v$version" "$root/log/$tool.log" \
-      "$disp" "$note" \
+      "$disp" "$note" "$(install-time-hint "$tool")" \
       make --no-print-directory -C "$root" -f "$mf" \
       ${make_args[@]+"${make_args[@]}"} shell CMD=: ||
       exit 1
