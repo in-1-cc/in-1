@@ -23,7 +23,7 @@ v ?=
 t ?= test/*.t
 
 test: $(PERL) $(BPAN) shellcheck
-	prove -r$(if $v, -v,) $t
+	env -u BASH_ENV -u ENV prove -r$(if $v, -v,) $t
 
 shellcheck: $(SHELLCHECK)
 	shellcheck $(SHELL-FILES)

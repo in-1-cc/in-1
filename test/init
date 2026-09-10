@@ -1,5 +1,6 @@
 # shellcheck shell=bash
 # Common test bootstrap; sourced by every test/*.t file.
+# shellcheck disable=SC1091,SC2034
 
 set -euo pipefail
 
@@ -43,7 +44,11 @@ export IN1_ROOT=$TMPDIR/in-1/share/in-1/local
 export IN1_REPO=$ROOT
 export IN1_CACHE=$ROOT/.cache/test/downloads
 export IN1_MAKES_REPO=${IN1_MAKES_REPO:-$ROOT/.cache/makes}
-unset IN1_VERSION IN1_UPDATE IN1_OFFLINE PREFIX
+unset IN1_VERSION IN1_UPDATE IN1_OFFLINE IN1_PREFIX IN1_TOOLS PREFIX
+unset BASH_ENV ENV CDPATH MANPATH
+unset -f in-1 2>/dev/null || true
+export ZDOTDIR=$SCRATCH/zsh-config
+mkdir -p "$ZDOTDIR"
 
 # Build an in-1 clone stand-in at $1: a real bin/ whose in-1 links to
 # this working copy's command (so it resolves its own root to $1, as
@@ -60,6 +65,22 @@ make-in1-root() (
 
 make-in1-root "$IN1_ROOT"
 make-in1-root "$TMPDIR/in-1/bootstrap"
+
+# Always shadow any real installation, including /usr/local/bin/in-1.
+# This is an uninstalled checkout, so default-prefix discovery still works
+# normally and tests can explicitly prepend their own installed fixtures.
+# Keep it outside the directories exercised by reset and bootstrap tests.
+make-in1-root "$SCRATCH/launcher"
+export PATH=$SCRATCH/launcher/bin:$PATH
+hash -r
+
+# Noninteractive fish still reads user configuration unless told otherwise.
+# Keep its real executable available, but never load personal shell setup.
+if fish_exe=$(type -P fish); then
+  printf '#!/usr/bin/env bash\nexec %q --no-config "$@"\n' "$fish_exe" \
+    > "$SCRATCH/launcher/bin/fish"
+  chmod +x "$SCRATCH/launcher/bin/fish"
+fi
 
 # Build a throwaway in-1 repo at $1 with this working copy's files
 # (tracked and untracked) committed on the current branch, so that an
