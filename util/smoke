@@ -10,7 +10,7 @@ bin=$pfx/bin
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/in1-smoke.XXXXXXXX")
 case $tool in
   cabal) "$bin/cabal" --version;;
-  carp) "$bin/carp" --version;;
+  carp) "$bin/carp" --help;;
   ghc) "$bin/ghc" -e 'putStrLn "in-1 smoke"';;
   gcc)
     "$bin/gcc" "$repo/test/smoke/hello.c" -o "$scratch/hello"
@@ -32,7 +32,7 @@ case $tool in
   haxe) "$bin/haxe" --version;;
   j) printf "echo 2 + 2\nexit 0\n" | "$bin/jconsole";;
   luarocks) "$bin/luarocks" --version;;
-  moonscript) "$bin/moon" -e 'print "in-1 smoke"';;
+  moonscript) "$bin/moon" "$repo/test/smoke/hello.moon";;
   sml) printf 'print "in-1 smoke\\n"; OS.Process.exit OS.Process.success;\n' |
     "$bin/sml";;
   gmp|berkeleydb|libys|libyamlstar)

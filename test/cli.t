@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# shellcheck disable=SC1091,SC2016
 source test/init
 
 out=$(bin/in-1 --list)
@@ -23,7 +24,8 @@ for alias in alr bb cargo clj gfortran glj lg rustc yaml ys ysd; do
 done
 
 is "$out" "$(sort -u <<< "$out")" "--list is sorted with no duplicates"
-is "$(grep -cx ys <<< "$out")" 1 "--list shows ys once (tool and alias)"
+is "$(grep -cE '^ys( \([^)]+\))?$' <<< "$out")" 1 \
+  "--list shows ys once (tool or labeled alias)"
 
 if have-in1-mk "--list"; then
   if grep -qx in-1 <<< "$out"; then

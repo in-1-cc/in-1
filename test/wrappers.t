@@ -49,13 +49,17 @@ is "$(readlink "$install_root/bin/in-1")" in-1-main 'in-1 uses the same layout'
 
 # A skipped version wrapper must never become the active command.
 printf 'foreign file\n' > "$install_root/bin/bb-4"
-out=$(install-fixture 4 2>&1)
+status=0
+out=$(install-fixture 4 2>&1) || status=$?
+is "$status" 1 'Version conflict fails installation'
 has "$out" 'Skipping existing non-wrapper file' 'Version conflict is reported'
 is "$(readlink "$install_root/bin/bb")" bb-3 'Version conflict keeps active link'
 
 rm "$install_root/bin/bb"
 ln -s missing-foreign-command "$install_root/bin/bb"
-out=$(install-fixture 5 2>&1)
+status=0
+out=$(install-fixture 5 2>&1) || status=$?
+is "$status" 1 'Primary conflict fails installation'
 has "$out" 'Skipping existing non-wrapper file' 'Dangling foreign link is reported'
 is "$(readlink "$install_root/bin/bb")" missing-foreign-command \
   'Dangling foreign link is preserved'
