@@ -69,13 +69,21 @@ in-1 <TAB><TAB>   # tab completion
 ```
 
 Want a tool to stick around for good?
+First install `in-1` in a `$PREFIX/bin/in-1` in your `PATH`:
 
 ```bash
-in-1 --local rust node
-in-1 --local in-1       # the in-1 command itself
+source <(curl -sL in-1.cc) in-1 --local
 ```
 
-installs it under `~/.local` (or `/usr/local` when root).
+Here `--local` is short for `PREFIX=$HOME/.local`, so `in-1` is
+`$HOME/.local/bin/in-1`.
+
+Now when you install things with `in-1 thing` it ends up in
+`$HOME/.local/bin/thing`.
+
+```bash
+in-1 thing1 thing2
+```
 
 ## Learn more
 
