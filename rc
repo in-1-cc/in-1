@@ -1,0 +1,204 @@
+# <meta http-equiv="refresh" content="0; url=/home/"><style>html{display:none}</style>
+# shellcheck shell=bash
+#
+# in-1.cc - instant dev tools for your current shell
+#
+# Usage:
+#   source <(curl -sL in-1.cc) [OPTIONS] TOOL... [VAR=VALUE]...  # bash / zsh
+#   curl -sL in-1.cc | source - [OPTIONS] TOOL... [VAR=VALUE]... # fish
+#
+# For example:
+#   source <(curl -sL in-1.cc) rust node
+#   source <(curl -sL in-1.cc) perl PERL-VERSION=5.42.0
+#   source <(curl -sL in-1.cc) -q rust  # silent on success
+#   source <(curl -sL in-1.cc) --update rust   # update in-1 first
+#   source <(curl -sL in-1.cc) --reset rust  # start clean first
+#   source <(curl -sL in-1.cc) in-1        # the in-1 command itself
+#
+# Docs:   https://in-1.cc/home/
+# Source: https://github.com/in-1-cc/in-1
+#
+# This clones in-1 (default /tmp/in-1/bootstrap), installs the tools
+# in the selected prefix and sets up PATH, MANPATH, completions and tool env
+# vars in your current shell for the duration of the shell session.
+
+# Detect Bash/Zsh by their builtins without reading unset variables.
+type shopt >/dev/null 2>&1 || type setopt >/dev/null 2>&1 && eval '
+_in1_boot() {
+  local pin=${IN1_VERSION:-v0.1.0-31-g94691e7}
+  local tmp=${TMPDIR:-/tmp}
+  local base=${tmp%/}/in-1
+  local root=$base/bootstrap
+  local repo=${IN1_REPO:-https://github.com/in-1-cc/in-1}
+  local shell=bash fresh="" out arg red="" normal=""
+
+  if test -t 2; then
+    red=$(printf "\033[31m")
+    normal=$(printf "\033[0m")
+  fi
+
+  [ -n "${ZSH_VERSION-}" ] && shell=zsh
+
+  for arg in "$@"; do
+    if [ "$arg" = --uninstall ]; then
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "--uninstall must be run by the in-1 command" >&2
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "Try: in-1 --uninstall TOOL..." >&2
+      return 1
+    fi
+  done
+
+  command -v git >/dev/null 2>&1 || {
+    printf "%sX%s %s\n" "$red" "$normal" "git is required" >&2
+    return 1
+  }
+
+  if [ -e "$base/.git" ] || [ -d "$base/in-1" ] ||
+     { [ -e "$base/bin/in-1" ] &&
+       ! grep -Fqx "# in-1 wrapper" "$base/bin/in-1"; }; then
+    printf "%sX%s %s\n" "$red" "$normal" \
+      "Legacy in-1 layout at $base; move it aside and retry" >&2
+    return 1
+  fi
+
+  # Keep the bootstrap clone separate from public command wrappers.
+  if [ ! -x "$root/bin/in-1" ]; then
+    if [ -d "$root" ] && [ -n "$(ls -A "$root" 2>/dev/null)" ]; then
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "$root is not an in-1 clone; move it aside and retry" >&2
+      return 1
+    fi
+    mkdir -p "$(dirname "$root")" || return 1
+    git clone -q "$repo" "$root" || {
+      printf "%sX%s %s\n" "$red" "$normal" "failed to clone $repo" >&2
+      return 1
+    }
+    fresh=1
+  fi
+
+  # Use the in-1 version this script was published with, unless the
+  # version token was never stamped (running from a working copy).
+  # A clone already on a branch (after in-1 --update, say) is left there
+  # unless IN1_VERSION asks for something else.
+  if [ "$pin" != "@IN1_VERSION""@" ]; then
+    if [ -n "$fresh" ] || [ -n "${IN1_VERSION-}" ] ||
+       ! git -C "$root" symbolic-ref -q HEAD >/dev/null 2>&1; then
+      git -C "$root" rev-parse -q --verify "$pin^{commit}" \
+        >/dev/null 2>&1 ||
+        git -C "$root" fetch -q --tags origin 2>/dev/null
+      git -C "$root" checkout -q "$pin" || {
+        printf "%sX%s %s\n" "$red" "$normal" \
+          "failed to checkout in-1 version $pin" >&2
+        return 1
+      }
+    fi
+  fi
+
+  out=$(env -u IN1_ROOT bash "$root/bin/in-1" \
+    --env "$shell" "$@") || return 1
+  eval "$out"
+}
+
+_in1_boot "$@"
+_in1_status=$?
+unset -f _in1_boot
+if [ "$_in1_status" -eq 0 ]; then
+  unset _in1_status
+  return 0
+else
+  unset _in1_status
+  return 1
+fi
+'
+
+test -n "$FISH_VERSION" && eval '
+function _in1_boot
+  set -l pin "$IN1_VERSION"
+  test -n "$pin"; or set pin v0.1.0-31-g94691e7
+  set -l tmp "$TMPDIR"
+  test -n "$tmp"; or set tmp /tmp
+  set -l base (string trim -r -c / -- $tmp)/in-1
+  set -l root $base/bootstrap
+  set -l repo "$IN1_REPO"
+  test -n "$repo"; or set repo https://github.com/in-1-cc/in-1
+  set -l fresh ""
+  set -l red ""
+  set -l normal ""
+  if test -t 2
+    set red (printf "\033[31m")
+    set normal (printf "\033[0m")
+  end
+
+  if contains -- --uninstall $argv
+    printf "%sX%s %s\n" "$red" "$normal" \
+      "--uninstall must be run by the in-1 command" >&2
+    printf "%sX%s %s\n" "$red" "$normal" \
+      "Try: in-1 --uninstall TOOL..." >&2
+    return 1
+  end
+
+  command -q git; or begin
+    printf "%sX%s %s\n" "$red" "$normal" "git is required" >&2
+    return 1
+  end
+
+  if test -e $base/.git; or test -d $base/in-1; or begin
+      test -e $base/bin/in-1; and not grep -Fqx "# in-1 wrapper" $base/bin/in-1
+    end
+    printf "%sX%s %s\n" "$red" "$normal" \
+      "Legacy in-1 layout at $base; move it aside and retry" >&2
+    return 1
+  end
+
+  if not test -x $root/bin/in-1
+    if test -d $root; and test (count (ls -A $root 2>/dev/null)) -gt 0
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "$root is not an in-1 clone; move it aside and retry" >&2
+      return 1
+    end
+    mkdir -p (dirname $root); or return 1
+    git clone -q $repo $root; or begin
+      printf "%sX%s %s\n" "$red" "$normal" "failed to clone $repo" >&2
+      return 1
+    end
+    set fresh 1
+  end
+
+  if test "$pin" != "@IN1_VERSION""@"
+    if test -n "$fresh"; or test -n "$IN1_VERSION"; \
+       or not git -C $root symbolic-ref -q HEAD >/dev/null 2>&1
+      git -C $root rev-parse -q --verify "$pin^{commit}" \
+        >/dev/null 2>&1
+      or git -C $root fetch -q --tags origin 2>/dev/null
+      git -C $root checkout -q $pin; or begin
+        printf "%sX%s %s\n" "$red" "$normal" \
+          "failed to checkout in-1 version $pin" >&2
+        return 1
+      end
+    end
+  end
+
+  set -l envfile (mktemp)
+  if env -u IN1_ROOT bash $root/bin/in-1 --env fish $argv > $envfile
+    source $envfile
+    rm -f $envfile
+  else
+    rm -f $envfile
+    return 1
+  end
+end
+
+_in1_boot $argv
+set -l _in1_status $status
+functions -e _in1_boot
+return $_in1_status
+'
+
+test ! -t 2 || printf '\033[31m' >&2
+printf X >&2
+test ! -t 2 || printf '\033[0m' >&2
+printf ' in-1.cc requires bash, zsh or fish\n' >&2
+false
+
+# vim: ft=sh:
