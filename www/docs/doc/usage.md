@@ -33,6 +33,10 @@ pin a version with the tool's makes variable:
 source <(curl -sL in-1.cc) go GO-VERSION=1.23.4 jq
 ```
 
+An alias can abbreviate its tool's version variable, so
+`bb BB-VERSION=1.13.220` is equivalent to using
+`BABASHKA-VERSION=1.13.220`.
+
 `PREFIX=DIR` is the exception: it sets the
 [install prefix](#environment-variables) instead of going to makes.
 

@@ -197,6 +197,9 @@ A NAME=VALUE argument is passed through to makes as a variable, so
 pin a version with its makes variable, e.g.
 'in-1 perl PERL-VERSION=5.42.0'.  PREFIX=DIR is the exception: it
 sets the install prefix, like the PREFIX environment variable.
+An alias can abbreviate its tool's version variable, so
+'in-1 bb BB-VERSION=1.13.220' is the same as using
+BABASHKA-VERSION=1.13.220.
 
 in-1 is itself a tool: 'in-1' as a TOOL (the one-liner with in-1,
 say) installs the in-1 command for this shell session, with its
@@ -827,12 +830,24 @@ primary-of() (  # $1=name
 )
 
 gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
+  local alias alias_var tool_var artifact
+  local -a aliases=()
   mkdir -p "${2%/*}"
   {
     # override so a NAME=VALUE make arg can not redirect the install
     printf 'override MAKES-LOCAL-DIR := %s\n' "$1"
     printf 'IN1-SHARE := %s/share\n' "$self_root"
     printf 'include %s/init.mk\n' "$makes"
+    tool_var=$(uc "$3")
+    read -ra aliases <<< "$(meta "$3-bin")" || true
+    for alias in "${aliases[@]}"; do
+      alias_var=$(uc "$alias")
+      [[ $alias_var == "$tool_var" ]] && continue
+      printf 'ifdef %s-VERSION\n' "$alias_var"
+      # shellcheck disable=SC2016  # make syntax, expanded by make
+      printf '%s-VERSION ?= $(%s-VERSION)\n' "$tool_var" "$alias_var"
+      printf 'endif\n'
+    done
     if [[ $3 == in-1 ]]; then
       printf 'IN-1-VERSION ?= main\n'
       # shellcheck disable=SC2016  # make syntax, expanded by make
@@ -846,7 +861,7 @@ gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
     fi
     printf 'include %s/shell.mk\n' "$makes"
     # shellcheck disable=SC2016  # make syntax, expanded by make
-    printf 'in1-ver:\n\t@echo $(or $($(PRIMARY)-VERSION),$(%s-VERSION))\n' \
+    printf 'in1-ver:\n\t@echo $(or $(%s-VERSION),$($(PRIMARY)-VERSION))\n' \
       "$(uc "$3")"
     artifact=$(meta "$3-lib")
     if [[ -n $artifact ]]; then

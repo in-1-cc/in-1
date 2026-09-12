@@ -91,6 +91,9 @@ Pin a version with the tool's makes variable, for example
 alongside others and is reachable as both *perl* and its
 version-specific wrapper.  *PREFIX*=*DIR* is the exception: it sets
 the install prefix, like the *PREFIX* environment variable.
+An alias can abbreviate its tool's version variable, so
+**in-1 bb BB-VERSION=1.13.220** is equivalent to using
+**BABASHKA-VERSION=1.13.220**.
 
 # OPTIONS
 
