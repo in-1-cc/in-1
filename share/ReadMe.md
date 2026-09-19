@@ -43,9 +43,12 @@ install; `gloat.mk` exports `GLOAT_ROOT` so gloat knows it is set up;
 
 ## tools.mk
 
-`tools.mk` is a file of flat `make :=` variables that in-1 reads
-directly (values are literal, so `*` and friends are never
-expanded).  Keys:
+`tools.mk` is generated from the tool metadata in `config.yaml` by
+`ys config.yaml -- tools-make`.
+It contains flat `make :=` variables that in-1 reads directly (values are
+literal, so `*` and friends are never expanded).
+Edit `config.yaml`, not `tools.mk`.
+The generated keys are:
 
 - `<tool>-bin` - command names separated by spaces.
   The first is shown on the success line and given a version-specific

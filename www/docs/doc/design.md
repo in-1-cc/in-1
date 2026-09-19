@@ -109,8 +109,9 @@ stay on the latest.
 ## Metadata
 
 A tool's primary command, a human "also:" note, and command aliases
-(so `in-1 cargo` installs rust) live in `share/tools.mk`, a file of
-flat make variables in-1 reads directly.
+(so `in-1 cargo` installs rust) are defined in `config.yaml`.
+It generates `share/tools.mk`, a file of flat make variables in-1 reads
+directly.
 
 Some tools also need shell-side setup (an alias, a completion hook)
 that the wrappers cannot provide.  For those, an optional

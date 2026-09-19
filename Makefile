@@ -10,6 +10,7 @@ include $M/bpan.mk
 include $M/md2man.mk
 include $M/perl.mk
 include $M/shellcheck.mk
+include $M/yamlscript.mk
 include $M/clean.mk
 include $M/shell.mk
 
@@ -22,7 +23,17 @@ SHELL-FILES := rc .rc bin/in-1 util/smoke \
 v ?=
 t ?= test/*.t
 
-test: $(PERL) $(BPAN) shellcheck
+export YS
+
+default:: share/tools.mk
+
+share/tools.mk: config.yaml $(YS)
+	$Q tmp=$@.tmp; \
+	  trap 'rm -f "$$tmp"' EXIT; \
+	  $(YS) $< -- tools-make > "$$tmp"; \
+	  if cmp -s "$$tmp" $@; then touch $@; else mv "$$tmp" $@; fi
+
+test: share/tools.mk $(PERL) $(BPAN) shellcheck
 	env -u BASH_ENV -u ENV prove -r$(if $v, -v,) $t
 
 shellcheck: $(SHELLCHECK)

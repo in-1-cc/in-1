@@ -11,3 +11,4 @@
 /www/docs/index.html
 /www/docs/rc
 /foobar/
+!/config.yaml

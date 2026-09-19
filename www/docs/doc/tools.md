@@ -48,4 +48,5 @@ Add a `<tool>.mk` to the
 [makes repo](https://github.com/makeplus/makes); in-1 picks it up
 automatically.
 Command aliases and a tool's primary command live in
-[`share/tools.mk`](https://github.com/in-1-cc/in-1/blob/main/share/tools.mk).
+[`config.yaml`](https://github.com/in-1-cc/in-1/blob/main/config.yaml), which
+generates `share/tools.mk`.
