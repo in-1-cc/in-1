@@ -27,6 +27,8 @@ export YS
 
 default:: share/tools.mk
 
+update: share/tools.mk manpage
+
 share/tools.mk: config.yaml $(YS)
 	$Q tmp=$@.tmp; \
 	  trap 'rm -f "$$tmp"' EXIT; \

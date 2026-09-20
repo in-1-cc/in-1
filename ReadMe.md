@@ -109,6 +109,7 @@ option and environment variable.
 ```bash
 make test           # shellcheck + fast tests
 slow=1 make test    # + end-to-end tests (network, zsh, fish)
+make update         # regenerate tracked generated files
 make manpage        # regenerate man/man1/in-1.1 from doc/in-1.md
 make -C www serve   # local docs site at http://localhost:8000
 ```
