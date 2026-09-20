@@ -27,6 +27,14 @@ seed() {
   touch "$pfx/bin/foreign" "$pfx/share/foreign/1/keep"
 }
 
+make-read-only() {
+  mkdir -p "$pfx/share/foo/1/cache/pkg/mod/example" \
+    "$IN1_ROOT/cache/pkg/mod/example"
+  touch "$pfx/share/foo/1/cache/pkg/mod/example/file" \
+    "$IN1_ROOT/cache/pkg/mod/example/file"
+  chmod -R -w "$pfx/share/foo/1/cache" "$IN1_ROOT/cache"
+}
+
 check-reset() {
   if [[ ! -e $pfx/bin/foo-1 && ! -e $pfx/bin/foo-2 &&
         ! -L $pfx/bin/foo && ! -e $pfx/share/foo ]]; then
@@ -49,6 +57,7 @@ check-reset() {
 
 bin/in-1 --list >/dev/null
 seed
+make-read-only
 out=$(bin/in-1 --reset 2>&1)
 has "$out" "removed managed tools from '$pfx' (kept in-1)" 'Reset summary'
 check-reset reset

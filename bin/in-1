@@ -576,6 +576,15 @@ update-makes() (
   success "makes is now at $(git -C "$makes" rev-parse --short HEAD)"
 )
 
+# Make directory contents removable before deleting an install or cache tree.
+# Do not chmod symlinks, since that can affect a target outside the tree.
+remove-tree() {  # $1=directory
+  if [[ -d $1 && ! -L $1 ]]; then
+    chmod -R +w "$1" || return
+  fi
+  rm -rf "$1"
+}
+
 # Reset managed tools in the selected prefix, preserving in-1 itself.
 # Never remove an entire prefix or an unrecognized state directory.
 do-reset() (
@@ -597,13 +606,13 @@ do-reset() (
     for version in "$tool"/*; do
       [[ -d $version && ! -L $version ]] || continue
       if is-library-install "$version"; then
-        rm -rf "$version" || die "Failed to remove '$version'"
+        remove-tree "$version" || die "Failed to remove '$version'"
         owned=1
         continue
       fi
       for wrapper in "$prefix"/bin/*; do
         is-wrapper-under "$wrapper" "$version" || continue
-        rm -rf "$version" || die "Failed to remove '$version'"
+        remove-tree "$version" || die "Failed to remove '$version'"
         owned=1
         break
       done
@@ -621,7 +630,7 @@ do-reset() (
   for dir in makes log cache; do
     [[ -e $root/$dir ]] || continue
     [[ $self_root != "$root/$dir" && $self_root != "$root/$dir/"* ]] || continue
-    rm -rf "${root:?}/$dir" || die "Failed to remove '$root/$dir'"
+    remove-tree "${root:?}/$dir" || die "Failed to remove '$root/$dir'"
   done
   success "reset: removed managed tools from '$prefix' (kept in-1)" \
     "reset: removed makes/, log/ and cache/ from '$root'"
@@ -1566,7 +1575,7 @@ do-uninstall() (
       n=$((n + 1))
     done
     if [[ -e $sdir ]]; then
-      rm -rf "${prefix:?}/share/${tool:?}" ||
+      remove-tree "${prefix:?}/share/${tool:?}" ||
         die "Failed to remove '$sdir'"
     elif [[ $n -eq 0 ]]; then
       error "'$name' is not installed under '$prefix'"

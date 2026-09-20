@@ -66,6 +66,10 @@ fake-wrapper "$pfx/share/bar/2.0/bin/bar" "$pfx/bin/foo3"
 printf '\177ELF\0not-a-wrapper\n' > "$pfx/bin/binary"
 chmod +x "$pfx/bin/binary"
 
+mkdir -p "$pfx/share/foo/1.0/cache/pkg/mod/example"
+touch "$pfx/share/foo/1.0/cache/pkg/mod/example/file"
+chmod -R -w "$pfx/share/foo/1.0/cache"
+
 out=$(run bin/in-1 --uninstall foo PREFIX="$pfx")
 has "$out" '√ Uninstalled foo:' "--uninstall foo: reports the uninstall"
 has "$out" "removed 3 command wrappers from '$pfx/bin'" \
