@@ -379,8 +379,10 @@ meta() (  # $1=key -> value ('' if unset)
 )
 
 # Emit alias/tool pairs from the command names in each -bin entry.
+# With an alias argument, emit only its matching tool.
 alias-pairs() (
   f=$self_root/share/tools.mk line='' k='' v='' name='' tool=''
+  wanted=${1-}
   [[ -f $f ]] || return 0
   while IFS= read -r line; do
     line=${line%%#*}
@@ -395,19 +397,17 @@ alias-pairs() (
     read -r -a names <<< "$v"
     for name in "${names[@]}"; do
       [[ $name == "$tool" ]] && continue
+      if [[ -n $wanted ]]; then
+        [[ $name == "$wanted" ]] || continue
+        printf '%s' "$tool"
+        return 0
+      fi
       printf '%s %s\n' "$name" "$tool"
     done
   done < "$f"
 )
 
-alias-tool() (  # $1=alias -> tool ('' if unset)
-  while read -r name tool; do
-    if [[ $name == "$1" ]]; then
-      printf '%s' "$tool"
-      return 0
-    fi
-  done < <(alias-pairs)
-)
+alias-tool() { alias-pairs "$1"; }  # $1=alias -> tool ('' if unset)
 
 check-prereqs() (
   cmd=''

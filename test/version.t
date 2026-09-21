@@ -44,6 +44,9 @@ parse-tool-args clj CLJ-VERSION=1.12.0
 is "$(tool-version clojure clj)" 1.12.0 \
   'The tools metadata drives other abbreviations'
 
+is "$(alias-pairs lg)" let-go \
+  'A direct alias lookup does not leave an output producer'
+
 parse-tool-args bb OTHER-VERSION=unchanged
 is "$(make-args)" 'OTHER-VERSION=unchanged' \
   'An unrelated version variable stays unchanged'
