@@ -11,9 +11,9 @@ in-1 - instant dev tools for your current shell
 
 **in-1** [**-q** | **--quiet**] *TOOL*... [*VAR*=*VALUE*]...
 
-**in-1** **--local** *TOOL*...
+**in-1** **-L**|**--local** *TOOL*...
 
-**in-1** **--temp** *TOOL*...
+**in-1** **-T**|**--temp** *TOOL*...
 
 **in-1** **--uninstall** *TOOL*... [*PREFIX*=*DIR*]
 
@@ -55,7 +55,8 @@ For example, *~/.local/bin/in-1* installs tools into *~/.local/bin*.
 A fresh bootstrap or source checkout with no installed in-1 defaults to
 *$TMPDIR/in-1* (*/tmp/in-1* when *TMPDIR* is unset).
 The bootstrap clone lives separately in *$TMPDIR/in-1/bootstrap*.
-**--local** selects a persistent prefix; **--temp** forces the temporary one.
+**-L** or **--local** selects a persistent prefix;
+**-T** or **--temp** forces the temporary one.
 Installation, **--show**, **--uninstall**, and **--reset** share this selection.
 
 Before an install, in-1 checks whether its own clone is behind its
@@ -104,7 +105,7 @@ An alias can abbreviate its tool's version variable, so
   as **--list**, **--show**, **--version** and **--help** still print output.
   Quiet takes precedence over *IN1_VERBOSE*.
 
-**--local**
+**-L**, **--local**
   Select the existing persistent in-1 prefix, otherwise *~/.local*
   (*/usr/local* when root).
   An explicit *PREFIX* overrides this default.
@@ -114,7 +115,7 @@ An alias can abbreviate its tool's version variable, so
   the current shell also forgets any stale command paths, and a
   **--local in-1** sources the installed in-1's *.rc* right away.
 
-**--temp**
+**-T**, **--temp**
   Always select *$TMPDIR/in-1* (default */tmp/in-1*), with command wrappers
   directly in its *bin* directory and state under *share/in-1/local*.
   Ignore inherited *PREFIX* and *IN1_ROOT*.

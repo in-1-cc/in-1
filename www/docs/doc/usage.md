@@ -106,7 +106,7 @@ lives in, or for a `--local` installed in-1 to the stable
 
 ```bash
 in-1 rust node            # install alongside in-1
-in-1 --temp jq            # force a temporary install
+in-1 -T jq                # force a temporary install
 in-1 --list               # all available tools
 in-1 --update             # update in-1
 man in-1
@@ -130,8 +130,8 @@ in-1 never overwrites a file in `$PREFIX/bin` that it did not create.
 
 ## Temporary installs
 
-`--temp` forces `${TMPDIR:-/tmp}/in-1`, ignoring inherited `PREFIX` and
-`IN1_ROOT`.
+`-T` or `--temp` forces `${TMPDIR:-/tmp}/in-1`, ignoring inherited
+`PREFIX` and `IN1_ROOT`.
 It rejects `PREFIX=DIR` arguments and cannot be combined with `--local`.
 It also works with `--show`, `--uninstall`, and `--reset`.
 If an old temporary checkout conflicts, move it aside before retrying;
@@ -215,8 +215,8 @@ After a reset `IN1_TOOLS` lists only the tools installed since.
 
 ```text
 in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
-in-1 --local TOOL...         Install tools under PREFIX for keeps
-in-1 --temp TOOL...          Use $TMPDIR/in-1, ignoring inherited PREFIX
+in-1 -L|--local TOOL...      Install tools under PREFIX for keeps
+in-1 -T|--temp TOOL...       Use $TMPDIR/in-1, ignoring inherited PREFIX
 in-1 --uninstall TOOL...     Remove tools from their install prefix
 in-1 --list [PATTERN]        List available tools, optionally filtered
 in-1 --show [PATTERN]        Show installed versions and locations
@@ -257,8 +257,8 @@ in-1 --env fish rust | source      # fish
 :   Install prefix.
     Normally the public prefix of the installed in-1, otherwise
     `${TMPDIR:-/tmp}/in-1`.
-    `--local` falls back to `~/.local` or `/usr/local` when root.
-    `--temp` ignores this variable and rejects an argument override.
+    `-L` or `--local` falls back to `~/.local` or `/usr/local` when root.
+    `-T` or `--temp` ignores this variable and rejects an argument override.
     A relative path is anchored to the current directory.
     A `PREFIX=DIR` argument sets it too, so the one-liner can pick a
     prefix: `source <(curl -sL in-1.cc) jq PREFIX=/opt/tools`.

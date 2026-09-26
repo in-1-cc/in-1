@@ -29,7 +29,8 @@ session.
 
 On a fresh machine the prefix is `${TMPDIR:-/tmp}/in-1`.
 With in-1 already installed, tools land alongside its public command wrapper.
-Use `--temp` to force temporary installs, or `--local` for a persistent prefix.
+Use `-T` or `--temp` to force temporary installs, or `-L` or `--local`
+for a persistent prefix.
 Downloads stay cached, so asking again is fast.
 
 ## What you get

@@ -13,10 +13,10 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP [\fB-q\fP | \fB--quiet\fP] \fITOOL\fP\&... [\fIVAR\fP=\fIVALUE\fP]...
 
 .PP
-\fBin-1\fP \fB--local\fP \fITOOL\fP\&...
+\fBin-1\fP \fB-L\fP|\fB--local\fP \fITOOL\fP\&...
 
 .PP
-\fBin-1\fP \fB--temp\fP \fITOOL\fP\&...
+\fBin-1\fP \fB-T\fP|\fB--temp\fP \fITOOL\fP\&...
 
 .PP
 \fBin-1\fP \fB--uninstall\fP \fITOOL\fP\&... [\fIPREFIX\fP=\fIDIR\fP]
@@ -69,7 +69,8 @@ For example, \fI~/.local/bin/in-1\fP installs tools into \fI~/.local/bin\fP\&.
 A fresh bootstrap or source checkout with no installed in-1 defaults to
 \fI$TMPDIR/in-1\fP (\fI/tmp/in-1\fP when \fITMPDIR\fP is unset).
 The bootstrap clone lives separately in \fI$TMPDIR/in-1/bootstrap\fP\&.
-\fB--local\fP selects a persistent prefix; \fB--temp\fP forces the temporary one.
+\fB-L\fP or \fB--local\fP selects a persistent prefix;
+\fB-T\fP or \fB--temp\fP forces the temporary one.
 Installation, \fB--show\fP, \fB--uninstall\fP, and \fB--reset\fP share this selection.
 
 .PP
@@ -124,7 +125,7 @@ An alias can abbreviate its tool's version variable, so
   Quiet takes precedence over \fIIN1_VERBOSE\fP\&.
 
 .PP
-\fB--local\fP
+\fB-L\fP, \fB--local\fP
   Select the existing persistent in-1 prefix, otherwise \fI~/.local\fP
   (\fI/usr/local\fP when root).
   An explicit \fIPREFIX\fP overrides this default.
@@ -135,7 +136,7 @@ An alias can abbreviate its tool's version variable, so
   \fB--local in-1\fP sources the installed in-1's \fI\&.rc\fP right away.
 
 .PP
-\fB--temp\fP
+\fB-T\fP, \fB--temp\fP
   Always select \fI$TMPDIR/in-1\fP (default \fI/tmp/in-1\fP), with command wrappers
   directly in its \fIbin\fP directory and state under \fIshare/in-1/local\fP\&.
   Ignore inherited \fIPREFIX\fP and \fIIN1_ROOT\fP\&.

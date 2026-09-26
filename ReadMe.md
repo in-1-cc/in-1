@@ -38,8 +38,8 @@ duration of the shell session.
 
 The default follows the public bin directory of an installed in-1.
 Without one, it uses `${TMPDIR:-/tmp}/in-1`.
-Use `--temp` to force that temporary prefix, or `--local` for a persistent
-installation (normally `~/.local`).
+Use `-T` or `--temp` to force that temporary prefix, or `-L` or `--local`
+for a persistent installation (normally `~/.local`).
 Wrappers always go in `PREFIX/bin`, with versioned tools in `PREFIX/share`.
 
 Tools are installed by [makes](https://github.com/makeplus/makes);

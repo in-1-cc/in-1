@@ -70,10 +70,10 @@ All modes share the same install-and-wrap machinery:
 
 * Normally the prefix follows the installed in-1's public bin directory.
   Without an installed in-1, it defaults to `${TMPDIR:-/tmp}/in-1`.
-* `--local` selects a persistent prefix, falling back to `~/.local`.
+* `-L` or `--local` selects a persistent prefix, falling back to `~/.local`.
 * `PREFIX=DIR` overrides normal and local defaults.
-* `--temp` forces the temporary prefix, ignoring inherited `PREFIX` and
-  rejecting an explicit prefix argument or `--local`.
+* `-T` or `--temp` forces the temporary prefix, ignoring inherited
+  `PREFIX` and rejecting an explicit prefix argument or `--local`.
 
 Sourced calls activate `PREFIX/bin`, man pages and completions in the caller.
 The installed in-1's internal clone bin directory never replaces its wrapper

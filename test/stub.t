@@ -146,6 +146,52 @@ has "$out" 'makes is now at' "in-1 --update: updates makes"
 has "$out" 'status=0' "in-1 --update: returns 0"
 has "$out" '1' "in-1 --update --list: lists tools"
 
+# Short placement options must pass through the shell function to
+# --env so that installs can update the current shell.
+route_bin=$SCRATCH/route-bin
+mkdir -p "$route_bin"
+cat > "$route_bin/in-1" <<'...'
+#!/usr/bin/env bash
+if [[ ${1-} == --env && ${2-} == fish ]]; then
+  printf 'set -g IN1_ROUTE env\n'
+elif [[ ${1-} == --env ]]; then
+  printf 'IN1_ROUTE=env\n'
+else
+  printf 'IN1_ROUTE=command\n'
+fi
+...
+chmod +x "$route_bin/in-1"
+export route_bin
+out=$(bash -c '
+  source "$IN1_ROOT/.rc"
+  PATH=$route_bin:$PATH
+  unset IN1_ROUTE
+  in-1 -L foo
+  echo "local=$IN1_ROUTE"
+  unset IN1_ROUTE
+  in-1 -T foo
+  echo "temp=$IN1_ROUTE"
+')
+is "$out" $'local=env\ntemp=env' \
+  'Bash: -L and -T installs use the shell environment path'
+
+if command -v fish >/dev/null 2>&1; then
+  out=$(fish --no-config -c '
+    source "$IN1_ROOT/.rc"
+    set -gx PATH $route_bin $PATH
+    set -e IN1_ROUTE
+    in-1 -L foo
+    echo "local=$IN1_ROUTE"
+    set -e IN1_ROUTE
+    in-1 -T foo
+    echo "temp=$IN1_ROUTE"
+  ')
+  is "$out" $'local=env\ntemp=env' \
+    'Fish: -L and -T installs use the shell environment path'
+else
+  pass 'fish not available; short placement shell path check skipped'
+fi
+
 # --uninstall goes straight to the command, with no --env
 out=$(bash -c '
   source "$IN1_ROOT/.rc"

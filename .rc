@@ -86,14 +86,16 @@ export MANPATH
 eval "$(command in-1 --complete "$_in1_shell" 2>/dev/null)"
 
 # Wrap the in-1 command in a function so that session installs can
-# modify the current shell environment.  The first argument that is
-# not --update, --reset or a quiet flag decides: a tool name means a session
-# install.
+# modify the current shell environment. The first argument that is not
+# an update, reset, placement or quiet option decides whether this is a
+# session install.
 in-1() {
   local first="" in1_status in1_shell=bash
   [ -n "${ZSH_VERSION-}" ] && in1_shell=zsh
   for first in "$@"; do
-    case $first in --update|--reset|--local|--temp|-q|--quiet) continue;; esac
+    case $first in
+      --update|--reset|-L|--local|-T|--temp|-q|--quiet) continue;;
+    esac
     break
   done
   case $first in
@@ -165,7 +167,8 @@ command in-1 --complete fish 2>/dev/null | source
 function in-1
   set -l first ""
   for first in $argv
-    if not contains -- "$first" --update --reset --local --temp -q --quiet
+    if not contains -- "$first" --update --reset -L --local -T --temp \
+        -q --quiet
       break
     end
   end

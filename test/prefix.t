@@ -41,10 +41,16 @@ has "$(PREFIX=$pfx "$pfx/bin/in-1" --temp --show)" temporary-tool \
   'Temp ignores inherited PREFIX and installed prefix'
 has "$("$pfx/bin/in-1" --local --show)" permanent-tool \
   'Local keeps an existing persistent prefix'
+has "$("$pfx/bin/in-1" -L --show)" permanent-tool \
+  '-L selects the local prefix'
+has "$(PREFIX=$pfx "$pfx/bin/in-1" -T --show)" temporary-tool \
+  '-T selects the temporary prefix'
 has "$(bin/in-1 --local --show PREFIX="$SCRATCH/explicit")" explicit-tool \
   'Local accepts an explicit private prefix for Jus'
 
-for args in '--local --temp' '--temp --local' '--temp PREFIX=/unused'; do
+for args in '--local --temp' '--temp --local' '--temp PREFIX=/unused' \
+  '-L -T' '-T -L' '-T PREFIX=/unused'
+do
   status=0
   # Deliberately split the fixture arguments.
   # shellcheck disable=SC2086
