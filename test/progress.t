@@ -52,4 +52,8 @@ is "$out" '… fast v1 installing' 'Untimed progress remains unchanged'
 out=$(quiet=1 progress-run 'foo v1' "$SCRATCH/log" '' '' "$hint" true 2>&1)
 is "$out" '' 'Quiet mode suppresses the hint'
 
+out=$(progress-line 0 'ys v0.3.1' "$HOME/.local/bin/ys" '' 0.22 2>&1)
+is "$out" '√ ys v0.3.1 installed to ~/.local/bin/ys (0.22s)' \
+  'Home directory is abbreviated in the installed path'
+
 done-testing

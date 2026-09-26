@@ -739,6 +739,7 @@ progress-run() (  # $1=label $2=logfile $3=disp $4=note $5=hint; rest=command
 progress-line() (  # $1=rc $2=label $3=disp $4=note $5=timing
   rc=$1 label=$2 disp=$3 note=$4 timing=$5
   to='' also='' g='' r='' z=''
+  [[ $disp == "$HOME/"* ]] && disp=\~/${disp#"$HOME/"}
   [[ -n $disp ]] && to=" to $disp"
   [[ -n $note ]] && also=" also: $note"
   if [[ -t 2 ]]; then
