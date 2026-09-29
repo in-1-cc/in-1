@@ -12,7 +12,9 @@
 #   <tool>-bin   command names separated by spaces; first is primary
 #                (default: the tool name); all are aliases for the tool
 #   <tool>-also  literal note shown after "also: " on the success line
+#   <tool>-completion  supported shells, separated by spaces
 #   <tool>-lib   Makes variable naming the required library artifact
+#   <tool>-man   installed manual page names, separated by spaces
 
 alire-bin := alr
 
@@ -30,6 +32,7 @@ chezscheme-bin := scheme petite scheme-script
 
 clojure-bin := clj
 clojure-also := clj
+clojure-man := clojure clj
 
 cobol-bin := cobc
 
@@ -54,6 +57,9 @@ fsharp-bin := dotnet
 
 gdscript-bin := godot
 
+gloat-completion := bash zsh fish
+gloat-man := gloat gloat-go-interop gloat-install gloat-java-interop gloat-repl gloat-tutorial
+
 glojure-bin := glj
 
 gmp-lib := GMP-LIB
@@ -61,6 +67,10 @@ gmp-lib := GMP-LIB
 graalvm-bin := native-image
 
 j-bin := jconsole
+
+jolt-completion := bash zsh fish
+
+jq-man := jq
 
 let-go-bin := lg
 

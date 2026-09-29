@@ -180,6 +180,8 @@ An alias can abbreviate its tool's version variable, so
   Put **source <(in-1 --rc)** (bash, zsh) or **in-1 --rc | source**
   (fish) in your shell rc file to get the **in-1** shell function, man
   page and tab completion in every shell.
+  It also restores the man pages and completions provided by installed
+  tools, without running those tools during shell startup.
   Since it goes through the **in-1** on *PATH*, the line keeps working
   after **in-1 --local in-1** installs a newer version.
 

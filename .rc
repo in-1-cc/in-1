@@ -83,7 +83,7 @@ case ":${MANPATH-}:" in
 esac
 export MANPATH
 
-eval "$(command in-1 --complete "$_in1_shell" 2>/dev/null)"
+eval "$(command in-1 --shell-init "$_in1_shell" 2>/dev/null)"
 
 # Wrap the in-1 command in a function so that session installs can
 # modify the current shell environment. The first argument that is not
@@ -162,7 +162,7 @@ end
 contains -- $_in1_dir/man $MANPATH
 or set -gx MANPATH $_in1_dir/man (manpath 2>/dev/null | string split :)
 
-command in-1 --complete fish 2>/dev/null | source
+command in-1 --shell-init fish 2>/dev/null | source
 
 function in-1
   set -l first ""

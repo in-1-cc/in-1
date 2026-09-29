@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# shellcheck disable=SC1091
+# shellcheck disable=SC1091,SC2016
 source test/init
 export IN1_OFFLINE=1
 pfx=$TMPDIR/in-1
@@ -25,6 +25,8 @@ seed() {
   mkdir -p "$pfx/share/foreign/1" "$pfx/share/empty"
   touch "$IN1_ROOT/log/x" "$IN1_ROOT/cache/y" "$IN1_ROOT/local/legacy"
   touch "$pfx/bin/foreign" "$pfx/share/foreign/1/keep"
+  mkdir -p "$pfx/share/in-1/active"
+  ln -s ../../foo/2 "$pfx/share/in-1/active/foo"
 }
 
 make-read-only() {
@@ -53,6 +55,9 @@ check-reset() {
   else fail "$1: state cleared"; fi
   if [[ -x $IN1_ROOT/bin/in-1 ]]; then pass "$1: source checkout preserved"
   else fail "$1: source checkout preserved"; fi
+  if [[ ! -L $pfx/share/in-1/active/foo ]]; then
+    pass "$1: active shell support cleared"
+  else fail "$1: active shell support cleared"; fi
 }
 
 bin/in-1 --list >/dev/null

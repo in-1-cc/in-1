@@ -65,6 +65,11 @@ main() {
         [[ $# -gt 0 ]] || die "--complete requires a shell name"
         do-complete "$1"; return 0
         ;;
+      --shell-init)
+        mode='shell-init'
+        [[ $# -gt 0 ]] || die "--shell-init requires a shell name"
+        shell=$(check-shell "$1"); shift
+        ;;
       --uninstall) mode=uninstall;;
       -q|--quiet) quiet=1;;
       --update) update=1; upd_flag=1;;
@@ -105,6 +110,12 @@ main() {
   fi
   prefix=$(resolve-prefix) || return $?
   check-prefix || return $?
+
+  if [[ $mode == shell-init ]]; then
+    [[ ${#tools[@]} -eq 0 ]] || die "--shell-init takes no tools"
+    do-shell-init "$shell"
+    return 0
+  fi
 
   if [[ $list ]]; then
     [[ ${#tools[@]} -le 1 ]] || die "--list takes at most one pattern"
@@ -627,6 +638,7 @@ do-reset() (
   for wrapper in "${wrappers[@]}"; do
     rm -f "$wrapper" || die "Failed to remove '$wrapper'"
   done
+  clear-active-installs
   for dir in makes log cache; do
     [[ -e $root/$dir ]] || continue
     [[ $self_root != "$root/$dir" && $self_root != "$root/$dir/"* ]] || continue
@@ -1022,6 +1034,78 @@ collect-manpath() {
   done
 }
 
+# Add one man directory without duplicating it in emitted MANPATH setup.
+add-manpath() {  # $1=directory
+  [[ -d $1 ]] || return 0
+  case ":$man_adds:" in *":$1:"*) return 0;; esac
+  man_adds=$man_adds${man_adds:+:}$1
+}
+
+# Confirm that Makes installed every support file promised by config.yaml.
+verify-support() {  # $1=install-dir $2=tool
+  local idir=$1 tool=$2 shell page file found
+  local completions manuals
+  completions=$(meta "$tool-completion")
+  manuals=$(meta "$tool-man")
+  for shell in $completions; do
+    case $shell in
+      bash) file=$idir/share/bash-completion/completions/$tool;;
+      zsh) file=$idir/share/zsh/site-functions/_$tool;;
+      fish) file=$idir/share/fish/vendor_completions.d/$tool.fish;;
+      *) die "Unknown completion shell '$shell' for '$tool'";;
+    esac
+    [[ -s $file ]] || die "Completion for '$tool' was not installed: '$file'"
+  done
+  for page in $manuals; do
+    found=''
+    for file in "$idir"/man/man[1-9]/"$page".[1-9]* \
+                "$idir"/share/man/man[1-9]/"$page".[1-9]*; do
+      [[ -s $file ]] || continue
+      found=1
+      break
+    done
+    [[ $found ]] || die "Manual page '$page' was not installed for '$tool'"
+  done
+}
+
+# Record only tools with persistent shell support. The stable link lets a new
+# shell select the currently active version without running any tool.
+record-active-install() {  # $1=tool $2=install-dir
+  local tool=$1 idir=$2 active link version
+  [[ -n $(meta "$tool-completion") || -n $(meta "$tool-man") ]] || return 0
+  active=$install_root/share/in-1/active
+  link=$active/$tool
+  version=${idir##*/}
+  if [[ -e $active && (! -d $active || -L $active) ]]; then
+    die "Shell support registry '$active' is not a directory"
+  fi
+  mkdir -p "$active"
+  if [[ -e $link && ! -L $link ]]; then
+    die "Shell support registry entry '$link' is not a symlink"
+  fi
+  rm -f "$link"
+  ln -s "../../$tool/$version" "$link" ||
+    die "Could not activate shell support for '$tool'"
+}
+
+remove-active-install() {  # $1=tool
+  local active=$prefix/share/in-1/active link
+  link=$active/$1
+  [[ ! -L $link ]] || rm -f "$link" ||
+    die "Could not remove shell support for '$1'"
+  [[ ! -d $active ]] || rmdir "$active" 2>/dev/null || true
+}
+
+clear-active-installs() {
+  local active=$prefix/share/in-1/active link
+  [[ -d $active && ! -L $active ]] || return 0
+  for link in "$active"/*; do
+    [[ -L $link ]] || continue
+    rm -f "$link" || die "Could not clear shell support entry '$link'"
+  done
+  rmdir "$active" 2>/dev/null || true
+}
+
 # Single-quote $1 for bash/zsh eval
 sq() (
   s=${1//\'/\'\\\'\'}
@@ -1149,6 +1233,7 @@ install-all() {  # $1=install-root
     load-env "$envfile"
     rm -f "$envfile"
     compute-exports
+    verify-support "$idir" "$tool"
     write-wrappers "$version" "$primary" "$tool"
     if [[ $kind == library ]]; then
       artifact=$(make -s -C "$root" -f "$mf" \
@@ -1169,6 +1254,7 @@ install-all() {  # $1=install-root
       > "$idir/.in-1-installed.tmp" || die "Could not record '$tool' installation"
     mv "$idir/.in-1-installed.tmp" "$idir/.in-1-installed" ||
       die "Could not finish '$tool' installation"
+    record-active-install "$tool" "$idir"
     progress-line 0 "${primary:-$tool} v$version" "$disp" "$note" \
       "$(elapsed "$start" "$(now)")"
   done
@@ -1183,11 +1269,28 @@ emit-prepend-sh() (  # $1=var $2=dir
 )
 
 emit-manpath-sh() (
+  local rest=$man_adds dir
   [[ -n $man_adds ]] || return 0
-  first=${man_adds%%:*}
-  # shellcheck disable=SC2016  # $MANPATH expands in the emitted shell
-  printf 'case ":${MANPATH-}:" in *":%s:"*) ;; *) if [ -n "${MANPATH-}" ]; then export MANPATH=%s:$MANPATH; else export MANPATH=%s:; fi;; esac\n' \
-    "$first" "$(sq "$man_adds")" "$(sq "$man_adds")"
+  while [[ -n $rest ]]; do
+    dir=${rest%%:*}
+    if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
+    # shellcheck disable=SC2016  # $MANPATH expands in the emitted shell
+    printf 'case ":${MANPATH-}:" in *":%s:"*) ;; *) if [ -n "${MANPATH-}" ]; then export MANPATH=%s:$MANPATH; else export MANPATH=%s:; fi;; esac\n' \
+      "$dir" "$(sq "$dir")" "$(sq "$dir")"
+  done
+)
+
+emit-manpath-fish() (
+  local rest=$man_adds dir
+  [[ -n $rest ]] || return 0
+  printf 'set -q MANPATH; or set -gx MANPATH ""\n'
+  while [[ -n $rest ]]; do
+    dir=${rest%%:*}
+    if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
+    # shellcheck disable=SC2016  # $MANPATH expands in the user's fish
+    printf 'contains -- %s $MANPATH; or set -gx MANPATH %s $MANPATH\n' \
+      "$(fq "$dir")" "$(fq "$dir")"
+  done
 )
 
 emit-session-sh() (  # $1=bash|zsh
@@ -1222,17 +1325,7 @@ emit-session-fish() (
   # shellcheck disable=SC2016  # $PATH expands in the user's fish
   printf 'set -l _in1_path; for _in1_dir in $PATH; if test "$_in1_dir" != %s; and not string match -q "*/share/in-1/*/bin" "$_in1_dir"; set -a _in1_path "$_in1_dir"; end; end; set -gx PATH %s $_in1_path; set -e _in1_path; set -e _in1_dir\n' \
     "$(fq "$bindir")" "$(fq "$bindir")"
-  if [[ -n $man_adds ]]; then
-    printf 'set -q MANPATH; or set -gx MANPATH ""\n'
-    rest=$man_adds
-    while [[ -n $rest ]]; do
-      dir=${rest%%:*}
-      if [[ $rest == *:* ]]; then rest=${rest#*:}; else rest=''; fi
-      # shellcheck disable=SC2016  # $MANPATH expands in the user's fish
-      printf 'contains -- %s $MANPATH; or set -gx MANPATH %s $MANPATH\n' \
-        "$(fq "$dir")" "$(fq "$dir")"
-    done
-  fi
+  emit-manpath-fish
   emit-completions fish
   emit-extras fish
   emit-tools-var fish
@@ -1313,6 +1406,43 @@ emit-completions() (  # $1=bash|zsh|fish
   done
   return 0
 )
+
+# Load persistent support locations from the active-version registry.
+collect-active-support() {  # $1=bash|zsh|fish
+  local shell=$1 active link idir tool completions manuals dir
+  active=$prefix/share/in-1/active
+  comp_dirs=()
+  man_adds=''
+  [[ -d $active && ! -L $active ]] || return 0
+  for link in "$active"/*; do
+    [[ -L $link && -d $link ]] || continue
+    idir=$(cd "$link" && pwd -P) || continue
+    [[ -f $idir/.in-1-installed ]] || continue
+    tool=${link##*/}
+    case $idir in "$prefix/share/$tool/"*) ;; *) continue;; esac
+    completions=$(meta "$tool-completion")
+    manuals=$(meta "$tool-man")
+    case " $completions " in
+      *" $shell "*) comp_dirs+=("$idir");;
+    esac
+    [[ -n $manuals ]] || continue
+    for dir in "$idir/share/man" "$idir/man"; do
+      add-manpath "$dir"
+    done
+  done
+}
+
+do-shell-init() {  # $1=bash|zsh|fish
+  local shell=$1
+  collect-active-support "$shell"
+  do-complete "$shell"
+  if [[ $shell == fish ]]; then
+    emit-manpath-fish
+  else
+    emit-manpath-sh
+  fi
+  emit-completions "$shell"
+}
 
 # --- modes -----------------------------------------------------------
 
@@ -1583,6 +1713,7 @@ do-uninstall() (
       missing=1
       continue
     fi
+    remove-active-install "$tool"
     success "Uninstalled $name:" \
       "removed $n command wrappers from '$prefix/bin' and '$sdir'"
   done

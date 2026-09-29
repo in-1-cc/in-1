@@ -12,3 +12,4 @@
 /www/docs/rc
 /foobar/
 !/config.yaml
+/*.md

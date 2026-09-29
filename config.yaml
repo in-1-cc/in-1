@@ -16,6 +16,7 @@ chezscheme:
 clojure:
   bin: clj
   also: clj
+  man: [clojure, clj]
 cobol:
   bin: cobc
 coffeescript:
@@ -39,6 +40,15 @@ fsharp:
   bin: dotnet
 gdscript:
   bin: godot
+gloat:
+  completion: [bash, zsh, fish]
+  man:
+  - gloat
+  - gloat-go-interop
+  - gloat-install
+  - gloat-java-interop
+  - gloat-repl
+  - gloat-tutorial
 glojure:
   bin: glj
 gmp:
@@ -47,6 +57,10 @@ graalvm:
   bin: native-image
 j:
   bin: jconsole
+jolt:
+  completion: [bash, zsh, fish]
+jq:
+  man: jq
 let-go:
   bin: lg
 libyamlstar:
@@ -132,11 +146,13 @@ defn tools-make(tools):
     #   <tool>-bin   command names separated by spaces; first is primary
     #                (default: the tool name); all are aliases for the tool
     #   <tool>-also  literal note shown after "also: " on the success line
+    #   <tool>-completion  supported shells, separated by spaces
     #   <tool>-lib   Makes variable naming the required library artifact
+    #   <tool>-man   installed manual page names, separated by spaces
   names =: tools:keys:sort
   each tool names:
     data =: tools.$tool
-    each field qw(bin also lib):
+    each field qw(bin also completion lib man):
       when+ data.$field:
         value =:
           if vector?(_):
