@@ -406,7 +406,7 @@ alias-pairs() (
     tool=${k%-bin}
     v=${line#*:=}
     read -r -a names <<< "$v"
-    for name in "${names[@]}"; do
+    for name in ${names[@]+"${names[@]}"}; do
       [[ $name == "$tool" ]] && continue
       if [[ -n $wanted ]]; then
         [[ $name == "$wanted" ]] || continue
@@ -635,7 +635,7 @@ do-reset() (
     is-wrapper-under "$wrapper" "$prefix/share/in-1" && continue
     wrappers+=("$wrapper")
   done
-  for wrapper in "${wrappers[@]}"; do
+  for wrapper in ${wrappers[@]+"${wrappers[@]}"}; do
     rm -f "$wrapper" || die "Failed to remove '$wrapper'"
   done
   clear-active-installs
@@ -682,13 +682,16 @@ stale-notice() {  # $1=label $2=dir
 # that may itself be getting installed. Missing or invalid times add no hint.
 install-time-hint() (  # $1=resolved Makes tool slug
   slug='' seconds='' line=''
+  top_re='^[^[:space:]#]'
+  slug_re='^  slug: ([^[:space:]]+)[[:space:]]*$'
+  time_re='^  time: ([0-9]+)(\.[0-9]+)?s[[:space:]]*$'
   [[ -n $1 && -r $makes/langs.yaml ]] || return 0
   while IFS= read -r line || [[ -n $line ]]; do
-    if [[ $line =~ ^[^[:space:]#] ]]; then
+    if [[ $line =~ $top_re ]]; then
       slug=''; seconds=''
-    elif [[ $line =~ ^\ \ slug:\ ([^[:space:]]+)[[:space:]]*$ ]]; then
+    elif [[ $line =~ $slug_re ]]; then
       slug=${BASH_REMATCH[1]}
-    elif [[ $line =~ ^\ \ time:\ ([0-9]+)(\.[0-9]+)?s[[:space:]]*$ ]]; then
+    elif [[ $line =~ $time_re ]]; then
       seconds=${BASH_REMATCH[1]}
     fi
     if [[ $slug == "$1" && -n $seconds ]]; then
@@ -862,7 +865,7 @@ gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
     printf 'include %s/init.mk\n' "$makes"
     tool_var=$(uc "$3")
     read -ra aliases <<< "$(meta "$3-bin")" || true
-    for alias in "${aliases[@]}"; do
+    for alias in ${aliases[@]+"${aliases[@]}"}; do
       alias_var=$(uc "$alias")
       [[ $alias_var == "$tool_var" ]] && continue
       printf 'ifdef %s-VERSION\n' "$alias_var"
@@ -1701,7 +1704,7 @@ do-uninstall() (
       is-wrapper-under "$w" "$sdir" || continue
       wrappers+=("$w")
     done
-    for w in "${wrappers[@]}"; do
+    for w in ${wrappers[@]+"${wrappers[@]}"}; do
       rm -f "$w" || die "Failed to remove '$w'"
       n=$((n + 1))
     done

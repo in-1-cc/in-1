@@ -10,8 +10,9 @@ active=$pfx/share/in-1/active
 mkdir -p "$active"
 
 fake-support() {  # $1=tool $2=version
-  local tool=$1 version=$2 idir
+  local tool=$1 version=$2 idir upper
   idir=$pfx/share/$tool/$version
+  upper=$(printf '%s' "$tool" | tr '[:lower:]' '[:upper:]')
   mkdir -p \
     "$idir/share/bash-completion/completions" \
     "$idir/share/zsh/site-functions" \
@@ -19,7 +20,7 @@ fake-support() {  # $1=tool $2=version
     "$idir/share/man/man1" \
     "$idir/bin"
   printf 'in-1 command\nbin/%s\n' "$tool" > "$idir/.in-1-installed"
-  printf 'IN1_%s_COMPLETION=loaded\n' "${tool^^}" \
+  printf 'IN1_%s_COMPLETION=loaded\n' "$upper" \
     > "$idir/share/bash-completion/completions/$tool"
   touch "$idir/share/zsh/site-functions/_$tool"
   touch "$idir/share/fish/vendor_completions.d/$tool.fish"
