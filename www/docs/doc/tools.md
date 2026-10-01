@@ -11,13 +11,14 @@ and tools including:
 * Tools: `jq`, `yq`, `gh`, `cmake`, `shellcheck`, `pandoc`,
   `wasmtime`, `docker-compose`, ...
 
-See the full, current list with:
+Browse the sortable [installables list](../installables/index.md) or see the
+current list in your terminal with:
 
 ```bash
 in-1 --list
 ```
 
-or browse the `*.mk` files in the
+You can also browse the `*.mk` files in the
 [makes repo](https://github.com/makeplus/makes).
 
 ## Versions

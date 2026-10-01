@@ -9,7 +9,9 @@
 /www/site/
 /www/venv/
 /www/docs/index.html
+/www/docs/installables/index.md
 /www/docs/rc
 /foobar/
 !/config.yaml
 /*.md
+!/installable-shell-support.md

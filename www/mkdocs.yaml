@@ -45,6 +45,7 @@ theme:
 # sidebar entry; the header title and logo link to it (extra.homepage)
 nav:
 - Install: install/index.md
+- Installables: installables/index.md
 - Documentation:
   - doc/index.md
   - Usage: doc/usage.md
@@ -71,6 +72,12 @@ markdown_extensions:
 
 plugins:
 - search
+
+extra_javascript:
+- javascripts/installables.js
+
+extra_css:
+- stylesheets/installables.css
 
 extra:
   homepage: /home/

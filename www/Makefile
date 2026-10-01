@@ -25,7 +25,12 @@ IN1-VERSION := $(or $(IN1-VERSION),@IN1_VERSION@)
 DEPS := $(PYTHON-VENV)
 
 # Files generated from ../rc with the version pin stamped in
-GEN := docs/index.html docs/rc
+MAKES-SOURCE := $(or $(wildcard ../repos/makes),$M)
+MAKES-MODULES := $(wildcard $(MAKES-SOURCE)/*.mk)
+SUPPORT-REPORT := ../installable-shell-support.md
+
+INSTALLER-GEN := docs/index.html docs/rc
+GEN := $(INSTALLER-GEN) docs/installables/index.md
 
 MAKES-CLEAN += site $(GEN)
 MAKES-REALCLEAN += $(PYTHON-VENV)
@@ -55,6 +60,14 @@ publish: site
 # mtime dependency alone would keep shipping a stale version pin
 FORCE:
 
-$(GEN): ../rc $(PERL) FORCE
+$(INSTALLER-GEN): ../rc $(PERL) FORCE
 	IN1_PIN='$(IN1-VERSION)' \
 	  perl -pe 's/\@IN1_VERSION\@/$$ENV{IN1_PIN}/g' $< > $@
+
+docs/installables/index.md: util/installables ../bin/in-1 \
+  ../share/tools.mk $(SUPPORT-REPORT) $(MAKES-SOURCE)/langs.yaml \
+  data/releases.tsv data/commits.tsv $(MAKES-MODULES) $(PERL)
+	@mkdir -p $(@D)
+	$(PERL) $< $(MAKES-SOURCE) ../bin/in-1 ../share/tools.mk \
+	  $(SUPPORT-REPORT) $(MAKES-SOURCE)/langs.yaml data/releases.tsv \
+	  data/commits.tsv > $@

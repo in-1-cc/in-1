@@ -1,55 +1,307 @@
 ---
 alire:
+  repo: https://github.com/alire-project/alire
+  auth: mosteo
+  desc: Package manager and build tool for Ada
   bin: alr
+  site: https://alire.ada.dev/
+arturo:
+  repo: https://github.com/arturo-lang/arturo
+  auth: drkameleon
+  desc: Portable language for scripting and application development
+  site: http://arturo-lang.io
+asdf:
+  repo: https://github.com/asdf-vm/asdf
+  auth: Stratus3D
+  desc: Extensible version manager for developer tools
+  site: https://asdf-vm.com/
+autohotkey:
+  repo: https://github.com/AutoHotkey/AutoHotkey
+  auth: Lexikos
+  desc: Windows automation and hotkey scripting language
+  site: https://autohotkey.com/
 babashka:
+  repo: https://github.com/babashka/babashka
+  auth: borkdude
+  desc: Fast native Clojure scripting runtime
   bin: bb
+  site: https://book.babashka.org/
 ballerina:
+  repo: https://github.com/ballerina-platform/ballerina-distribution
+  auth: keizer619
+  desc: Cloud native programming language for integration
   bin: bal
+  site: https://ballerina.io/
+basilisp:
+  repo: https://github.com/basilisp-lang/basilisp
+  auth: chrisrink10
+  desc: Clojure compatible language hosted on Python
+  site: https://docs.basilisp.org
+bbin:
+  repo: https://github.com/babashka/bbin
+  auth: rads
+  desc: Binary script manager for Babashka
 berkeleydb:
+  repo: https://github.com/berkeleydb/libdb
+  auth: gburd
+  desc: Embedded transactional key value database library
   lib: BERKELEYDB-LIB
+bison:
+  repo: https://github.com/xpack-dev-tools/bison-xpack
+  auth: ilg-ul
+  desc: Parser generator for context free grammars
+  site: https://xpack-dev-tools.github.io/bison-xpack/
+bpan:
+  repo: https://github.com/bpan-org/bpan
+  auth: ingydotnet
+  desc: Package manager and registry client for Bash
+  site: https://bpan.org
+brotli:
+  repo: https://github.com/google/brotli
+  auth: eustas
+  desc: General purpose lossless compression tools
+buf:
+  repo: https://github.com/bufbuild/buf
+  auth: bufdev
+  desc: Protobuf development and schema management toolkit
+  site: https://buf.build
+bun:
+  repo: https://github.com/oven-sh/bun
+  auth: Jarred-Sumner
+  desc: Fast JavaScript runtime and package toolkit
+  site: https://bun.com
+cabal:
+  repo: https://github.com/haskell/cabal
+  auth: 23Skidoo
+  desc: Build system and package manager for Haskell
+  site: https://haskell.org/cabal
 cairo:
+  repo: https://github.com/software-mansion/scarb
+  auth: maciektr
+  desc: Cairo language toolchain and package manager
   bin: scarb
+  site: http://docs.swmansion.com/scarb/
+carp:
+  repo: https://github.com/carp-lang/Carp
+  auth: eriksvedang
+  desc: Statically typed Lisp for real time applications
+cc-pulse:
+  repo: https://github.com/NoobyGains/claude-pulse
+  auth: NoobyGains
+  desc: Claude Code usage monitoring dashboard
 cfml:
+  repo: https://github.com/Ortus-Solutions/commandbox
+  auth: bdw429s
+  desc: CommandBox runtime and tooling for CFML
   bin: box
 chezscheme:
+  repo: https://github.com/cisco/ChezScheme
+  auth: mflatt
+  desc: High performance implementation of Scheme
   bin: [scheme, petite, scheme-script]
+  site: https://cisco.github.io/ChezScheme/
+clang:
+  repo: https://github.com/llvm/llvm-project
+  auth: lattner
+  desc: LLVM based C language compiler frontend
+  site: https://clang.llvm.org/
+clj-kondo:
+  repo: https://github.com/clj-kondo/clj-kondo
+  auth: borkdude
+  desc: Static analyzer and linter for Clojure
+cljfmt:
+  repo: https://github.com/weavejester/cljfmt
+  auth: weavejester
+  desc: Code formatter for Clojure source files
+cljgo:
+  repo: https://github.com/muthuishere/cljgo
+  auth: muthuishere
+  desc: Clojure inspired language compiling to Go
+  site: https://muthuishere.github.io/cljgo/
+cljr:
+  repo: https://github.com/clojure/clojure-clr
+  auth: dmiller
+  desc: Clojure implementation for the Common Language Runtime
 clojure:
+  repo: https://github.com/clojure/brew-install
+  auth: puredanger
+  desc: Dynamic functional Lisp hosted on the JVM
   bin: clj
   also: clj
   man: [clojure, clj]
+  site: https://clojure.org/
+cmake:
+  repo: https://github.com/Kitware/CMake
+  auth: bradking
+  desc: Cross platform build system generator
+  site: https://cmake.org/
 cobol:
+  repo: https://github.com/OCamlPro/gnucobol
+  auth: ddeclerck
+  desc: Open source compiler for COBOL programs
   bin: cobc
 coffeescript:
+  repo: https://github.com/jashkenas/coffeescript
+  auth: jashkenas
+  desc: Concise language compiling into JavaScript
   bin: coffee
 compose:
+  repo: https://github.com/docker/compose
+  auth: ndeloof
+  desc: Container application orchestration with Docker Compose
   bin: docker-compose
+  site: https://docs.docker.com/compose/
 crystal:
+  repo: https://github.com/crystal-lang/crystal
+  auth: asterite
+  desc: Compiled language with Ruby inspired syntax
   completion: [bash, zsh, fish]
   man: crystal
+  site: https://crystal-lang.org
+csharp:
+  repo: https://github.com/dotnet/sdk
+  auth: marcpopMSFT
+  desc: Modern object oriented language for .NET
+  site: https://dotnet.microsoft.com/languages/csharp
+cursor:
+  repo: https://github.com/oslook/cursor-ai-downloads
+  auth: oslook
+  desc: AI powered source code editor
 d:
+  repo: https://github.com/ldc-developers/ldc
+  auth: WalterBright
+  desc: Systems programming language with C style syntax
   bin: ldc2
+  site: https://ldc-developers.github.io/
+dart:
+  repo: https://github.com/dart-lang/sdk
+  auth: scheglov
+  desc: Client optimized language for multiplatform applications
+defang:
+  repo: https://github.com/defanglabs/defang
+  auth: lionello
+  desc: Cloud application deployment and development toolkit
+  site: https://defang.io
 delphi:
+  repo: https://github.com/fpc/FPCSource
+  auth: FPK
+  desc: Object Pascal compiler for Delphi compatible code
   bin: fpc
+  site: https://www.freepascal.org/
+docker-compose:
+  repo: https://github.com/docker/compose
+  auth: ndeloof
+  desc: Multi container application orchestration tool
+  site: https://docs.docker.com/compose/
 dotnet:
+  repo: https://github.com/dotnet/sdk
+  auth: marcpopMSFT
+  desc: Cross platform runtime and SDK for .NET
   completion: [bash, zsh, fish]
   man: dotnet
+  site: https://dotnet.microsoft.com/
+elixir:
+  repo: https://github.com/elixir-lang/elixir
+  auth: josevalim
+  desc: Functional concurrent language for the Erlang VM
+  site: https://elixir-lang.org/
+elm:
+  repo: https://github.com/elm/compiler
+  auth: evancz
+  desc: Functional language for reliable web applications
+  site: https://elm-lang.org/
 erlang:
+  repo: https://github.com/erlang/otp
+  auth: bjorng
+  desc: Concurrent functional language and runtime platform
   bin: erl
+  site: http://erlang.org
 euphoria:
+  repo: https://github.com/OpenEuphoria/euphoria
+  auth: matthewwalkerlewis
+  desc: Simple interpreted general purpose programming language
   bin: eui
+  site: https://openeuphoria.org/
+factor:
+  repo: https://github.com/factor/factor
+  auth: slavapestov
+  desc: Stack based functional programming language
+  site: https://factorcode.org/
+fennel:
+  repo: https://github.com/bakpakin/Fennel
+  auth: technomancy
+  desc: Lua hosted Lisp programming language
+flex:
+  repo: https://github.com/xpack-dev-tools/flex-xpack
+  auth: ilg-ul
+  desc: Fast lexical analyzer generator
+  site: https://xpack-dev-tools.github.io/flex-xpack/
+forth:
+  repo: https://github.com/forthy42/gforth
+  auth: forthy42
+  desc: Interactive stack based programming language
+  site: https://gforth.org/
 fortran:
+  repo: https://github.com/fortran-lang/fpm
+  auth: perazz
+  desc: Fortran package manager and build system
   bin: gfortran
   also: fpm
+  site: https://fortran-lang.org/
+fpc:
+  repo: https://github.com/fpc/FPCSource
+  auth: FPK
+  desc: Free Pascal compiler and development tools
+  site: https://www.freepascal.org/
 freebasic:
+  repo: https://github.com/freebasic/fbc
+  auth: dkl
+  desc: Free BASIC compiler for native applications
   bin: fbc
+  site: https://www.freebasic.net
 fsharp:
+  repo: https://github.com/dotnet/sdk
+  auth: marcpopMSFT
+  desc: Functional first language for the .NET platform
   bin: dotnet
+  site: https://fsharp.org/
+futhark:
+  repo: https://github.com/diku-dk/futhark
+  auth: athas
+  desc: Data parallel functional array programming language
+  site: http://futhark-lang.org
+gcc:
+  repo: https://github.com/xpack-dev-tools/gcc-xpack
+  auth: ilg-ul
+  desc: GNU compiler collection for native languages
+  site: https://xpack-dev-tools.github.io/gcc-xpack/
 gdscript:
+  repo: https://github.com/godotengine/godot
+  auth: akien-mga
+  desc: Scripting language and engine for Godot
   bin: godot
+  site: https://godotengine.org
 gh:
+  repo: https://github.com/cli/cli
+  auth: mislav
+  desc: Official command line interface for GitHub
   completion: [bash, zsh, fish]
   man: gh
+  site: https://cli.github.com
+ghc:
+  repo: https://github.com/ghc/ghc
+  auth: simonmar
+  desc: Optimizing native compiler for Haskell
+  site: http://www.haskell.org/ghc/
+gleam:
+  repo: https://github.com/gleam-lang/gleam
+  auth: lpil
+  desc: Type safe language for the Erlang VM
+  site: https://gleam.run
 gloat:
+  repo: https://github.com/gloathub/gloat
+  auth: ingydotnet
+  desc: Clojure inspired language hosted on Go
   completion: [bash, zsh, fish]
   man:
   - gloat
@@ -59,85 +311,515 @@ gloat:
   - gloat-repl
   - gloat-tutorial
 glojure:
+  repo: https://github.com/glojurelang/glojure
+  auth: ingydotnet
+  desc: Clojure implementation hosted on Go
   bin: glj
 gmp:
+  repo: https://github.com/xpack-dev-tools/gcc-xpack
+  auth: ilg-ul
+  desc: Arbitrary precision arithmetic library
   lib: GMP-LIB
+gnat:
+  repo: https://github.com/alire-project/GNAT-FSF-builds
+  auth: Fabien-Chouteau
+  desc: GNU compiler toolchain for Ada
+go:
+  repo: https://github.com/golang/go
+  auth: rsc
+  desc: Compiled language for simple concurrent software
+  site: https://go.dev
+go-yaml:
+  repo: https://github.com/yaml/go-yaml
+  auth: ingydotnet
+  desc: Go command line tools for YAML processing
+gobb:
+  repo: https://github.com/gloathub/gobb
+  auth: ingydotnet
+  desc: Go based binary package installer
+golangci-lint:
+  repo: https://github.com/golangci/golangci-lint
+  auth: ldez
+  desc: Fast aggregated linter runner for Go
+  site: https://golangci-lint.run
 graalvm:
+  repo: https://github.com/oracle/graal
+  auth: dougxc
+  desc: High performance polyglot Java development kit
   bin: native-image
+grenadine:
+  repo: https://github.com/clojurestar/grenadine
+  auth: ingydotnet
+  desc: Clojure inspired language runtime for Go
+groovy:
+  repo: https://github.com/apache/groovy
+  auth: paulk-asert
+  desc: Dynamic language for the Java platform
+haxe:
+  repo: https://github.com/HaxeFoundation/haxe
+  auth: Simn
+  desc: Cross platform high level programming language
+  site: https://haxe.org
+hcloud:
+  repo: https://github.com/hetznercloud/cli
+  auth: phm07
+  desc: Command line client for Hetzner Cloud
 helm:
+  repo: https://github.com/helm/helm
+  auth: technosophos
+  desc: Package manager for Kubernetes applications
   completion: [bash, zsh, fish]
   man: helm
+  site: https://helm.sh
+hy:
+  repo: https://github.com/hylang/hy
+  auth: Kodiologist
+  desc: Lisp dialect embedded in Python
+  site: http://hylang.org
+in-1:
+  repo: https://github.com/in-1-cc/in-1
+  auth: ingydotnet
+  desc: Universal installer for developer tools and languages
+  site: https://in-1.cc/
 j:
+  repo: https://github.com/jsoftware/jsource
+  auth: HenryHRich
+  desc: High performance array programming language
   bin: jconsole
+  site: https://www.jsoftware.com/
+janet:
+  repo: https://github.com/janet-lang/janet
+  auth: bakpakin
+  desc: Lightweight functional embeddable programming language
+  site: https://janet-lang.org
+java:
+  repo: https://github.com/openjdk/jdk
+  auth: shipilev
+  desc: Java development kit and runtime
+joker:
+  repo: https://github.com/candid82/joker
+  auth: candid82
+  desc: Small Clojure interpreter and linter
+  site: https://joker-lang.org/
 jolt:
+  repo: https://github.com/jolt-lang/jolt
+  auth: yogthos
+  desc: Lightweight Clojure dialect for scripting
   completion: [bash, zsh, fish]
+  site: https://jolt-lang.net/
 jq:
+  repo: https://github.com/jqlang/jq
+  auth: nicowilliams
+  desc: Command line JSON processor and query language
   man: jq
+  site: https://jqlang.org
+jsonschema:
+  repo: https://github.com/sourcemeta/jsonschema
+  auth: jviotti
+  desc: Fast command line JSON Schema validator
+julia:
+  repo: https://github.com/JuliaLang/julia
+  auth: JeffBezanson
+  desc: High performance language for technical computing
+  site: https://julialang.org/
+jus:
+  repo: https://github.com/paintparty/jus
+  auth: paintparty
+  desc: Command runner for project automation
+just:
+  repo: https://github.com/casey/just
+  auth: casey
+  desc: Handy command runner for project recipes
+  site: https://just.systems
+k3d:
+  repo: https://github.com/k3d-io/k3d
+  auth: iwilltry42
+  desc: Run lightweight Kubernetes clusters in Docker
+  site: https://k3d.io/
+kotlin:
+  repo: https://github.com/JetBrains/kotlin
+  auth: udalov
+  desc: Concise multiplatform language for modern applications
+  site: https://kotlinlang.org
+lean:
+  repo: https://github.com/leanprover/lean4
+  auth: leodemoura
+  desc: Functional language and interactive theorem prover
+  site: https://lean-lang.org
+lein:
+  repo: https://codeberg.org/leiningen/leiningen
+  auth: technomancy
+  desc: Project automation and dependency tool for Clojure
 let-go:
+  repo: https://github.com/nooga/let-go
+  auth: nooga
+  desc: Small functional Lisp implementation in Go
   bin: lg
+  site: https://nooga.github.io/let-go
+lgx:
+  repo: https://github.com/abogoyavlensky/lgx
+  auth: abogoyavlensky
+  desc: Lisp inspired scripting language implementation
+  site: http://lgx.bogoyavlensky.com/
 libyamlstar:
+  repo: https://github.com/yaml/yamlstar
+  auth: ingydotnet
+  desc: Native library for YAMLStar parsing
   lib: LIBYAMLSTAR
 libys:
+  repo: https://github.com/yaml/yamlscript
+  auth: ingydotnet
+  desc: Native library for the YAMLScript runtime
   lib: LIBYS
+lua:
+  repo: https://github.com/lua/lua
+  auth: roberto-ieru
+  desc: Lightweight embeddable scripting language
+  site: https://lua.org
+luajit:
+  repo: https://github.com/LuaJIT/LuaJIT
+  auth: LuaJIT
+  desc: Just in time compiler for Lua
+  site: http://luajit.org
+luarocks:
+  repo: https://github.com/luarocks/luarocks
+  auth: hishamhm
+  desc: Package manager for Lua modules
+  site: https://luarocks.org
 maven:
+  repo: https://github.com/apache/maven
+  auth: jvanzyl
+  desc: Build automation and dependency tool for Java
   bin: mvn
+  site: https://maven.apache.org/ref/current
 md2man:
+  repo: https://github.com/cpuguy83/go-md2man
+  auth: cpuguy83
+  desc: Convert Markdown documents into manual pages
   bin: go-md2man
+mips:
+  repo: https://github.com/dpetersanderson/MARS
+  auth: dpetersanderson
+  desc: Educational simulator for the MIPS architecture
 moonbit:
+  repo: https://github.com/moonbitlang/moonbit-compiler
+  auth: myfreess
+  desc: Cloud oriented language and developer toolchain
   bin: moon
+  site: https://www.moonbitlang.com/
 moonscript:
+  repo: https://github.com/leafo/moonscript
+  auth: leafo
+  desc: Dynamic language that compiles to Lua
   bin: [moon, moonc]
+nbb:
+  repo: https://github.com/babashka/nbb
+  auth: borkdude
+  desc: Babashka inspired ClojureScript scripting runtime
+nim:
+  repo: https://github.com/nim-lang/Nim
+  auth: Araq
+  desc: Efficient expressive statically typed systems language
+  site: https://nim-lang.org
+node:
+  repo: https://github.com/nodejs/node
+  auth: Trott
+  desc: Server side JavaScript runtime environment
+  site: https://nodejs.org
+nono:
+  repo: https://github.com/always-further/nono
+  auth: lukehinds
+  desc: Kernel enforced sandbox for coding agents
+  site: https://nono.sh
 objective-c:
+  repo: https://github.com/llvm/llvm-project
+  auth: lattner
+  desc: Clang toolchain for Objective C development
   bin: clang
+  site: http://llvm.org
+ocaml:
+  repo: https://github.com/ocaml/opam
+  auth: AltGr
+  desc: Functional language with an industrial strength type system
+  site: https://ocaml.org/
+odin:
+  repo: https://github.com/odin-lang/Odin
+  auth: gingerBill
+  desc: Data oriented language for systems programming
+  site: https://odin-lang.org
+pandoc:
+  repo: https://github.com/jgm/pandoc
+  auth: jgm
+  desc: Universal markup document converter
+  site: https://pandoc.org
+perl:
+  repo: https://github.com/skaji/relocatable-perl
+  auth: skaji
+  desc: Practical language for text processing and automation
 pharo:
+  repo: https://github.com/pharo-project/pharo-launcher
+  auth: demarey
+  desc: Launcher for the Pharo Smalltalk environment
   bin: pharo-launcher
+  site: https://pharo-project.github.io/pharo-launcher/
+phel:
+  repo: https://github.com/phel-lang/phel-lang
+  auth: Chemaclass
+  desc: Functional Lisp dialect hosted on PHP
+  site: https://phel-lang.org
+php:
+  repo: https://github.com/php/php-src
+  auth: dstogov
+  desc: Popular language for server side web development
+  site: https://www.php.net
 powershell:
+  repo: https://github.com/PowerShell/PowerShell
+  auth: andyleejordan
+  desc: Cross platform shell and automation language
   bin: pwsh
+  site: https://microsoft.com/PowerShell
 processing:
+  repo: https://github.com/processing/processing4
+  auth: benfry
+  desc: Creative coding environment for visual arts
   bin: Processing
+  site: https://processing.org
 prolog:
+  repo: https://github.com/trealla-prolog/trealla
+  auth: infradig
+  desc: Logic programming language and runtime
   bin: tpl
+pulumi:
+  repo: https://github.com/pulumi/pulumi
+  auth: joeduffy
+  desc: Infrastructure as code using general purpose languages
+  site: https://www.pulumi.com
 purescript:
+  repo: https://github.com/purescript/purescript
+  auth: paf31
+  desc: Strongly typed functional language compiling to JavaScript
   bin: purs
+  site: https://www.purescript.org
+pyret:
+  repo: https://github.com/brownplt/pyret-lang
+  auth: jpolitz
+  desc: Programming language designed for education
+python:
+  repo: https://github.com/python/cpython
+  auth: gvanrossum
+  desc: General purpose programming language and runtime
+  site: https://www.python.org
 r:
+  repo: https://github.com/r-hub/R
+  auth: gaborcsardi
+  desc: Language and environment for statistical computing
   bin: R
+racket:
+  repo: https://github.com/racket/racket
+  auth: mflatt
+  desc: Language oriented programming platform based on Scheme
+  site: https://racket-lang.org/
+raku:
+  repo: https://github.com/rakudo/rakudo
+  auth: lizmat
+  desc: Expressive multiparadigm language from the Perl family
+  site: https://raku.org/
 reasonml:
+  repo: https://github.com/reasonml/reason
+  auth: chenglou
+  desc: Functional syntax and tooling for OCaml
   bin: refmt
+rebar3:
+  repo: https://github.com/erlang/rebar3
+  auth: ferd
+  desc: Build and dependency tool for Erlang
+  site: http://www.rebar3.org
+red:
+  repo: https://github.com/red/red
+  auth: dockimbel
+  desc: Full stack language inspired by REBOL
+  site: https://www.red-lang.org/
+rg:
+  repo: https://github.com/BurntSushi/ripgrep
+  auth: BurntSushi
+  desc: Fast recursive text search command
+roc:
+  repo: https://github.com/roc-lang/roc
+  auth: rtfeldman
+  desc: Functional language for reliable applications
+  site: https://roc-lang.org
+ruby:
+  repo: https://github.com/oneclick/rubyinstaller2
+  auth: larskanis
+  desc: Dynamic language focused on programmer happiness
+  site: https://www.ruby-lang.org/
 rust:
+  repo: https://github.com/rust-lang/rust
+  auth: matthiaskrgr
+  desc: Memory safe language for systems programming
   bin: [rustc, cargo]
   also: cargo* rust*
+  site: https://www.rust-lang.org
+sbcl:
+  repo: https://github.com/sbcl/sbcl
+  auth: snuglas
+  desc: High performance compiler for Common Lisp
 scala:
+  repo: https://github.com/VirtusLab/scala-cli
+  auth: Gedochao
+  desc: Scala compiler runner and packaging toolkit
   bin: scala-cli
+  site: https://scala-cli.virtuslab.org
+scheme:
+  repo: https://github.com/racket/racket
+  auth: mflatt
+  desc: Minimal Lisp dialect for functional programming
+scratch:
+  repo: https://github.com/scratchfoundation/scratch-desktop
+  auth: cwillisf
+  desc: Visual programming environment for creative learning
+shellcheck:
+  repo: https://github.com/koalaman/shellcheck
+  auth: koalaman
+  desc: Static analysis tool for shell scripts
+  site: https://www.shellcheck.net
+sml:
+  repo: https://github.com/smlnj/smlnj
+  auth: JohnReppy
+  desc: Standard ML compiler and programming environment
 solidity:
+  repo: https://github.com/argotorg/solidity
+  auth: chriseth
+  desc: Smart contract language for Ethereum
   bin: solc
+  site: https://soliditylang.org
 sqlite:
+  repo: https://github.com/sqlite/sqlite
+  auth: drhsqlite
+  desc: Self contained embedded relational database
   bin: sqlite3
+  site: https://sqlite.org/
+squint:
+  repo: https://github.com/squint-cljs/squint
+  auth: borkdude
+  desc: ClojureScript syntax compiling to modern JavaScript
+swift:
+  repo: https://github.com/swiftlang/swift
+  auth: swift-ci
+  desc: Safe fast language for Apple platforms
+task:
+  repo: https://github.com/go-task/task
+  auth: andreynering
+  desc: Cross platform task runner using YAML
+  site: https://taskfile.dev
 tcl:
+  repo: https://github.com/tcltk/tcl
+  auth: dkfellows
+  desc: Portable Tcl runtime packaged as Tclkit
   bin: tclsh
+  site: https://www.tcl-lang.org/
+tinygo:
+  repo: https://github.com/tinygo-org/tinygo
+  auth: aykevl
+  desc: Go compiler for embedded systems and WebAssembly
+  site: https://tinygo.org
+ttyd:
+  repo: https://github.com/tsl0922/ttyd
+  auth: tsl0922
+  desc: Share a terminal session over the web
+  site: https://tsl0922.github.io/ttyd
 typescript:
+  repo: https://github.com/microsoft/TypeScript
+  auth: ahejlsberg
+  desc: Typed superset of JavaScript for applications
   bin: tsc
+  site: https://www.typescriptlang.org
+typos:
+  repo: https://github.com/crate-ci/typos
+  auth: epage
+  desc: Fast source code spelling checker
+uiua:
+  repo: https://github.com/uiua-lang/uiua
+  auth: kaikalii
+  desc: Stack based array programming language
+  site: https://www.uiua.org
 unison:
+  repo: https://github.com/unisonweb/unison
+  auth: pchiusano
+  desc: Content addressed functional programming language
   bin: ucm
+  site: https://unison-lang.org
 uv:
+  repo: https://github.com/astral-sh/uv
+  auth: charliermarsh
+  desc: Extremely fast Python package and project manager
   also: uvx
+  site: https://docs.astral.sh/uv
 vimscript:
+  repo: https://github.com/neovim/neovim
+  auth: zeertzjq
+  desc: Neovim editor and Vimscript runtime
   bin: nvim
+  site: https://neovim.io
 vlang:
+  repo: https://github.com/vlang/v
+  auth: medvednikov
+  desc: Simple fast compiled programming language
   bin: v
+  site: https://vlang.io/
+wasm-opt:
+  repo: https://github.com/WebAssembly/binaryen
+  auth: kripken
+  desc: WebAssembly binary optimizer and transformation tool
+wasmtime:
+  repo: https://github.com/bytecodealliance/wasmtime
+  auth: alexcrichton
+  desc: Fast secure runtime for WebAssembly
+  site: https://wasmtime.dev/
 wren:
+  repo: https://github.com/wren-lang/wren-cli
+  auth: munificent
+  desc: Small fast embeddable scripting language
   bin: wren_cli
+  site: https://wren.io/
+yamlfmt:
+  repo: https://github.com/google/yamlfmt
+  auth: braydonk
+  desc: Extensible command line YAML formatter
 yamlschema:
+  repo: https://github.com/yaml/yamlschema
+  auth: ingydotnet
+  desc: Schema language and validator for YAML
   bin: ysd
   completion: [bash, zsh, fish]
   man: [ysd, yamlschema-design, yamlschema-json-schema, yamlschema]
 yamlscript:
+  repo: https://github.com/yaml/yamlscript
+  auth: ingydotnet
+  desc: Functional programming language using YAML syntax
   bin: ys
+  site: https://yamlscript.org/
 yamlstar:
+  repo: https://github.com/yaml/yamlstar
+  auth: ingydotnet
+  desc: Extensible YAML parser with plugin support
   bin: yaml
 yq:
+  repo: https://github.com/mikefarah/yq
+  auth: mikefarah
+  desc: Portable command line YAML processor
   completion: [bash, zsh, fish]
   man: yq
-
+  site: https://mikefarah.gitbook.io/yq/
+zig:
+  repo: https://github.com/ziglang/zig
+  auth: andrewrk
+  desc: General purpose language for robust software
+  site: https://ziglang.org/
+zprint:
+  repo: https://github.com/kkinnear/zprint
+  auth: kkinnear
+  desc: Configurable formatter for Clojure code
 --- !ys-0
 
 defn main(command=nil):
@@ -163,13 +845,17 @@ defn tools-make(tools):
     #   <tool>-bin   command names separated by spaces; first is primary
     #                (default: the tool name); all are aliases for the tool
     #   <tool>-also  literal note shown after "also: " on the success line
+    #   <tool>-auth  main repository committer's GitHub login
     #   <tool>-completion  supported shells, separated by spaces
+    #   <tool>-desc  short installables table description
     #   <tool>-lib   Makes variable naming the required library artifact
     #   <tool>-man   installed manual page names, separated by spaces
+    #   <tool>-repo  source repository used for activity metadata
+    #   <tool>-site  project website override for the installables page
   names =: tools:keys:sort
   each tool names:
     data =: tools.$tool
-    each field qw(bin also completion lib man):
+    each field qw(bin also auth completion desc lib man repo site):
       when+ data.$field:
         value =:
           if vector?(_):

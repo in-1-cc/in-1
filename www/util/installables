@@ -1,0 +1,486 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+my ($makes_dir, $in1, $tools_file, $support_report, $langs_file,
+    $release_file, $commit_file) = @ARGV;
+die "Usage: $0 MAKES-DIR IN-1 TOOLS-MK SUPPORT-REPORT LANGS-YAML " .
+    "RELEASES-TSV COMMITS-TSV\n" unless defined $commit_file;
+
+my $in1_source = slurp($in1);
+my ($filter) = $in1_source =~ /^tool_filter='([^']*)'/m;
+die "Can't find tool_filter in '$in1'\n" unless defined $filter;
+my %skip = map { $_ => 1 } split /\s+/, $filter;
+
+my %metadata;
+for (split /\n/, slurp($tools_file)) {
+    next unless /^([a-z0-9.+_-]+)-([a-z-]+) :=\s*(.*)$/;
+    $metadata{$1}{$2} = $3;
+}
+
+my %upstream_support;
+my $section = '';
+for (split /\n/, slurp($support_report)) {
+    if (/^## Both completion and man pages/) {
+        $section = 'both';
+    }
+    elsif (/^## Completion only/) {
+        $section = 'completion';
+    }
+    elsif (/^## Man pages only/) {
+        $section = 'man';
+    }
+    elsif (/^## /) {
+        $section = '';
+    }
+    next unless $section && /^\| `([^`]+)` \|/;
+    my $name = $1;
+    $upstream_support{$name}{completion} = 1
+        if $section eq 'both' || $section eq 'completion';
+    $upstream_support{$name}{man} = 1
+        if $section eq 'both' || $section eq 'man';
+}
+
+my %languages;
+my $slug = '';
+for (split /\n/, slurp($langs_file)) {
+    $slug = $1 if /^  slug:\s*(\S+)/;
+    $languages{$slug} = 1 if $slug && /^  makes:\s*true\s*$/;
+}
+
+my %release_dates;
+for (split /\n/, slurp($release_file)) {
+    next if /^\s*(?:#|$)/;
+    my ($name, $version, $date) = split /\t/;
+    die "Invalid release date row: $_\n"
+        unless $name && $version && $date =~ /^\d{4}-\d{2}-\d{2}$/;
+    $release_dates{$name}{$version} = $date;
+}
+
+my %commit_dates;
+for (split /\n/, slurp($commit_file)) {
+    next if /^\s*(?:#|$)/;
+    my ($repo, $date) = split /\t/;
+    die "Invalid commit date row: $_\n"
+        unless $repo && $date =~ /^\d{4}-\d{2}-\d{2}$/;
+    $commit_dates{$repo} = $date;
+}
+
+my %cache;
+my @rows;
+for my $file (sort glob "$makes_dir/*.mk") {
+    (my $name = $file) =~ s{.*/|\.mk$}{}g;
+    next if $skip{$name};
+    my $data = module_data($name, {});
+    my $completion = support_state($name, 'completion');
+    my $manual = support_state($name, 'man');
+    my $date = release_date($name, $data->{version}, {});
+    my $date_source = $date ? 'release' : '';
+    if (!$date && $data->{repo} && $commit_dates{$data->{repo}}) {
+        $date = $commit_dates{$data->{repo}};
+        $date_source = 'commit';
+    }
+    push @rows, {
+        name => $name,
+        site => $data->{site},
+        version => $data->{version},
+        release => $data->{release},
+        date => $date,
+        date_source => $date_source,
+        repo => $data->{repo},
+        by => $data->{auth},
+        description => $data->{desc},
+        type => $languages{$name} ? 'Language' : 'Tool',
+        completion => $completion,
+        manual => $manual,
+    };
+}
+
+print <<'MARKDOWN';
+---
+hide:
+- navigation
+---
+
+# Installables
+
+These are the tools that [in-1](/home/) can install from
+[Makes](https://github.com/makeplus/makes).
+Click a column heading to sort the table.
+
+<div class="installables-table" data-installables-table>
+<table>
+  <thead>
+    <tr>
+      <th scope="col" aria-label="Order"></th>
+      <th scope="col" aria-sort="none">
+        <button type="button" data-sort-key="name"
+          data-tooltip="Installable name">
+          Name <span class="sort-marker" aria-hidden="true">&#8597;</span>
+        </button>
+      </th>
+      <th scope="col" aria-sort="none">
+        <button type="button" data-sort-key="version"
+          data-tooltip="Current default version">
+          Version <span class="sort-marker" aria-hidden="true">&#8597;</span>
+        </button>
+      </th>
+      <th scope="col" aria-sort="none">
+        <button type="button" data-sort-key="date"
+          data-tooltip="Release or latest commit date">
+          Date <span class="sort-marker" aria-hidden="true">&#8597;</span>
+        </button>
+      </th>
+      <th scope="col" aria-sort="none">
+        <button type="button" data-sort-key="by"
+          data-tooltip="Main repository committer">
+          By <span class="sort-marker" aria-hidden="true">&#8597;</span>
+        </button>
+      </th>
+      <th class="compact-column" scope="col" aria-sort="none">
+        <button type="button" data-sort-key="type"
+          data-tooltip="Tool or programming language">
+          Type <span class="sort-marker" aria-hidden="true">&#8597;</span>
+        </button>
+      </th>
+      <th class="compact-column" scope="col" aria-sort="none">
+        <button type="button" data-sort-key="completion"
+          data-tooltip="Tab Completion" aria-label="Sort by tab completion">
+          Comp <span class="sort-marker" aria-hidden="true">&#8597;</span>
+        </button>
+      </th>
+      <th class="compact-column" scope="col" aria-sort="none">
+        <button type="button" data-sort-key="man"
+          data-tooltip="Man Pages" aria-label="Sort by man pages">
+          Man <span class="sort-marker" aria-hidden="true">&#8597;</span>
+        </button>
+      </th>
+      <th class="installable-description" scope="col" aria-sort="none">
+        <button type="button" data-sort-key="description"
+          data-tooltip="Short project description">
+          Description <span class="sort-marker" aria-hidden="true">&#8597;</span>
+        </button>
+      </th>
+    </tr>
+  </thead>
+  <tbody>
+MARKDOWN
+
+my $order = 0;
+for my $row (@rows) {
+    $order++;
+    my $name = html($row->{name});
+    my $site = html($row->{site});
+    my $version = html($row->{version});
+    my $release = html($row->{release});
+    my $date = $row->{date};
+    my $date_source = $row->{date_source};
+    my $type = $row->{type};
+    my $completion = $row->{completion};
+    my $manual = $row->{manual};
+    my $description = html($row->{description});
+    my $completion_html = support_html($completion);
+    my $manual_html = support_html($manual);
+    my $completion_sort = support_sort($completion);
+    my $manual_sort = support_sort($manual);
+    my $version_html = $release
+        ? qq{<a href="$release">$version</a>}
+        : $version;
+    my $repo = html($row->{repo});
+    print qq{    <tr id="$name" data-repository="$repo">\n};
+    print qq{      <td class="installable-order">};
+    print qq{<a href="#$name" aria-label="Link to $name">};
+    print qq{<strong>$order</strong></a></td>\n};
+    print qq{      <td data-sort-value="$name">};
+    print qq{<a href="$site">$name</a></td>\n};
+    print qq{      <td data-sort-value="$version">};
+    print qq{$version_html</td>\n};
+    if ($date) {
+        print qq{      <td data-sort-value="$date">};
+        if ($date_source eq 'commit') {
+            print qq{<span aria-label="Latest repository commit date" };
+            print qq{title="Latest repository commit date">$date</span>};
+        }
+        else {
+            print $date;
+        }
+        print qq{</td>\n};
+    }
+    else {
+        print qq{      <td data-sort-value="0000-00-00">};
+        print qq{<span class="release-date-missing" };
+        print qq{aria-label="Release date unavailable" };
+        print qq{title="Release date unavailable">?</span></td>\n};
+    }
+    print by_html($row->{by});
+    print qq{      <td class="installable-type" data-sort-value="$type">};
+    print type_html($type), qq{</td>\n};
+    print qq{      <td class="installable-support" };
+    print qq{data-sort-value="$completion_sort">};
+    print qq{$completion_html</td>\n};
+    print qq{      <td class="installable-support" };
+    print qq{data-sort-value="$manual_sort">$manual_html</td>\n};
+    print qq{      <td class="installable-description" };
+    print qq{data-sort-value="$description">};
+    print qq{$description</td>\n};
+    print qq{    </tr>\n};
+}
+
+print <<'MARKDOWN';
+  </tbody>
+</table>
+</div>
+
+* The versions shown are the current defaults.
+* Dates come from the matching release when available, or from the
+  repository's latest commit otherwise.
+* By shows the main repository committer by commit contributions.
+* A green **&#8730;** means in-1 installs that support.
+  * A green **&#8730;\*** means the tool supports it but in-1 does not install
+    it yet.
+MARKDOWN
+
+sub module_data {
+    my ($name, $seen) = @_;
+    return $cache{$name} if $cache{$name};
+    return empty_data($name) if $seen->{$name}++;
+
+    my $file = "$makes_dir/$name.mk";
+    return empty_data($name) unless -f $file;
+    my $source = slurp($file);
+    my $preamble = $source;
+    $preamble =~ s/^ifndef [A-Z0-9_-]+-LOADED\b.*//ms;
+    my @header_urls = map { trim_url($_) }
+        $preamble =~ m{^#\s*(https?://\S+)}mg;
+    my $logical = $source;
+    $logical =~ s/\\\n[ \t]*/ /g;
+
+    my %variables;
+    my @versions;
+    my @assignment_urls;
+    for my $line (split /\n/, $logical) {
+        next unless $line =~ /^([A-Za-z0-9_-]+)\s*(\?=|:=|=)\s*(.*?)\s*$/;
+        my ($key, $operator, $raw) = ($1, $2, $3);
+        next if $operator eq '?=' && exists $variables{$key};
+        my $value = expand($raw, \%variables);
+        $variables{$key} = $value;
+        push @versions, [$key, $value]
+            if $key =~ /-VERSION(?:-|$)/;
+        push @assignment_urls, map { trim_url($_) }
+            $value =~ m{(https?://[^\s'"()]+)}g;
+    }
+
+    my @includes = $source =~
+        /^include \$\(MAKES\)\/([a-z0-9.+_-]+)\.mk\s*$/mg;
+    my $parent = @includes ? module_data($includes[0], {%$seen}) : undef;
+    my $own_version = find_version($name, \@versions, $source);
+    my $version = $own_version;
+    $version ||= $parent->{version} if $parent;
+    $version ||= 'Unpinned';
+
+    my @site_urls = (@header_urls, @assignment_urls);
+    my $repo = $metadata{$name}{repo} || '';
+    $repo ||= $parent->{repo} if $parent;
+
+    my $own_site = $metadata{$name}{site} || '';
+    my $site = $own_site;
+    $site ||= $parent->{site} if $parent;
+    $site ||= $repo || 'https://github.com/makeplus/makes';
+
+    my $release = find_release(\@assignment_urls, $repo, $version);
+    $release ||= $parent->{release}
+        if $parent && !$own_version && !$own_site;
+
+    my $description = $metadata{$name}{desc} || '';
+    my $words = () = $description =~ /\S+/g;
+    die "Description for '$name' must contain 3 to 10 words\n"
+        unless $words >= 3 && $words <= 10;
+    my $committer = $metadata{$name}{auth} || '';
+    die "Invalid GitHub ID for '$name'\n"
+        unless $committer =~ /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
+
+    return $cache{$name} = {
+        version => $version,
+        site => $site,
+        release => $release,
+        repo => $repo,
+        auth => $committer,
+        desc => $description,
+        includes => \@includes,
+    };
+}
+
+sub empty_data {
+    my ($name) = @_;
+    return {
+        version => 'Unpinned',
+        site => 'https://github.com/makeplus/makes',
+        release => '',
+        repo => '',
+        auth => '',
+        desc => '',
+        includes => [],
+    };
+}
+
+sub find_version {
+    my ($name, $versions, $source) = @_;
+    (my $prefix = uc $name) =~ s/[^A-Z0-9]+/-/g;
+
+    for my $item (@$versions) {
+        return clean_version($item->[1])
+            if $item->[0] eq "$prefix-VERSION" &&
+                clean_version($item->[1]);
+    }
+    for my $item (@$versions) {
+        next if $item->[0] =~ /-VERSION-/;
+        my $version = clean_version($item->[1]);
+        return $version if $version;
+    }
+
+    my @platform = map { clean_version($_->[1]) }
+        grep { $_->[0] =~ /^\Q$prefix\E-VERSION-/ } @$versions;
+    my %unique;
+    @platform = grep { $_ && !$unique{$_}++ } @platform;
+    return join(', ', sort @platform) if @platform;
+
+    if ($source =~ /^\Q$prefix\E-COMMIT\s*\?=\s*(\S+)/m) {
+        return $1;
+    }
+    return 'main' if $source =~ /\@main\b/;
+    return '';
+}
+
+sub support_state {
+    my ($name, $kind) = @_;
+    return 'Yes' if $name eq 'in-1';
+    return 'Yes' if $metadata{$name}{$kind};
+    return 'Available' if $upstream_support{$name}{$kind};
+    return 'No';
+}
+
+sub release_date {
+    my ($name, $version, $seen) = @_;
+    return $release_dates{$name}{$version}
+        if $release_dates{$name}{$version};
+    return '' if $seen->{$name}++;
+    my $data = module_data($name, {});
+    for my $parent (@{$data->{includes}}) {
+        my $date = release_date($parent, $version, {%$seen});
+        return $date if $date;
+    }
+    return '';
+}
+
+sub clean_version {
+    my ($version) = @_;
+    return '' unless defined $version;
+    return 'latest' if $version =~ /\$\(shell\b/;
+    return '' if $version =~ /\$\(/;
+    $version =~ s/^\s+|\s+$//g;
+    return $version;
+}
+
+sub find_release {
+    my ($urls, $site, $version) = @_;
+    return '' if $version =~ /^(?:latest|main|Unpinned)$/;
+    for my $url (@$urls) {
+        my $repo = github_repo($url) or next;
+        if ($url =~ m{/releases/download/([^/]+)}) {
+            my $tag = $1;
+            return "$repo/releases/tag/$tag"
+                if $tag !~ /\$/ && index($tag, $version) >= 0;
+        }
+    }
+    return $site if $site =~ m{/(?:releases|tags)/?$};
+    my $site_repo = github_repo($site);
+    return $site_repo ? "$site_repo/releases" : '';
+}
+
+sub github_repo {
+    my ($url) = @_;
+    return '' unless defined $url;
+    $url =~ s{^https://raw\.githubusercontent\.com/}{https://github.com/};
+    return '' unless $url =~
+        m{^https://(?:www\.)?github\.com/([^/]+)/([^/#?]+)};
+    my ($owner, $repo) = ($1, $2);
+    $repo =~ s/\.git$//;
+    return "https://github.com/$owner/$repo";
+}
+
+sub expand {
+    my ($value, $variables) = @_;
+    for (1 .. 10) {
+        my $before = $value;
+        $value =~ s{\$\(([A-Za-z0-9_-]+)\)}{
+            exists $variables->{$1} ? $variables->{$1} : "\$($1)"
+        }gex;
+        last if $value eq $before;
+    }
+    return $value;
+}
+
+sub trim_url {
+    my ($url) = @_;
+    $url =~ s{[.,;:)]+$}{};
+    return $url;
+}
+
+sub html {
+    my ($text) = @_;
+    $text //= '';
+    $text =~ s/&/&amp;/g;
+    $text =~ s/</&lt;/g;
+    $text =~ s/>/&gt;/g;
+    $text =~ s/"/&quot;/g;
+    return $text;
+}
+
+sub support_html {
+    my ($value) = @_;
+    my %display = (
+        Yes => ['support-yes', 'Yes', '&#8730;'],
+        Available => [
+            'support-available',
+            'Supported upstream, not installed by in-1',
+            '&#8730;*',
+        ],
+        No => ['support-no', 'No', 'X'],
+    );
+    my ($class, $label, $symbol) = @{$display{$value}};
+    return qq{<span class="$class" aria-label="$label" } .
+        qq{title="$label">$symbol</span>};
+}
+
+sub by_html {
+    my ($committer) = @_;
+    my $login = html($committer);
+    my $avatar = "https://github.com/$login.png?size=64";
+    my $profile = "https://github.com/$login";
+    return qq{      <td class="installable-by" } .
+        qq{data-sort-value="$login"><a href="$profile" } .
+        qq{aria-label="GitHub committer $login" title="\@$login">} .
+        qq{<img src="$avatar" alt="\@$login" loading="lazy"></a></td>\n};
+}
+
+sub type_html {
+    my ($type) = @_;
+    my $class = lc $type;
+    my $icon = $type eq 'Language' ? '&lt;/&gt;' : '&#128296;';
+    return qq{<span class="type-icon type-$class" role="img" } .
+        qq{aria-label="$type" title="$type">} .
+        qq{<span aria-hidden="true">$icon</span></span>};
+}
+
+sub support_sort {
+    my ($value) = @_;
+    return $value eq 'Yes' ? 2 : $value eq 'Available' ? 1 : 0;
+}
+
+sub slurp {
+    my ($file) = @_;
+    open my $handle, '<', $file or die "Can't read '$file': $!\n";
+    local $/;
+    return <$handle>;
+}
