@@ -1048,8 +1048,8 @@ add-manpath() {  # $1=directory
 verify-support() {  # $1=install-dir $2=tool $3=primary-command
   local idir=$1 tool=$2 command=$3 shell page file found
   local completions manuals
-  completions=$(meta "$tool-completion")
-  command=$(meta "$tool-completion-bin")
+  completions=$(meta "$tool-comp")
+  command=$(meta "$tool-comp-bin")
   [[ -n $command ]] || command=$3
   manuals=$(meta "$tool-man")
   for shell in $completions; do
@@ -1077,7 +1077,7 @@ verify-support() {  # $1=install-dir $2=tool $3=primary-command
 # shell select the currently active version without running any tool.
 record-active-install() {  # $1=tool $2=install-dir
   local tool=$1 idir=$2 active link version
-  [[ -n $(meta "$tool-completion") || -n $(meta "$tool-man") ]] || return 0
+  [[ -n $(meta "$tool-comp") || -n $(meta "$tool-man") ]] || return 0
   active=$install_root/share/in-1/active
   link=$active/$tool
   version=${idir##*/}
@@ -1425,7 +1425,7 @@ collect-active-support() {  # $1=bash|zsh|fish
     [[ -f $idir/.in-1-installed ]] || continue
     tool=${link##*/}
     case $idir in "$prefix/share/$tool/"*) ;; *) continue;; esac
-    completions=$(meta "$tool-completion")
+    completions=$(meta "$tool-comp")
     manuals=$(meta "$tool-man")
     case " $completions " in
       *" $shell "*) comp_dirs+=("$idir");;

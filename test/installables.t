@@ -54,7 +54,7 @@ write_file("$root/in-1", "tool_filter='init'\n");
 write_file(
     "$root/tools.mk",
     <<'MAKE',
-alpha-completion := bash zsh fish
+alpha-comp := bash zsh fish
 alpha-auth := alpha-main
 alpha-desc := Alpha language for testing generated tables
 alpha-man := alpha

@@ -354,8 +354,9 @@ sub find_version {
 
 sub support_state {
     my ($name, $kind) = @_;
+    my $metadata_kind = $kind eq 'completion' ? 'comp' : $kind;
     return 'Yes' if $name eq 'in-1';
-    return 'Yes' if $metadata{$name}{$kind};
+    return 'Yes' if $metadata{$name}{$metadata_kind};
     return 'Available' if $upstream_support{$name}{$kind};
     return 'No';
 }

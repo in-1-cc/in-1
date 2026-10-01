@@ -13,8 +13,8 @@
 #                (default: the tool name); all are aliases for the tool
 #   <tool>-also  literal note shown after "also: " on the success line
 #   <tool>-auth  main repository committer's GitHub login
-#   <tool>-completion  supported shells, separated by spaces
-#   <tool>-completion-bin  command whose completion files are installed
+#   <tool>-comp  supported shells, separated by spaces
+#   <tool>-comp-bin  command whose completion files are installed
 #   <tool>-desc  short installables table description
 #   <tool>-lib   Makes variable naming the required library artifact
 #   <tool>-man   installed manual page names, separated by spaces
@@ -23,7 +23,7 @@
 
 alire-bin := alr
 alire-auth := mosteo
-alire-completion := bash
+alire-comp := bash
 alire-desc := Package manager and build tool for Ada
 alire-repo := https://github.com/alire-project/alire
 alire-site := https://alire.ada.dev/
@@ -34,7 +34,7 @@ arturo-repo := https://github.com/arturo-lang/arturo
 arturo-site := http://arturo-lang.io
 
 asdf-auth := Stratus3D
-asdf-completion := bash zsh fish
+asdf-comp := bash zsh fish
 asdf-desc := Extensible version manager for developer tools
 asdf-repo := https://github.com/asdf-vm/asdf
 asdf-site := https://asdf-vm.com/
@@ -62,7 +62,7 @@ basilisp-repo := https://github.com/basilisp-lang/basilisp
 basilisp-site := https://docs.basilisp.org
 
 bbin-auth := rads
-bbin-completion := bash zsh
+bbin-comp := bash zsh
 bbin-desc := Binary script manager for Babashka
 bbin-repo := https://github.com/babashka/bbin
 
@@ -86,14 +86,14 @@ brotli-desc := General purpose lossless compression tools
 brotli-repo := https://github.com/google/brotli
 
 buf-auth := bufdev
-buf-completion := bash zsh fish
+buf-comp := bash zsh fish
 buf-desc := Protobuf development and schema management toolkit
 buf-man := buf
 buf-repo := https://github.com/bufbuild/buf
 buf-site := https://buf.build
 
 bun-auth := Jarred-Sumner
-bun-completion := bash zsh fish
+bun-comp := bash zsh fish
 bun-desc := Fast JavaScript runtime and package toolkit
 bun-repo := https://github.com/oven-sh/bun
 bun-site := https://bun.com
@@ -105,7 +105,7 @@ cabal-site := https://haskell.org/cabal
 
 cairo-bin := scarb
 cairo-auth := maciektr
-cairo-completion := bash zsh fish
+cairo-comp := bash zsh fish
 cairo-desc := Cairo language toolchain and package manager
 cairo-repo := https://github.com/software-mansion/scarb
 cairo-site := http://docs.swmansion.com/scarb/
@@ -160,7 +160,7 @@ clojure-repo := https://github.com/clojure/brew-install
 clojure-site := https://clojure.org/
 
 cmake-auth := bradking
-cmake-completion := bash
+cmake-comp := bash
 cmake-desc := Cross platform build system generator
 cmake-man := cmake
 cmake-repo := https://github.com/Kitware/CMake
@@ -183,7 +183,7 @@ compose-repo := https://github.com/docker/compose
 compose-site := https://docs.docker.com/compose/
 
 crystal-auth := asterite
-crystal-completion := bash zsh fish
+crystal-comp := bash zsh fish
 crystal-desc := Compiled language with Ruby inspired syntax
 crystal-man := crystal
 crystal-repo := https://github.com/crystal-lang/crystal
@@ -209,7 +209,7 @@ dart-desc := Client optimized language for multiplatform applications
 dart-repo := https://github.com/dart-lang/sdk
 
 defang-auth := lionello
-defang-completion := bash zsh fish
+defang-comp := bash zsh fish
 defang-desc := Cloud application deployment and development toolkit
 defang-repo := https://github.com/defanglabs/defang
 defang-site := https://defang.io
@@ -226,7 +226,7 @@ docker-compose-repo := https://github.com/docker/compose
 docker-compose-site := https://docs.docker.com/compose/
 
 dotnet-auth := marcpopMSFT
-dotnet-completion := bash zsh fish
+dotnet-comp := bash zsh fish
 dotnet-desc := Cross platform runtime and SDK for .NET
 dotnet-man := dotnet
 dotnet-repo := https://github.com/dotnet/sdk
@@ -317,14 +317,14 @@ gdscript-repo := https://github.com/godotengine/godot
 gdscript-site := https://godotengine.org
 
 gh-auth := mislav
-gh-completion := bash zsh fish
+gh-comp := bash zsh fish
 gh-desc := Official command line interface for GitHub
 gh-man := gh
 gh-repo := https://github.com/cli/cli
 gh-site := https://cli.github.com
 
 ghc-auth := simonmar
-ghc-completion := bash
+ghc-comp := bash
 ghc-desc := Optimizing native compiler for Haskell
 ghc-repo := https://github.com/ghc/ghc
 ghc-site := http://www.haskell.org/ghc/
@@ -335,7 +335,7 @@ gleam-repo := https://github.com/gleam-lang/gleam
 gleam-site := https://gleam.run
 
 gloat-auth := ingydotnet
-gloat-completion := bash zsh fish
+gloat-comp := bash zsh fish
 gloat-desc := Clojure inspired language hosted on Go
 gloat-man := gloat gloat-go-interop gloat-install gloat-java-interop gloat-repl gloat-tutorial
 gloat-repo := https://github.com/gloathub/gloat
@@ -368,7 +368,7 @@ gobb-desc := Go based binary package installer
 gobb-repo := https://github.com/gloathub/gobb
 
 golangci-lint-auth := ldez
-golangci-lint-completion := bash zsh fish
+golangci-lint-comp := bash zsh fish
 golangci-lint-desc := Fast aggregated linter runner for Go
 golangci-lint-repo := https://github.com/golangci/golangci-lint
 golangci-lint-site := https://golangci-lint.run
@@ -384,7 +384,7 @@ grenadine-desc := Clojure inspired language runtime for Go
 grenadine-repo := https://github.com/clojurestar/grenadine
 
 groovy-auth := paulk-asert
-groovy-completion := bash
+groovy-comp := bash
 groovy-desc := Dynamic language for the Java platform
 groovy-repo := https://github.com/apache/groovy
 
@@ -394,13 +394,13 @@ haxe-repo := https://github.com/HaxeFoundation/haxe
 haxe-site := https://haxe.org
 
 hcloud-auth := phm07
-hcloud-completion := bash zsh fish
+hcloud-comp := bash zsh fish
 hcloud-desc := Command line client for Hetzner Cloud
 hcloud-man := hcloud
 hcloud-repo := https://github.com/hetznercloud/cli
 
 helm-auth := technosophos
-helm-completion := bash zsh fish
+helm-comp := bash zsh fish
 helm-desc := Package manager for Kubernetes applications
 helm-man := helm
 helm-repo := https://github.com/helm/helm
@@ -439,7 +439,7 @@ joker-repo := https://github.com/candid82/joker
 joker-site := https://joker-lang.org/
 
 jolt-auth := yogthos
-jolt-completion := bash zsh fish
+jolt-comp := bash zsh fish
 jolt-desc := Lightweight Clojure dialect for scripting
 jolt-repo := https://github.com/jolt-lang/jolt
 jolt-site := https://jolt-lang.net/
@@ -464,13 +464,13 @@ jus-desc := Command runner for project automation
 jus-repo := https://github.com/paintparty/jus
 
 just-auth := casey
-just-completion := bash zsh fish
+just-comp := bash zsh fish
 just-desc := Handy command runner for project recipes
 just-repo := https://github.com/casey/just
 just-site := https://just.systems
 
 k3d-auth := iwilltry42
-k3d-completion := bash zsh fish
+k3d-comp := bash zsh fish
 k3d-desc := Run lightweight Kubernetes clusters in Docker
 k3d-repo := https://github.com/k3d-io/k3d
 k3d-site := https://k3d.io/
@@ -486,7 +486,7 @@ lean-repo := https://github.com/leanprover/lean4
 lean-site := https://lean-lang.org
 
 lein-auth := technomancy
-lein-completion := bash zsh
+lein-comp := bash zsh
 lein-desc := Project automation and dependency tool for Clojure
 lein-repo := https://codeberg.org/leiningen/leiningen
 
@@ -497,7 +497,7 @@ let-go-repo := https://github.com/nooga/let-go
 let-go-site := https://nooga.github.io/let-go
 
 lgx-auth := abogoyavlensky
-lgx-completion := bash zsh fish
+lgx-comp := bash zsh fish
 lgx-desc := Lisp inspired scripting language implementation
 lgx-repo := https://github.com/abogoyavlensky/lgx
 lgx-site := http://lgx.bogoyavlensky.com/
@@ -524,7 +524,7 @@ luajit-repo := https://github.com/LuaJIT/LuaJIT
 luajit-site := http://luajit.org
 
 luarocks-auth := hishamhm
-luarocks-completion := bash zsh fish
+luarocks-comp := bash zsh fish
 luarocks-desc := Package manager for Lua modules
 luarocks-repo := https://github.com/luarocks/luarocks
 luarocks-site := https://luarocks.org
@@ -572,7 +572,7 @@ node-repo := https://github.com/nodejs/node
 node-site := https://nodejs.org
 
 nono-auth := lukehinds
-nono-completion := bash zsh fish
+nono-comp := bash zsh fish
 nono-desc := Kernel enforced sandbox for coding agents
 nono-repo := https://github.com/always-further/nono
 nono-site := https://nono.sh
@@ -584,8 +584,8 @@ objective-c-repo := https://github.com/llvm/llvm-project
 objective-c-site := http://llvm.org
 
 ocaml-auth := AltGr
-ocaml-completion := bash zsh
-ocaml-completion-bin := opam
+ocaml-comp := bash zsh
+ocaml-comp-bin := opam
 ocaml-desc := Functional language with an industrial strength type system
 ocaml-repo := https://github.com/ocaml/opam
 ocaml-site := https://ocaml.org/
@@ -596,7 +596,7 @@ odin-repo := https://github.com/odin-lang/Odin
 odin-site := https://odin-lang.org
 
 pandoc-auth := jgm
-pandoc-completion := bash
+pandoc-comp := bash
 pandoc-desc := Universal markup document converter
 pandoc-man := pandoc
 pandoc-repo := https://github.com/jgm/pandoc
@@ -613,7 +613,7 @@ pharo-repo := https://github.com/pharo-project/pharo-launcher
 pharo-site := https://pharo-project.github.io/pharo-launcher/
 
 phel-auth := Chemaclass
-phel-completion := bash zsh fish
+phel-comp := bash zsh fish
 phel-desc := Functional Lisp dialect hosted on PHP
 phel-repo := https://github.com/phel-lang/phel-lang
 phel-site := https://phel-lang.org
@@ -643,7 +643,7 @@ prolog-man := trealla
 prolog-repo := https://github.com/trealla-prolog/trealla
 
 pulumi-auth := joeduffy
-pulumi-completion := bash zsh fish
+pulumi-comp := bash zsh fish
 pulumi-desc := Infrastructure as code using general purpose languages
 pulumi-repo := https://github.com/pulumi/pulumi
 pulumi-site := https://www.pulumi.com
@@ -684,7 +684,7 @@ reasonml-desc := Functional syntax and tooling for OCaml
 reasonml-repo := https://github.com/reasonml/reason
 
 rebar3-auth := ferd
-rebar3-completion := bash zsh fish
+rebar3-comp := bash zsh fish
 rebar3-desc := Build and dependency tool for Erlang
 rebar3-repo := https://github.com/erlang/rebar3
 rebar3-site := http://www.rebar3.org
@@ -695,7 +695,7 @@ red-repo := https://github.com/red/red
 red-site := https://www.red-lang.org/
 
 rg-auth := BurntSushi
-rg-completion := bash zsh fish
+rg-comp := bash zsh fish
 rg-desc := Fast recursive text search command
 rg-man := rg
 rg-repo := https://github.com/BurntSushi/ripgrep
@@ -713,8 +713,8 @@ ruby-site := https://www.ruby-lang.org/
 rust-bin := rustc cargo
 rust-also := cargo* rust*
 rust-auth := matthiaskrgr
-rust-completion := bash zsh fish
-rust-completion-bin := rustup
+rust-comp := bash zsh fish
+rust-comp-bin := rustup
 rust-desc := Memory safe language for systems programming
 rust-repo := https://github.com/rust-lang/rust
 rust-site := https://www.rust-lang.org
@@ -725,7 +725,7 @@ sbcl-repo := https://github.com/sbcl/sbcl
 
 scala-bin := scala-cli
 scala-auth := Gedochao
-scala-completion := bash zsh fish
+scala-comp := bash zsh fish
 scala-desc := Scala compiler runner and packaging toolkit
 scala-repo := https://github.com/VirtusLab/scala-cli
 scala-site := https://scala-cli.virtuslab.org
@@ -770,7 +770,7 @@ swift-man := swift
 swift-repo := https://github.com/swiftlang/swift
 
 task-auth := andreynering
-task-completion := bash zsh fish
+task-comp := bash zsh fish
 task-desc := Cross platform task runner using YAML
 task-repo := https://github.com/go-task/task
 task-site := https://taskfile.dev
@@ -814,7 +814,7 @@ unison-site := https://unison-lang.org
 
 uv-also := uvx
 uv-auth := charliermarsh
-uv-completion := bash zsh fish
+uv-comp := bash zsh fish
 uv-desc := Extremely fast Python package and project manager
 uv-repo := https://github.com/astral-sh/uv
 uv-site := https://docs.astral.sh/uv
@@ -827,7 +827,7 @@ vimscript-site := https://neovim.io
 
 vlang-bin := v
 vlang-auth := medvednikov
-vlang-completion := bash zsh fish
+vlang-comp := bash zsh fish
 vlang-desc := Simple fast compiled programming language
 vlang-repo := https://github.com/vlang/v
 vlang-site := https://vlang.io/
@@ -837,7 +837,7 @@ wasm-opt-desc := WebAssembly binary optimizer and transformation tool
 wasm-opt-repo := https://github.com/WebAssembly/binaryen
 
 wasmtime-auth := alexcrichton
-wasmtime-completion := bash zsh fish
+wasmtime-comp := bash zsh fish
 wasmtime-desc := Fast secure runtime for WebAssembly
 wasmtime-repo := https://github.com/bytecodealliance/wasmtime
 wasmtime-site := https://wasmtime.dev/
@@ -854,7 +854,7 @@ yamlfmt-repo := https://github.com/google/yamlfmt
 
 yamlschema-bin := ysd
 yamlschema-auth := ingydotnet
-yamlschema-completion := bash zsh fish
+yamlschema-comp := bash zsh fish
 yamlschema-desc := Schema language and validator for YAML
 yamlschema-man := ysd yamlschema-design yamlschema-json-schema yamlschema
 yamlschema-repo := https://github.com/yaml/yamlschema
@@ -871,7 +871,7 @@ yamlstar-desc := Extensible YAML parser with plugin support
 yamlstar-repo := https://github.com/yaml/yamlstar
 
 yq-auth := mikefarah
-yq-completion := bash zsh fish
+yq-comp := bash zsh fish
 yq-desc := Portable command line YAML processor
 yq-man := yq
 yq-repo := https://github.com/mikefarah/yq

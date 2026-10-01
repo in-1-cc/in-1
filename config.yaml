@@ -4,7 +4,7 @@ alire:
   auth: mosteo
   desc: Package manager and build tool for Ada
   bin: alr
-  completion: bash
+  comp: bash
   site: https://alire.ada.dev/
 arturo:
   repo: https://github.com/arturo-lang/arturo
@@ -15,7 +15,7 @@ asdf:
   repo: https://github.com/asdf-vm/asdf
   auth: Stratus3D
   desc: Extensible version manager for developer tools
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://asdf-vm.com/
 autohotkey:
   repo: https://github.com/AutoHotkey/AutoHotkey
@@ -43,7 +43,7 @@ bbin:
   repo: https://github.com/babashka/bbin
   auth: rads
   desc: Binary script manager for Babashka
-  completion: [bash, zsh]
+  comp: [bash, zsh]
 berkeleydb:
   repo: https://github.com/berkeleydb/libdb
   auth: gburd
@@ -67,14 +67,14 @@ buf:
   repo: https://github.com/bufbuild/buf
   auth: bufdev
   desc: Protobuf development and schema management toolkit
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: buf
   site: https://buf.build
 bun:
   repo: https://github.com/oven-sh/bun
   auth: Jarred-Sumner
   desc: Fast JavaScript runtime and package toolkit
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://bun.com
 cabal:
   repo: https://github.com/haskell/cabal
@@ -86,7 +86,7 @@ cairo:
   auth: maciektr
   desc: Cairo language toolchain and package manager
   bin: scarb
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: http://docs.swmansion.com/scarb/
 carp:
   repo: https://github.com/carp-lang/Carp
@@ -141,7 +141,7 @@ cmake:
   repo: https://github.com/Kitware/CMake
   auth: bradking
   desc: Cross platform build system generator
-  completion: bash
+  comp: bash
   man: cmake
   site: https://cmake.org/
 cobol:
@@ -164,7 +164,7 @@ crystal:
   repo: https://github.com/crystal-lang/crystal
   auth: asterite
   desc: Compiled language with Ruby inspired syntax
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: crystal
   site: https://crystal-lang.org
 csharp:
@@ -190,7 +190,7 @@ defang:
   repo: https://github.com/defanglabs/defang
   auth: lionello
   desc: Cloud application deployment and development toolkit
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://defang.io
 delphi:
   repo: https://github.com/fpc/FPCSource
@@ -207,7 +207,7 @@ dotnet:
   repo: https://github.com/dotnet/sdk
   auth: marcpopMSFT
   desc: Cross platform runtime and SDK for .NET
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: dotnet
   site: https://dotnet.microsoft.com/
 elixir:
@@ -298,14 +298,14 @@ gh:
   repo: https://github.com/cli/cli
   auth: mislav
   desc: Official command line interface for GitHub
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: gh
   site: https://cli.github.com
 ghc:
   repo: https://github.com/ghc/ghc
   auth: simonmar
   desc: Optimizing native compiler for Haskell
-  completion: bash
+  comp: bash
   site: http://www.haskell.org/ghc/
 gleam:
   repo: https://github.com/gleam-lang/gleam
@@ -316,7 +316,7 @@ gloat:
   repo: https://github.com/gloathub/gloat
   auth: ingydotnet
   desc: Clojure inspired language hosted on Go
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man:
   - gloat
   - gloat-go-interop
@@ -355,7 +355,7 @@ golangci-lint:
   repo: https://github.com/golangci/golangci-lint
   auth: ldez
   desc: Fast aggregated linter runner for Go
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://golangci-lint.run
 graalvm:
   repo: https://github.com/oracle/graal
@@ -371,7 +371,7 @@ groovy:
   repo: https://github.com/apache/groovy
   auth: paulk-asert
   desc: Dynamic language for the Java platform
-  completion: bash
+  comp: bash
 haxe:
   repo: https://github.com/HaxeFoundation/haxe
   auth: Simn
@@ -381,13 +381,13 @@ hcloud:
   repo: https://github.com/hetznercloud/cli
   auth: phm07
   desc: Command line client for Hetzner Cloud
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: hcloud
 helm:
   repo: https://github.com/helm/helm
   auth: technosophos
   desc: Package manager for Kubernetes applications
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: helm
   site: https://helm.sh
 hy:
@@ -426,7 +426,7 @@ jolt:
   repo: https://github.com/jolt-lang/jolt
   auth: yogthos
   desc: Lightweight Clojure dialect for scripting
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://jolt-lang.net/
 jq:
   repo: https://github.com/jqlang/jq
@@ -451,13 +451,13 @@ just:
   repo: https://github.com/casey/just
   auth: casey
   desc: Handy command runner for project recipes
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://just.systems
 k3d:
   repo: https://github.com/k3d-io/k3d
   auth: iwilltry42
   desc: Run lightweight Kubernetes clusters in Docker
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://k3d.io/
 kotlin:
   repo: https://github.com/JetBrains/kotlin
@@ -473,7 +473,7 @@ lein:
   repo: https://codeberg.org/leiningen/leiningen
   auth: technomancy
   desc: Project automation and dependency tool for Clojure
-  completion: [bash, zsh]
+  comp: [bash, zsh]
 let-go:
   repo: https://github.com/nooga/let-go
   auth: nooga
@@ -484,7 +484,7 @@ lgx:
   repo: https://github.com/abogoyavlensky/lgx
   auth: abogoyavlensky
   desc: Lisp inspired scripting language implementation
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: http://lgx.bogoyavlensky.com/
 libyamlstar:
   repo: https://github.com/yaml/yamlstar
@@ -511,7 +511,7 @@ luarocks:
   repo: https://github.com/luarocks/luarocks
   auth: hishamhm
   desc: Package manager for Lua modules
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://luarocks.org
 maven:
   repo: https://github.com/apache/maven
@@ -559,7 +559,7 @@ nono:
   repo: https://github.com/always-further/nono
   auth: lukehinds
   desc: Kernel enforced sandbox for coding agents
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://nono.sh
 objective-c:
   repo: https://github.com/llvm/llvm-project
@@ -571,8 +571,8 @@ ocaml:
   repo: https://github.com/ocaml/opam
   auth: AltGr
   desc: Functional language with an industrial strength type system
-  completion: [bash, zsh]
-  completion-bin: opam
+  comp: [bash, zsh]
+  comp-bin: opam
   site: https://ocaml.org/
 odin:
   repo: https://github.com/odin-lang/Odin
@@ -583,7 +583,7 @@ pandoc:
   repo: https://github.com/jgm/pandoc
   auth: jgm
   desc: Universal markup document converter
-  completion: bash
+  comp: bash
   man: pandoc
   site: https://pandoc.org
 perl:
@@ -600,7 +600,7 @@ phel:
   repo: https://github.com/phel-lang/phel-lang
   auth: Chemaclass
   desc: Functional Lisp dialect hosted on PHP
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://phel-lang.org
 php:
   repo: https://github.com/php/php-src
@@ -630,7 +630,7 @@ pulumi:
   repo: https://github.com/pulumi/pulumi
   auth: joeduffy
   desc: Infrastructure as code using general purpose languages
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://www.pulumi.com
 purescript:
   repo: https://github.com/purescript/purescript
@@ -671,7 +671,7 @@ rebar3:
   repo: https://github.com/erlang/rebar3
   auth: ferd
   desc: Build and dependency tool for Erlang
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: http://www.rebar3.org
 red:
   repo: https://github.com/red/red
@@ -682,7 +682,7 @@ rg:
   repo: https://github.com/BurntSushi/ripgrep
   auth: BurntSushi
   desc: Fast recursive text search command
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: rg
 roc:
   repo: https://github.com/roc-lang/roc
@@ -700,8 +700,8 @@ rust:
   desc: Memory safe language for systems programming
   bin: [rustc, cargo]
   also: cargo* rust*
-  completion: [bash, zsh, fish]
-  completion-bin: rustup
+  comp: [bash, zsh, fish]
+  comp-bin: rustup
   site: https://www.rust-lang.org
 sbcl:
   repo: https://github.com/sbcl/sbcl
@@ -712,7 +712,7 @@ scala:
   auth: Gedochao
   desc: Scala compiler runner and packaging toolkit
   bin: scala-cli
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://scala-cli.virtuslab.org
 scheme:
   repo: https://github.com/racket/racket
@@ -757,7 +757,7 @@ task:
   repo: https://github.com/go-task/task
   auth: andreynering
   desc: Cross platform task runner using YAML
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://taskfile.dev
 tcl:
   repo: https://github.com/tcltk/tcl
@@ -801,7 +801,7 @@ uv:
   auth: charliermarsh
   desc: Extremely fast Python package and project manager
   also: uvx
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://docs.astral.sh/uv
 vimscript:
   repo: https://github.com/neovim/neovim
@@ -814,7 +814,7 @@ vlang:
   auth: medvednikov
   desc: Simple fast compiled programming language
   bin: v
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://vlang.io/
 wasm-opt:
   repo: https://github.com/WebAssembly/binaryen
@@ -824,7 +824,7 @@ wasmtime:
   repo: https://github.com/bytecodealliance/wasmtime
   auth: alexcrichton
   desc: Fast secure runtime for WebAssembly
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   site: https://wasmtime.dev/
 wren:
   repo: https://github.com/wren-lang/wren-cli
@@ -841,7 +841,7 @@ yamlschema:
   auth: ingydotnet
   desc: Schema language and validator for YAML
   bin: ysd
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: [ysd, yamlschema-design, yamlschema-json-schema, yamlschema]
 yamlscript:
   repo: https://github.com/yaml/yamlscript
@@ -858,7 +858,7 @@ yq:
   repo: https://github.com/mikefarah/yq
   auth: mikefarah
   desc: Portable command line YAML processor
-  completion: [bash, zsh, fish]
+  comp: [bash, zsh, fish]
   man: yq
   site: https://mikefarah.gitbook.io/yq/
 zig:
@@ -896,8 +896,8 @@ defn tools-make(tools):
     #                (default: the tool name); all are aliases for the tool
     #   <tool>-also  literal note shown after "also: " on the success line
     #   <tool>-auth  main repository committer's GitHub login
-    #   <tool>-completion  supported shells, separated by spaces
-    #   <tool>-completion-bin  command whose completion files are installed
+    #   <tool>-comp  supported shells, separated by spaces
+    #   <tool>-comp-bin  command whose completion files are installed
     #   <tool>-desc  short installables table description
     #   <tool>-lib   Makes variable naming the required library artifact
     #   <tool>-man   installed manual page names, separated by spaces
@@ -906,7 +906,7 @@ defn tools-make(tools):
   names =: tools:keys:sort
   each tool names:
     data =: tools.$tool
-    each field qw(bin also auth completion completion-bin desc lib man repo site):
+    each field qw(bin also auth comp comp-bin desc lib man repo site):
       when+ data.$field:
         value =:
           if vector?(_):
