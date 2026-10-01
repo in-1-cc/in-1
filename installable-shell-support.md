@@ -36,22 +36,20 @@ documentation or a `--help` command.
 ## Summary
 
 - 39 installables have confirmed shell-completion support.
-- 29 installables have confirmed man pages.
+- 28 installables have confirmed man pages.
 - 13 installables have both.
-- 55 installables have at least one of the two features.
-- 104 installables remain unconfirmed.
+- 54 installables have at least one of the two features.
+- 105 installables remain unconfirmed.
 
-During the install session, the current in-1 integration activates both
-features for `buf`, `gloat`, and `in-1`.
-It also activates generated Rust completion for Bash and Fish in that session.
-No other command-generated completion is currently wired into in-1.
-On a later shell startup, `source <(in-1 --rc)` restores only in-1's own man
-page and completion; it does not yet reactivate support for other persistent
-installs.
+At the audited baseline, the in-1 integration activated both features for
+`buf`, `gloat`, and `in-1`.
+It also activated generated Rust completion for Bash and Fish in that session.
+The implementation added after the audit is described under
+[Current activation behavior](#current-activation-behavior).
 
 ## Both completion and man pages
 
-| Installable | Completion | Upstream form | Install-session result |
+| Installable | Completion | Upstream form | Audit baseline result |
 | --- | --- | --- | --- |
 | `buf` | Bash, Zsh, Fish | Files and man pages in release tarball | Both active |
 | `cmake` | Bash | Packaged files | Man path likely active; completion missed |
@@ -78,7 +76,7 @@ The current in-1 code then finds `etc/bash_completion.d`,
 The shells shown are the in-1 shells confirmed by this audit.
 Several tools support additional shells too.
 
-| Installable | Shells | Form | Install-session result |
+| Installable | Shells | Form | Audit baseline result |
 | --- | --- | --- | --- |
 | `alire` | Bash | Repository file | Missed |
 | `asdf` | Bash, Zsh, Fish | Generator | Missed |
@@ -118,7 +116,7 @@ would be reasonable.
 
 ## Man pages only
 
-| Installable | Confirmed pages | Install-session result |
+| Installable | Confirmed pages | Audit baseline result |
 | --- | --- | --- |
 | `clojure` | `clojure`, `clj` | Installed and discoverable |
 | `erlang` | Erlang/OTP command pages | Likely retained and discoverable |
@@ -135,7 +133,6 @@ would be reasonable.
 | `prolog` | `trealla` | Discarded by binary-only recipe |
 | `shellcheck` | `shellcheck` | Discarded by binary-only recipe |
 | `swift` | `swift` | Swiftly layout needs runtime check |
-| `unison` | `unison` | Discarded by binary-only recipe |
 
 "Likely" is used where the Makes recipe retains the full upstream tree and
 the expected man directory is adjacent to a directory added to `PATH`.
@@ -157,8 +154,8 @@ lean, let-go, libyamlstar, libys, luajit, maven, md2man, mips, moonbit,
 moonscript, nbb, objective-c, odin, perl, pharo, php, processing, purescript,
 pyret, python, r, racket, raku, reasonml, red, roc, ruby, sbcl, scheme,
 scratch, sml, solidity, sqlite, squint, tcl, tinygo, ttyd,
-typescript, typos, uiua, vimscript, wasm-opt, wren, yamlfmt, yamlscript,
-yamlstar, zig, zprint.
+typescript, typos, uiua, unison, vimscript, wasm-opt, wren, yamlfmt,
+yamlscript, yamlstar, zig, zprint.
 
 Four of these are library-only in in-1: `berkeleydb`, `gmp`, `libyamlstar`,
 and `libys`.
@@ -167,6 +164,10 @@ Several others are facade modules that install another toolchain, including
 They need an alias and ownership decision rather than a separate completion
 generator.
 
+The `unison` installable provides Unison Codebase Manager as `ucm`.
+The previously counted `unison(1)` page belongs to the unrelated Unison file
+synchronizer, so it is not support for this installable.
+
 Traditional compiler and runtime projects in this section may ship man pages
 in some source or distribution packages.
 They remain unconfirmed because the exact artifact selected by the current
@@ -174,31 +175,16 @@ Makes recipe was not verified to retain an installable page.
 
 ## Current activation behavior
 
-There are two distinct paths today:
+Makes normalizes supported files into standard directories under each
+versioned tool prefix.
+in-1 verifies the files promised by `config.yaml`, records each active
+persistent install, and activates its completion and manual directories.
 
-- A session install through the shell function emits environment, completion,
-  and `MANPATH` changes for the tools named in that invocation.
-- A later `source <(in-1 --rc)` sources only in-1's own `.rc`.
-  It restores the shared prefix `bin` directory and in-1's own man page and
-  completion, but does not enumerate the other persistent installs.
+A session install applies the support immediately.
+A later `source <(in-1 --rc)` restores support using directory lookups only;
+it does not run the installed tools during shell startup.
 
-During a session install, in-1 performs two useful generic searches:
-
-1. For every directory added to `PATH`, it adds an adjacent `share/man` or
-   `man` directory to `MANPATH` when present.
-2. For each versioned tool prefix, it activates standard Bash, Zsh, and Fish
-   completion directories when present.
-
-It also has explicit per-tool completion hooks for Gloat and Rust.
-The in-1 tool sources its own `.rc`, which provides in-1 completion.
-
-The generic completion search is narrower than the man-page search.
-It inspects the versioned prefix, but it does not inspect completion
-directories adjacent to every tool-specific `bin` directory.
-That is why full distributions such as CMake, Crystal, and `gh` can retain
-useful files without having their completion activated.
-
-## Recommended installation contract
+## Installation contract
 
 At install time, normalize available support into these locations under each
 versioned tool prefix:
@@ -210,19 +196,8 @@ share/fish/vendor_completions.d/<command>.fish
 share/man/man<section>/<page>.<section>
 ```
 
-The existing `source <(in-1 --rc)` path can be extended to activate them with
-directory lookups only.
-It should not run dozens of installed commands on every shell startup.
-
-The practical priority order is:
-
-1. Preserve files that current Makes recipes discard, especially for
-   YAMLSchema, ripgrep, yq, Pandoc, ShellCheck, and Trealla Prolog.
-2. Generate completion once after installation for the generator-based tools.
-3. Expand generic discovery to completion directories adjacent to every
-   captured `PATH` entry.
-4. Add regression fixtures for Bash, Zsh, Fish, and `MANPATH` without starting
-   the real tools during an ordinary `--rc` call.
+The `source <(in-1 --rc)` path activates these directories with lookups only.
+Generators run once during installation, not during shell startup.
 
 ## Evidence
 

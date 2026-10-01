@@ -1049,6 +1049,8 @@ verify-support() {  # $1=install-dir $2=tool $3=primary-command
   local idir=$1 tool=$2 command=$3 shell page file found
   local completions manuals
   completions=$(meta "$tool-completion")
+  command=$(meta "$tool-completion-bin")
+  [[ -n $command ]] || command=$3
   manuals=$(meta "$tool-man")
   for shell in $completions; do
     case $shell in

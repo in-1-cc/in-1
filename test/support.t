@@ -95,6 +95,26 @@ else
   fail 'Support verification uses the primary command name'
 fi
 
+rust_support=$SCRATCH/rust
+mkdir -p \
+  "$rust_support/share/bash-completion/completions" \
+  "$rust_support/share/zsh/site-functions" \
+  "$rust_support/share/fish/vendor_completions.d"
+printf '# completion\n' \
+  > "$rust_support/share/bash-completion/completions/rustup"
+printf '# completion\n' > "$rust_support/share/zsh/site-functions/_rustup"
+printf '# completion\n' \
+  > "$rust_support/share/fish/vendor_completions.d/rustup.fish"
+
+if ROOT=$ROOT bash -c '
+  source <(perl -ne '\''print unless /^main "\$@"$/'\'' "$ROOT/bin/in-1")
+  verify-support "$1" rust rustc
+' -- "$rust_support"; then
+  pass 'Support verification accepts an alternate completion command'
+else
+  fail 'Support verification accepts an alternate completion command'
+fi
+
 PREFIX=$pfx bin/in-1 -q --uninstall gloat
 if [[ ! -L $active/gloat ]]; then
   pass 'Uninstall removes active shell support'
