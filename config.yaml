@@ -23,10 +23,16 @@ coffeescript:
   bin: coffee
 compose:
   bin: docker-compose
+crystal:
+  completion: [bash, zsh, fish]
+  man: crystal
 d:
   bin: ldc2
 delphi:
   bin: fpc
+dotnet:
+  completion: [bash, zsh, fish]
+  man: dotnet
 erlang:
   bin: erl
 euphoria:
@@ -40,6 +46,9 @@ fsharp:
   bin: dotnet
 gdscript:
   bin: godot
+gh:
+  completion: [bash, zsh, fish]
+  man: gh
 gloat:
   completion: [bash, zsh, fish]
   man:
@@ -55,6 +64,9 @@ gmp:
   lib: GMP-LIB
 graalvm:
   bin: native-image
+helm:
+  completion: [bash, zsh, fish]
+  man: helm
 j:
   bin: jconsole
 jolt:
@@ -116,10 +128,15 @@ wren:
   bin: wren_cli
 yamlschema:
   bin: ysd
+  completion: [bash, zsh, fish]
+  man: [ysd, yamlschema-design, yamlschema-json-schema, yamlschema]
 yamlscript:
   bin: ys
 yamlstar:
   bin: yaml
+yq:
+  completion: [bash, zsh, fish]
+  man: yq
 
 --- !ys-0
 

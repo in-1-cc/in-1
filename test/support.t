@@ -69,6 +69,32 @@ else
   pass 'Shell init does not execute installed tools'
 fi
 
+ys_support=$SCRATCH/yamlschema
+mkdir -p \
+  "$ys_support/share/bash-completion/completions" \
+  "$ys_support/share/zsh/site-functions" \
+  "$ys_support/share/fish/vendor_completions.d" \
+  "$ys_support/man/man1" \
+  "$ys_support/man/man5"
+printf '# completion\n' \
+  > "$ys_support/share/bash-completion/completions/ysd"
+printf '# completion\n' > "$ys_support/share/zsh/site-functions/_ysd"
+printf '# completion\n' \
+  > "$ys_support/share/fish/vendor_completions.d/ysd.fish"
+printf '.TH YSD 1\n' > "$ys_support/man/man1/ysd.1"
+for page in yamlschema-design yamlschema-json-schema yamlschema; do
+  printf '.TH YAMLSCHEMA 5\n' > "$ys_support/man/man5/$page.5"
+done
+
+if ROOT=$ROOT bash -c '
+  source <(perl -ne '\''print unless /^main "\$@"$/'\'' "$ROOT/bin/in-1")
+  verify-support "$1" yamlschema ysd
+' -- "$ys_support"; then
+  pass 'Support verification uses the primary command name'
+else
+  fail 'Support verification uses the primary command name'
+fi
+
 PREFIX=$pfx bin/in-1 -q --uninstall gloat
 if [[ ! -L $active/gloat ]]; then
   pass 'Uninstall removes active shell support'

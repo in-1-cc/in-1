@@ -1045,16 +1045,16 @@ add-manpath() {  # $1=directory
 }
 
 # Confirm that Makes installed every support file promised by config.yaml.
-verify-support() {  # $1=install-dir $2=tool
-  local idir=$1 tool=$2 shell page file found
+verify-support() {  # $1=install-dir $2=tool $3=primary-command
+  local idir=$1 tool=$2 command=$3 shell page file found
   local completions manuals
   completions=$(meta "$tool-completion")
   manuals=$(meta "$tool-man")
   for shell in $completions; do
     case $shell in
-      bash) file=$idir/share/bash-completion/completions/$tool;;
-      zsh) file=$idir/share/zsh/site-functions/_$tool;;
-      fish) file=$idir/share/fish/vendor_completions.d/$tool.fish;;
+      bash) file=$idir/share/bash-completion/completions/$command;;
+      zsh) file=$idir/share/zsh/site-functions/_$command;;
+      fish) file=$idir/share/fish/vendor_completions.d/$command.fish;;
       *) die "Unknown completion shell '$shell' for '$tool'";;
     esac
     [[ -s $file ]] || die "Completion for '$tool' was not installed: '$file'"
@@ -1236,7 +1236,7 @@ install-all() {  # $1=install-root
     load-env "$envfile"
     rm -f "$envfile"
     compute-exports
-    verify-support "$idir" "$tool"
+    verify-support "$idir" "$tool" "$primary"
     write-wrappers "$version" "$primary" "$tool"
     if [[ $kind == library ]]; then
       artifact=$(make -s -C "$root" -f "$mf" \

@@ -40,9 +40,15 @@ coffeescript-bin := coffee
 
 compose-bin := docker-compose
 
+crystal-completion := bash zsh fish
+crystal-man := crystal
+
 d-bin := ldc2
 
 delphi-bin := fpc
+
+dotnet-completion := bash zsh fish
+dotnet-man := dotnet
 
 erlang-bin := erl
 
@@ -57,6 +63,9 @@ fsharp-bin := dotnet
 
 gdscript-bin := godot
 
+gh-completion := bash zsh fish
+gh-man := gh
+
 gloat-completion := bash zsh fish
 gloat-man := gloat gloat-go-interop gloat-install gloat-java-interop gloat-repl gloat-tutorial
 
@@ -65,6 +74,9 @@ glojure-bin := glj
 gmp-lib := GMP-LIB
 
 graalvm-bin := native-image
+
+helm-completion := bash zsh fish
+helm-man := helm
 
 j-bin := jconsole
 
@@ -126,7 +138,12 @@ vlang-bin := v
 wren-bin := wren_cli
 
 yamlschema-bin := ysd
+yamlschema-completion := bash zsh fish
+yamlschema-man := ysd yamlschema-design yamlschema-json-schema yamlschema
 
 yamlscript-bin := ys
 
 yamlstar-bin := yaml
+
+yq-completion := bash zsh fish
+yq-man := yq
