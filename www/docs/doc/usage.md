@@ -133,7 +133,7 @@ in-1 never overwrites a file in `$PREFIX/bin` that it did not create.
 `-T` or `--temp` forces `${TMPDIR:-/tmp}/in-1`, ignoring inherited
 `PREFIX` and `IN1_ROOT`.
 It rejects `PREFIX=DIR` arguments and cannot be combined with `--local`.
-It also works with `--show`, `--uninstall`, and `--reset`.
+It also works with `--show`, `--uninstall`, `--prune`, and `--reset`.
 If an old temporary checkout conflicts, move it aside before retrying;
 in-1 will not overwrite or automatically migrate it.
 
@@ -161,6 +161,57 @@ An explicit `PREFIX` overrides normal and local defaults.
 Aliases work here too (`in-1 --uninstall bb` removes babashka), and
 `in-1 --uninstall in-1` removes the command itself.
 `--reset`, below, removes other managed tools while preserving in-1 itself.
+
+## Showing installed versions
+
+```bash
+in-1 --show
+in-1 --show '^(babashka|node)'
+```
+
+The aligned columns show tool name, version, disk usage, and installation path.
+Tool names are alphabetical; each tool's versions run from most recently
+installed to oldest.
+Successful-install markers supply the timestamps, with managed wrapper
+timestamps used for legacy command installs.
+Equal timestamps retain version-name order.
+Sizes match `du -sh` run separately on each installation directory, including
+libraries and any build caches inside that directory.
+On a terminal, the highest installed version is bold.
+Other versions of a tool are grey when its selected version can be identified
+using the same links and markers as `--prune`.
+Filtering matches names, versions, sizes and paths, and does not change which
+versions count as newest or selected.
+Piped output is plain; `NO_COLOR` or `TERM=dumb` disables styling.
+
+## Pruning versions
+
+```bash
+in-1 --prune                 # all installed tools, including in-1
+in-1 --prune bb node         # selected tools; aliases work too
+in-1 --temp --prune          # temporary installations
+in-1 --prune PREFIX=~/.local # an explicit prefix
+```
+
+Pruning keeps the currently selected version and removes other managed
+versions and their wrappers.
+Pinned older versions and prereleases stay selected.
+The retained version, shell support, unrelated files, and in-1 state,
+logs and download caches are preserved.
+Active-version links or current primary-command wrappers identify the
+version to keep.
+Otherwise, the newest successful-install marker selects it, including for
+libraries without commands.
+If selection is ambiguous, that tool stays unchanged and an error is reported.
+Missing explicitly requested tools also report errors; other tools continue.
+An empty prefix or an already-pruned tool succeeds.
+
+Pruning runs independently, without initializing Makes, installing anything,
+or checking for updates, and ignores `IN1_UPDATE`.
+It rejects make variables and combinations with `--uninstall`, `--reset`,
+`--update`, `--list`, or `--show`.
+Use the installed command; the curl one-liner rejects `--prune`.
+Summaries go to stderr and `--quiet` suppresses successful output.
 
 ## Updating
 
@@ -218,6 +269,7 @@ in-1 TOOL... [VAR=VALUE]...  Install tools for this shell session
 in-1 -L|--local TOOL...      Install tools under PREFIX for keeps
 in-1 -T|--temp TOOL...       Use $TMPDIR/in-1, ignoring inherited PREFIX
 in-1 --uninstall TOOL...     Remove tools from their install prefix
+in-1 --prune [TOOL...]       Remove versions except the current install
 in-1 --list [PATTERN]        List available tools, optionally filtered
 in-1 --show [PATTERN]        Show installed versions and locations
 in-1 --env SHELL TOOL...     Print env setup code for SHELL

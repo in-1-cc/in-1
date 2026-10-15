@@ -22,6 +22,9 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP \fB--uninstall\fP \fITOOL\fP\&... [\fIPREFIX\fP=\fIDIR\fP]
 
 .PP
+\fBin-1\fP \fB--prune\fP [\fITOOL\fP\&...] [\fIPREFIX\fP=\fIDIR\fP]
+
+.PP
 \fBin-1\fP \fB--show\fP [\fIPATTERN\fP] [\fIPREFIX\fP=\fIDIR\fP]
 
 .PP
@@ -71,7 +74,8 @@ A fresh bootstrap or source checkout with no installed in-1 defaults to
 The bootstrap clone lives separately in \fI$TMPDIR/in-1/bootstrap\fP\&.
 \fB-L\fP or \fB--local\fP selects a persistent prefix;
 \fB-T\fP or \fB--temp\fP forces the temporary one.
-Installation, \fB--show\fP, \fB--uninstall\fP, and \fB--reset\fP share this selection.
+Installation, \fB--show\fP, \fB--uninstall\fP, \fB--prune\fP, and \fB--reset\fP
+share this selection.
 
 .PP
 Before an install, in-1 checks whether its own clone is behind its
@@ -161,6 +165,31 @@ An alias can abbreviate its tool's version variable, so
   \fB--reset\fP removes other managed tools but preserves in-1 itself.
 
 .PP
+\fB--prune\fP [\fITOOL\fP\&...]
+  Remove other managed versions of each named tool, keeping the currently
+  selected version even after a downgrade or prerelease installation.
+  With no tools, prune all installed tools, including in-1 itself.
+  Aliases are accepted and duplicate requests are combined.
+  Remove wrappers targeting discarded versions along with their install trees.
+  Preserve the retained version, its shell support, unrelated files, and
+  in-1 state, logs and download caches.
+  Use active-version links or current primary-command wrappers to identify
+  the retained version.
+  If neither identifies one version, use the newest successful-install marker.
+  Ambiguous tools remain unchanged and produce an error.
+  Missing explicitly requested tools also produce errors; other tools continue.
+  Empty prefixes and tools already down to one version succeed.
+  Prefix selection follows installation, including \fB--local\fP, \fB--temp\fP,
+  and \fIPREFIX\fP=\fIDIR\fP\&.
+  Pruning never initializes Makes, installs or updates anything, and ignores
+  \fIIN1_UPDATE\fP\&.
+  Reject make variables and combinations with \fB--uninstall\fP, \fB--reset\fP,
+  \fB--update\fP, \fB--list\fP, or \fB--show\fP\&.
+  The curl one-liner rejects \fB--prune\fP; use the installed command.
+  Through \fB--env\fP, pruning emits no shell code.
+  \fB--quiet\fP suppresses successful summaries; errors remain visible.
+
+.PP
 \fB--list\fP [\fIPATTERN\fP]
   List all available tool names and command aliases.
   Aliases appear as \fBbb (babashka)\fP; direct tool names are unannotated.
@@ -174,12 +203,22 @@ An alias can abbreviate its tool's version variable, so
 
 .PP
 \fB--show\fP [\fIPATTERN\fP]
-  Show installed tools as tab-separated rows: canonical tool name,
-  version, and absolute installation directory, sorted by name and version.
-  Only existing version directories referenced by an in-1 wrapper count;
-  unrelated directories and unreferenced leftovers are omitted.
+  Show installed tools in aligned columns: canonical tool name, version,
+  disk usage, and absolute installation directory.
+  Sort tool names alphabetically and their versions from most recently
+  installed to oldest, using successful-install marker timestamps.
+  Legacy command installs use the newest managed wrapper timestamp instead.
+  Equal timestamps retain version-name order.
+  Disk usage matches \fBdu -sh\fP run separately on each installation.
+  Include completed libraries and version directories referenced by an
+  in-1 wrapper; omit unrelated directories and unreferenced leftovers.
+  On a terminal, the highest installed version is bold, and other versions
+  of the selected tool are grey.
+  The selected version follows the same links and markers used by \fB--prune\fP\&.
+  Determine newest and selected versions before filtering the rows.
+  Piped output is plain; \fINO_COLOR\fP or \fITERM=dumb\fP disables styling.
   The optional pattern filters whole rows using case-sensitive \fBgrep -E\fP
-  syntax, so names, versions and paths can all be matched.
+  syntax, so names, versions, sizes and paths can all be matched.
   Omit it to show everything, or use \fB--\fP before a pattern starting with
   a dash.
   No matches produce no output and succeed; an invalid pattern fails.

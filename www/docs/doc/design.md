@@ -99,6 +99,11 @@ downloads across reboots.
 `in-1 --reset` removes managed tool versions and wrappers, except in-1 itself,
 and clears Makes, logs and downloads.
 Unrelated files, old nested installations, and external caches are preserved.
+`in-1 --prune` removes other managed versions and their wrappers while keeping
+each tool's currently selected version, including in-1 itself.
+It uses selection links and current primary wrappers, with successful-install
+marker timestamps as a fallback, and leaves ambiguous tools unchanged.
+It preserves state and caches and does not initialize Makes or install tools.
 
 Before an install, in-1 fetches both clones, reports if its own clone
 is behind its origin, and automatically updates makes when needed.

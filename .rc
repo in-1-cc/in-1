@@ -19,6 +19,7 @@
 #   in-1 --temp jq       # install under $TMPDIR/in-1
 #   in-1 --local jq      # install jq under ~/.local for keeps
 #   in-1 --uninstall jq  # remove that again
+#   in-1 --prune         # keep only each tool's currently selected version
 #   in-1 --update        # update in-1 and makes
 #   in-1 --reset         # remove managed tools and state, keeping in-1
 #   in-1 --reset rust    # same, then install rust from scratch
@@ -54,27 +55,26 @@ if [ -z "${IN1_ROOT-}" ]; then
 fi
 export IN1_ROOT
 
-case ":$PATH:" in
-  *":$_in1_bin:"*) ;;
-  *) PATH=$_in1_bin:$PATH;;
-esac
-# An installed copy must not expose its implementation checkout on PATH.
-case $_in1_dir in
-  */share/in-1/*/cache/in-1-*)
-    _in1_rest=$PATH
-    PATH=$_in1_bin
-    while :; do
-      _in1_part=${_in1_rest%%:*}
+# Select the sourced copy even if its bin was already later on PATH.
+_in1_rest=$PATH
+PATH=$_in1_bin
+while :; do
+  _in1_part=${_in1_rest%%:*}
+  _in1_keep=1
+  case $_in1_part in "$_in1_bin") _in1_keep="";; esac
+  # An installed copy must not expose its implementation checkout on PATH.
+  case $_in1_dir in
+    */share/in-1/*/cache/in-1-*)
       case $_in1_part in
-        "$_in1_bin"|"${_in1_bin%/bin}"/share/in-1/*/bin) ;;
-        *) PATH=$PATH:$_in1_part;;
-      esac
-      case $_in1_rest in
-        *:*) _in1_rest=${_in1_rest#*:};;
-        *) break;;
-      esac
-    done;;
-esac
+        "${_in1_bin%/bin}"/share/in-1/*/bin) _in1_keep="";;
+      esac;;
+  esac
+  [ -z "$_in1_keep" ] || PATH=$PATH:$_in1_part
+  case $_in1_rest in
+    *:*) _in1_rest=${_in1_rest#*:};;
+    *) break;;
+  esac
+done
 export PATH
 
 case ":${MANPATH-}:" in
@@ -125,7 +125,7 @@ in-1() {
   return "$in1_status"
 }
 
-unset _in1_shell _in1_dir _in1_bin _in1_rest _in1_part
+unset _in1_shell _in1_dir _in1_bin _in1_rest _in1_part _in1_keep
 return 0
 '
 
@@ -145,16 +145,18 @@ if test -z "$IN1_ROOT"
   end
 end
 
-contains -- $_in1_bin $PATH
-or set -gx PATH $_in1_bin $PATH
-if string match -q "*/share/in-1/*/cache/in-1-*" $_in1_dir
+begin
   set -l paths
   set -l prefix (string replace -r "/bin\$" "" $_in1_bin)
   for entry in $PATH
-    if test "$entry" != "$_in1_bin"; and not string match -q \
-        "$prefix/share/in-1/*/bin" "$entry"
-      set -a paths "$entry"
+    if test "$entry" = "$_in1_bin"
+      continue
     end
+    if string match -q "*/share/in-1/*/cache/in-1-*" $_in1_dir; and \
+        string match -q "$prefix/share/in-1/*/bin" "$entry"
+      continue
+    end
+    set -a paths "$entry"
   end
   set -gx PATH $_in1_bin $paths
 end

@@ -39,6 +39,7 @@ prefix=''
 
 main() {
   local mode=run shell='' arg upd_flag='' show='' list='' output pattern
+  local prune='' uninstall=''
   local -a tools=()
 
   [[ ${IN1_UPDATE-} ]] && update=1
@@ -70,7 +71,8 @@ main() {
         [[ $# -gt 0 ]] || die "--shell-init requires a shell name"
         shell=$(check-shell "$1"); shift
         ;;
-      --uninstall) mode=uninstall;;
+      --uninstall) mode=uninstall; uninstall=1;;
+      --prune) prune=1;;
       -q|--quiet) quiet=1;;
       --update) update=1; upd_flag=1;;
       --reset) reset=1;;
@@ -92,6 +94,12 @@ main() {
     esac
   done
 
+  if [[ $prune ]]; then
+    [[ ! $uninstall && ! $reset && ! $upd_flag && ! $list && ! $show &&
+       $mode != shell-init ]] ||
+      die "--prune cannot be combined with other operations"
+  fi
+
   if [[ $list && $show ]]; then
     die "--list and --show cannot be combined"
   fi
@@ -111,6 +119,12 @@ main() {
   prefix=$(resolve-prefix) || return $?
   check-prefix || return $?
 
+  if [[ $prune ]]; then
+    [[ -z $shell ]] || shell=$(check-shell "$shell")
+    do-prune ${tools[@]+"${tools[@]}"}
+    return
+  fi
+
   if [[ $mode == shell-init ]]; then
     [[ ${#tools[@]} -eq 0 ]] || die "--shell-init takes no tools"
     do-shell-init "$shell"
@@ -128,9 +142,13 @@ main() {
   fi
 
   if [[ $show ]]; then
+    local show_color=''
     [[ $reset || $upd_flag ]] &&
       die "--show takes no --reset or --update"
     [[ -z $shell ]] || shell=$(check-shell "$shell")
+    if [[ -t 1 && -z ${NO_COLOR-} && ${TERM-} != dumb ]]; then
+      show_color=1
+    fi
     output=$(do-show ${tools[@]+"${tools[@]}"}) || return $?
     [[ -z $output ]] || printf '%s\n' "$output" | to-user "$mode" "$shell"
     return 0
@@ -176,6 +194,7 @@ Usage:
   in-1 -L|--local TOOL...      Install tools under PREFIX for keeps
   in-1 -T|--temp TOOL...       Install tools under $TMPDIR/in-1
   in-1 --uninstall TOOL...     Remove tools from their install prefix
+  in-1 --prune [TOOL...]       Remove versions except the current install
   in-1 --list [PATTERN]        List available tools and aliases
   in-1 --show [PATTERN]        Show installed tool versions and locations
   in-1 --env SHELL TOOL...     Print env setup code for SHELL
@@ -195,8 +214,11 @@ of a tool also gets a version-specific wrapper, <cmd>-<version>.
 
 --list and --show accept an optional grep -E pattern, matched against
 each output line. Quote patterns, e.g. 'in-1 --list "^(rust|node)$"'.
---show prints tool, version and installation directory, separated by tabs.
-Install, --show, --uninstall and --reset all use the same prefix.
+--show prints aligned tool, version, disk usage (du -sh), and directory columns.
+Tools are alphabetical; versions run from most recently installed to oldest.
+On a terminal, the highest installed version is bold and inactive versions
+are grey. NO_COLOR disables this styling.
+Install, --show, --uninstall, --prune and --reset use the same prefix.
 By default it matches the public bin directory of the installed in-1.
 Without an installed in-1 it is $TMPDIR/in-1 (default /tmp/in-1).
 -L|--local selects a persistent prefix (~/.local when none is installed).
@@ -225,6 +247,11 @@ It automatically updates makes when its clone is behind.  --update
 also updates in-1.  --reset starts over: it removes everything in-1
 put in the selected prefix, except in-1 itself, plus Makes, logs and
 downloads under IN1_ROOT. Unrelated files and external caches stay.
+--prune keeps the currently selected version, even after a downgrade or
+prerelease install, and removes other managed versions and their wrappers.
+Without tools it prunes all tools, including in-1. It never installs or
+updates anything. If no current link identifies a version, the newest
+successful-install marker is used; ambiguous tools are left unchanged.
 
 Environment variables:
   IN1_ROOT        State directory for makes/, log/ and cache/.
@@ -1640,19 +1667,99 @@ is-library-install() (
   [[ -s $1/$artifact ]]
 )
 
-# List completed libraries and wrapper-backed command installations.
-align-show-rows() (
-  names=() versions=() locations=()
-  name_width=0 version_width=0
+# Input is grouped alphabetically by tool. Sort each group by install time,
+# preserving the existing version-name order when timestamps are equal.
+sort-show-rows() (
+  local row tool version location stamp wrapper position previous
+  local -a rows=() row_tools=() row_stamps=()
+  while IFS= read -r row; do
+    IFS=$'\t' read -r tool version location <<< "$row"
+    stamp=$location/.in-1-installed
+    if ! prune-completed "$location"; then
+      # Older command installs have wrappers but no completion marker.
+      stamp=$location
+      for wrapper in "$prefix"/bin/*; do
+        is-wrapper-under "$wrapper" "$location" || continue
+        if [[ $stamp == "$location" || $wrapper -nt $stamp ]]; then
+          stamp=$wrapper
+        fi
+      done
+    fi
+    position=${#rows[@]}
+    while [[ $position -gt 0 ]]; do
+      previous=$((position - 1))
+      [[ ${row_tools[previous]} == "$tool" &&
+         $stamp -nt ${row_stamps[previous]} ]] || break
+      rows[position]=${rows[previous]}
+      row_tools[position]=${row_tools[previous]}
+      row_stamps[position]=${row_stamps[previous]}
+      position=$previous
+    done
+    rows[position]=$row
+    row_tools[position]=$tool
+    row_stamps[position]=$stamp
+  done
+  for row in ${rows[@]+"${rows[@]}"}; do printf '%s\n' "$row"; done
+)
+
+# Measure each installation independently, as with du -sh DIR.
+size-show-rows() (
+  name='' version='' location='' usage=''
   while IFS=$'\t' read -r name version location; do
-    names+=("$name") versions+=("$version") locations+=("$location")
+    usage=$(du -sh "$location") || return
+    printf '%s\t%s\t%s\t%s\n' \
+      "$name" "$version" "${usage%%[[:space:]]*}" "$location"
+  done
+)
+
+align-show-rows() (  # $1=pattern
+  names=() versions=() sizes=() locations=() matches=()
+  local -a managed_versions=()
+  local keeper='' newest='' last_tool='' row_color bold unbold reset j
+  name_width=0 version_width=0 size_width=0
+  while IFS=$'\t' read -r name version size location; do
+    names+=("$name") versions+=("$version") sizes+=("$size")
+    locations+=("$location")
+    if ! printf '%s\t%s\t%s\t%s\n' "$name" "$version" "$size" "$location" |
+      grep -Eq -- "$1"; then
+      matches+=(0)
+      continue
+    fi
+    matches+=(1)
     if [[ ${#name} -gt $name_width ]]; then name_width=${#name}; fi
     if [[ ${#version} -gt $version_width ]]; then version_width=${#version}; fi
+    if [[ ${#size} -gt $size_width ]]; then size_width=${#size}; fi
   done
   for ((i=0; i<${#names[@]}; i++)); do
-    printf '%-*s  %-*s  %s\n' \
-      "$name_width" "${names[i]}" "$version_width" "${versions[i]}" \
-      "${locations[i]}"
+    [[ ${matches[i]} == 1 ]] || continue
+    row_color='' bold='' unbold='' reset=''
+    if [[ ${show_color-} ]]; then
+      if [[ ${names[i]} != "$last_tool" ]]; then
+        last_tool=${names[i]}
+        managed_versions=()
+        # Include hidden rows when identifying the newest and selected versions.
+        for ((j=0; j<${#names[@]}; j++)); do
+          [[ ${names[j]} != "$last_tool" ]] ||
+            managed_versions+=("${locations[j]}")
+        done
+        keeper=''
+        prune-keeper "$last_tool" "${managed_versions[@]}" || keeper=''
+        newest=$(for version in "${managed_versions[@]}"; do
+          printf '%s\n' "${version##*/}"
+        done | LC_ALL=C sort -V | tail -n 1)
+      fi
+      if [[ -n $keeper && ${locations[i]} != "$keeper" ]]; then
+        row_color=$'\033[90m'
+      fi
+      if [[ ${versions[i]} == "$newest" ]]; then
+        bold=$'\033[1;39m' unbold=$'\033[22m'"$row_color"
+      fi
+      [[ -z $row_color && -z $bold ]] || reset=$'\033[0m'
+    fi
+    printf '%s%-*s  %s%-*s%s  %*s  %s%s\n' \
+      "$row_color" "$name_width" "${names[i]}" \
+      "$bold" "$version_width" "${versions[i]}" "$unbold" \
+      "$size_width" "${sizes[i]}" "${locations[i]}" "$reset"
   done
 )
 
@@ -1685,7 +1792,191 @@ do-show() (
         break
       done
     done
-  } | LC_ALL=C sort -u | filter-rows "$pattern" | align-show-rows
+  } | LC_ALL=C sort -u | sort-show-rows | size-show-rows |
+    align-show-rows "$pattern"
+)
+
+# A completion marker can order installs without executing any of their code.
+prune-completed() (
+  kind='' artifact=''
+  [[ -f $1/.in-1-installed && ! -L $1/.in-1-installed ]] || return 1
+  { IFS= read -r kind; IFS= read -r artifact; } < "$1/.in-1-installed"
+  case $kind in
+    'in-1 library') is-library-install "$1";;
+    'in-1 command') [[ $artifact == "$prefix/bin/"* ]];;
+    *) return 1;;
+  esac
+)
+
+# Sets keeper from this tool's managed versions. Prefer selection links over
+# timestamps, since switching to an older version need not create a new tree.
+prune-keeper() {  # $1=tool, rest=version dirs; sets keeper
+  local tool=$1 active=$prefix/share/in-1/active version command
+  local selected='' newest='' tied='' candidate
+  local -a commands=()
+  shift
+  local -a managed_versions=("$@")
+  keeper=''
+  if [[ -d $active && ! -L $active && -L $active/$tool ]]; then
+    for version in "${managed_versions[@]}"; do
+      if [[ $active/$tool -ef $version ]]; then
+        keeper=$version
+        return 0
+      fi
+    done
+  fi
+  read -ra commands <<< "$(meta "$tool-bin")" || true
+  commands+=("$tool")
+  for version in "${managed_versions[@]}"; do
+    for command in "${commands[@]}"; do
+      is-wrapper-under "$prefix/bin/$command" "$version" || continue
+      if [[ -n $selected && $selected != "$version" ]]; then
+        selected=ambiguous
+        break 2
+      fi
+      selected=$version
+    done
+  done
+  if [[ -n $selected && $selected != ambiguous ]]; then
+    keeper=$selected
+    return 0
+  fi
+  for version in "${managed_versions[@]}"; do
+    prune-completed "$version" || continue
+    candidate=$version/.in-1-installed
+    if [[ -z $newest || $candidate -nt $newest/.in-1-installed ]]; then
+      newest=$version
+      tied=''
+    elif [[ ! $candidate -ot $newest/.in-1-installed ]]; then
+      tied=1
+    fi
+  done
+  if [[ -n $newest && ! $tied ]]; then
+    keeper=$newest
+  elif [[ ${#managed_versions[@]} -eq 1 ]]; then
+    keeper=${managed_versions[0]}
+  else
+    return 1
+  fi
+}
+
+# Build the complete removal plan before changing wrappers or install trees.
+# In particular, metadata remains available when pruning an old in-1 copy.
+plan-prune-tool() {  # $1=tool
+  local tool=$1 version wrapper owned physical keeper='' count=0
+  local noun=versions
+  local -a managed_versions=()
+  for version in "$prefix/share/$tool"/*; do
+    [[ -d $version && ! -L $version ]] || continue
+    if [[ $tool == in-1 ]]; then
+      case ${version##*/} in active|local) continue;; esac
+    fi
+    owned=''
+    if [[ ! -L $version/.in-1-installed ]] &&
+       is-library-install "$version"; then
+      owned=1
+    else
+      for wrapper in "$prefix"/bin/*; do
+        is-wrapper-under "$wrapper" "$version" || continue
+        owned=1
+        break
+      done
+    fi
+    [[ ! $owned ]] || managed_versions+=("$version")
+  done
+  if [[ ${#managed_versions[@]} -eq 0 ]]; then
+    [[ ! $explicit ]] || {
+      error "'$tool' has no managed installation under '$prefix'"
+      failed=1
+    }
+    return 0
+  fi
+  if ! prune-keeper "$tool" "${managed_versions[@]}"; then
+    error "Cannot determine the current version of '$tool'; not pruning"
+    failed=1
+    return 0
+  fi
+  # Protect explicitly selected state/cache paths even inside a version tree.
+  for version in "${managed_versions[@]}"; do
+    [[ $version != "$keeper" ]] || continue
+    physical=$(cd "$version" && pwd -P) || return
+    case $state_dir/ in "$physical/"*)
+      error "State directory is under '$version'; not pruning '$tool'"
+      failed=1
+      return 0;;
+    esac
+    if [[ -n $cache_dir ]]; then
+      case $cache_dir/ in "$physical/"*)
+        error "Download cache is under '$version'; not pruning '$tool'"
+        failed=1
+        return 0;;
+      esac
+    fi
+  done
+  for version in "${managed_versions[@]}"; do
+    [[ $version != "$keeper" ]] || continue
+    prune_dirs+=("$version")
+    count=$((count + 1))
+    for wrapper in "$prefix"/bin/*; do
+      is-wrapper-under "$wrapper" "$version" || continue
+      prune_wrappers+=("$wrapper")
+    done
+  done
+  [[ $count -ne 1 ]] || noun=version
+  summaries+=("Pruned $tool: kept ${keeper##*/}, removed $count $noun")
+}
+
+do-prune() (
+  local arg tool seen='' explicit='' failed='' state_dir cache_dir=''
+  local -a requested=() prune_dirs=() prune_wrappers=() summaries=()
+  [[ ! -L $prefix/bin && ! -L $prefix/share &&
+     ! -L $prefix/share/in-1 ]] ||
+    die "Linked bin, share or in-1 directory under '$prefix'; not pruning"
+  state_dir=$(abs-path "${IN1_ROOT:-$prefix/share/in-1/local}")
+  if [[ -d $state_dir ]]; then
+    state_dir=$(cd "$state_dir" && pwd -P) || return
+  fi
+  [[ -z ${IN1_CACHE-} ]] || cache_dir=$(abs-path "$IN1_CACHE")
+  if [[ -d $cache_dir ]]; then
+    cache_dir=$(cd "$cache_dir" && pwd -P) || return
+  fi
+  [[ $# -eq 0 ]] || explicit=1
+  # Validate and resolve every argument before planning or deleting anything.
+  for arg; do
+    [[ $arg != *=* ]] || die "--prune takes no make variables ('$arg')"
+    [[ $arg =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
+      die "Invalid tool name '$arg'"
+    tool=$arg
+    if [[ ! -e $prefix/share/$tool ]]; then
+      tool=$(alias-tool "$arg")
+      [[ -n $tool ]] || tool=$arg
+    fi
+    case " $seen " in *" $tool "*) continue;; esac
+    seen="$seen $tool"
+    requested+=("$tool")
+  done
+  if [[ ! $explicit ]]; then
+    for arg in "$prefix"/share/*; do
+      [[ -d $arg && ! -L $arg ]] || continue
+      requested+=("${arg##*/}")
+    done
+  fi
+  for tool in ${requested[@]+"${requested[@]}"}; do
+    if [[ -L $prefix/share/$tool ]]; then
+      error "Linked tool directory '$prefix/share/$tool'; not pruning"
+      failed=1
+      continue
+    fi
+    plan-prune-tool "$tool"
+  done
+  for arg in ${prune_wrappers[@]+"${prune_wrappers[@]}"}; do
+    rm -f "$arg" || die "Failed to remove '$arg'"
+  done
+  for arg in ${prune_dirs[@]+"${prune_dirs[@]}"}; do
+    remove-tree "$arg" || die "Failed to remove '$arg'"
+  done
+  for arg in ${summaries[@]+"${summaries[@]}"}; do success "$arg"; done
+  [[ ! $failed ]]
 )
 
 # Undo --local installs: remove PREFIX/share/<tool>/ (every version)
@@ -1732,7 +2023,7 @@ do-complete() (
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
   local opts='--env -L --local -T --temp --list --show --complete --rc
-    --uninstall -q --quiet --update --reset --version --help'
+    --uninstall --prune -q --quiet --update --reset --version --help'
   local entry name word
   local -a labels=()
   COMPREPLY=()
@@ -1762,7 +2053,7 @@ _in_1_complete() {
   local -a opts names labels
   local entry name
   opts=(--env -L --local -T --temp --list --show --complete --rc --uninstall
-    -q --quiet --update --reset --version --help)
+    --prune -q --quiet --update --reset --version --help)
   for name in "${opts[@]}"; do
     [[ $name == "$PREFIX"* ]] || continue
     names+=("$name")
@@ -1813,6 +2104,7 @@ complete -c in-1 -l env -d 'Print env setup code for a shell'
 complete -c in-1 -s L -l local -d 'Install tools under PREFIX'
 complete -c in-1 -s T -l temp -d 'Use the temporary in-1 prefix'
 complete -c in-1 -l uninstall -d 'Remove tools from their install prefix'
+complete -c in-1 -l prune -d 'Remove versions except the current install'
 complete -c in-1 -l list -d 'List available tools'
 complete -c in-1 -l show -d 'Show installed tool versions and locations'
 complete -c in-1 -l complete -d 'Print command completion for a shell'

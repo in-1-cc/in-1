@@ -96,8 +96,12 @@ makes repo into its state directory, and generates a Makefile for the requested
 `<tool>.mk` files, runs it, then diffs the resulting environment
 against your shell's and applies the difference.
 State defaults to `PREFIX/share/in-1/local`, separate from the public wrappers.
-`--show`, `--uninstall`, and `--reset` use the same prefix as installation.
+`--show`, `--uninstall`, `--prune`, and `--reset` use the installation prefix.
 Reset preserves in-1 itself and unrelated files.
+Use `in-1 --prune` to remove other versions of every tool, including in-1,
+or `in-1 --prune bb` to clean up just one tool.
+Pruning keeps the currently selected version, including pinned older versions
+and prereleases, without reinstalling or updating anything.
 
 See [doc/design](https://in-1.cc/doc/design/) for the full story and
 `man in-1` (or [doc/usage](https://in-1.cc/doc/usage/)) for every

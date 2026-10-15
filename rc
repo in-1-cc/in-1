@@ -40,11 +40,11 @@ _in1_boot() {
   [ -n "${ZSH_VERSION-}" ] && shell=zsh
 
   for arg in "$@"; do
-    if [ "$arg" = --uninstall ]; then
+    if [ "$arg" = --uninstall ] || [ "$arg" = --prune ]; then
       printf "%sX%s %s\n" "$red" "$normal" \
-        "--uninstall must be run by the in-1 command" >&2
+        "$arg must be run by the in-1 command" >&2
       printf "%sX%s %s\n" "$red" "$normal" \
-        "Try: in-1 --uninstall TOOL..." >&2
+        "Try: in-1 $arg TOOL..." >&2
       return 1
     fi
   done
@@ -130,12 +130,14 @@ function _in1_boot
     set normal (printf "\033[0m")
   end
 
-  if contains -- --uninstall $argv
-    printf "%sX%s %s\n" "$red" "$normal" \
-      "--uninstall must be run by the in-1 command" >&2
-    printf "%sX%s %s\n" "$red" "$normal" \
-      "Try: in-1 --uninstall TOOL..." >&2
-    return 1
+  for arg in $argv
+    if contains -- "$arg" --uninstall --prune
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "$arg must be run by the in-1 command" >&2
+      printf "%sX%s %s\n" "$red" "$normal" \
+        "Try: in-1 $arg TOOL..." >&2
+      return 1
+    end
   end
 
   command -q git; or begin

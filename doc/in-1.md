@@ -17,6 +17,8 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--uninstall** *TOOL*... [*PREFIX*=*DIR*]
 
+**in-1** **--prune** [*TOOL*...] [*PREFIX*=*DIR*]
+
 **in-1** **--show** [*PATTERN*] [*PREFIX*=*DIR*]
 
 **in-1** **--list** [*PATTERN*]
@@ -57,7 +59,8 @@ A fresh bootstrap or source checkout with no installed in-1 defaults to
 The bootstrap clone lives separately in *$TMPDIR/in-1/bootstrap*.
 **-L** or **--local** selects a persistent prefix;
 **-T** or **--temp** forces the temporary one.
-Installation, **--show**, **--uninstall**, and **--reset** share this selection.
+Installation, **--show**, **--uninstall**, **--prune**, and **--reset**
+share this selection.
 
 Before an install, in-1 checks whether its own clone is behind its
 origin and prints a notice if so.
@@ -138,6 +141,30 @@ An alias can abbreviate its tool's version variable, so
   **in-1 --uninstall in-1** removes the command itself.
   **--reset** removes other managed tools but preserves in-1 itself.
 
+**--prune** [*TOOL*...]
+  Remove other managed versions of each named tool, keeping the currently
+  selected version even after a downgrade or prerelease installation.
+  With no tools, prune all installed tools, including in-1 itself.
+  Aliases are accepted and duplicate requests are combined.
+  Remove wrappers targeting discarded versions along with their install trees.
+  Preserve the retained version, its shell support, unrelated files, and
+  in-1 state, logs and download caches.
+  Use active-version links or current primary-command wrappers to identify
+  the retained version.
+  If neither identifies one version, use the newest successful-install marker.
+  Ambiguous tools remain unchanged and produce an error.
+  Missing explicitly requested tools also produce errors; other tools continue.
+  Empty prefixes and tools already down to one version succeed.
+  Prefix selection follows installation, including **--local**, **--temp**,
+  and *PREFIX*=*DIR*.
+  Pruning never initializes Makes, installs or updates anything, and ignores
+  *IN1_UPDATE*.
+  Reject make variables and combinations with **--uninstall**, **--reset**,
+  **--update**, **--list**, or **--show**.
+  The curl one-liner rejects **--prune**; use the installed command.
+  Through **--env**, pruning emits no shell code.
+  **--quiet** suppresses successful summaries; errors remain visible.
+
 **--list** [*PATTERN*]
   List all available tool names and command aliases.
   Aliases appear as **bb (babashka)**; direct tool names are unannotated.
@@ -150,12 +177,22 @@ An alias can abbreviate its tool's version variable, so
   Use **--** before a pattern starting with a dash.
 
 **--show** [*PATTERN*]
-  Show installed tools as tab-separated rows: canonical tool name,
-  version, and absolute installation directory, sorted by name and version.
-  Only existing version directories referenced by an in-1 wrapper count;
-  unrelated directories and unreferenced leftovers are omitted.
+  Show installed tools in aligned columns: canonical tool name, version,
+  disk usage, and absolute installation directory.
+  Sort tool names alphabetically and their versions from most recently
+  installed to oldest, using successful-install marker timestamps.
+  Legacy command installs use the newest managed wrapper timestamp instead.
+  Equal timestamps retain version-name order.
+  Disk usage matches **du -sh** run separately on each installation.
+  Include completed libraries and version directories referenced by an
+  in-1 wrapper; omit unrelated directories and unreferenced leftovers.
+  On a terminal, the highest installed version is bold, and other versions
+  of the selected tool are grey.
+  The selected version follows the same links and markers used by **--prune**.
+  Determine newest and selected versions before filtering the rows.
+  Piped output is plain; *NO_COLOR* or *TERM=dumb* disables styling.
   The optional pattern filters whole rows using case-sensitive **grep -E**
-  syntax, so names, versions and paths can all be matched.
+  syntax, so names, versions, sizes and paths can all be matched.
   Omit it to show everything, or use **--** before a pattern starting with
   a dash.
   No matches produce no output and succeed; an invalid pattern fails.
