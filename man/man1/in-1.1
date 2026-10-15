@@ -28,6 +28,9 @@ in-1 \- instant dev tools for your current shell
 \fBin-1\fP \fB--show\fP [\fIPATTERN\fP] [\fIPREFIX\fP=\fIDIR\fP]
 
 .PP
+\fBin-1\fP \fB--show\fP \fITOOL\fP[@\fIVERSION\fP]... [\fIPREFIX\fP=\fIDIR\fP]
+
+.PP
 \fBin-1\fP \fB--list\fP [\fIPATTERN\fP]
 
 .PP
@@ -213,7 +216,7 @@ Any \fIVAR\fP=\fIVALUE\fP argument is passed through to makes as a variable.
   Use \fB--\fP before a pattern starting with a dash.
 
 .PP
-\fB--show\fP [\fIPATTERN\fP]
+\fB--show\fP [\fITOOL\fP[@\fIVERSION\fP]...] | [\fIPATTERN\fP]
   Show installed tools in aligned columns: canonical tool name, version,
   disk usage, and absolute installation directory.
   Sort tool names alphabetically and their versions from most recently
@@ -228,10 +231,17 @@ Any \fIVAR\fP=\fIVALUE\fP argument is passed through to makes as a variable.
   The selected version follows the same links and markers used by \fB--prune\fP\&.
   Determine newest and selected versions before filtering the rows.
   Piped output is plain; \fINO_COLOR\fP or \fITERM=dumb\fP disables styling.
-  The optional pattern filters whole rows using case-sensitive \fBgrep -E\fP
-  syntax, so names, versions, sizes and paths can all be matched.
-  Omit it to show everything, or use \fB--\fP before a pattern starting with
-  a dash.
+  Accept multiple tool names or aliases, optionally qualified with \fB@VERSION\fP\&.
+  For example, \fBin-1 --show bb jolt\fP lists both tools, and
+  \fBin-1 --show bb@1.13.226 jolt@0.8.20\fP lists those exact versions.
+  Selectors match exact tool names and versions; overlapping selectors show
+  each installation only once.
+  A single pattern can also filter whole rows using case-sensitive
+  \fBgrep -E\fP syntax, so names, versions, sizes and paths can all be matched.
+  Installed tool names and known aliases take precedence over patterns.
+  Regex patterns cannot be combined with tool selectors.
+  Omit arguments to show everything, or use \fB--\fP before a pattern starting
+  with a dash.
   No matches produce no output and succeed; an invalid pattern fails.
   Prefix selection follows installation and \fB--uninstall\fP\&.
   \fIPREFIX\fP=\fIDIR\fP overrides the environment and default, except with \fB--temp\fP\&.

@@ -21,6 +21,8 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--show** [*PATTERN*] [*PREFIX*=*DIR*]
 
+**in-1** **--show** *TOOL*[@*VERSION*]... [*PREFIX*=*DIR*]
+
 **in-1** **--list** [*PATTERN*]
 
 **in-1** **--version** | **--help**
@@ -186,7 +188,7 @@ Any *VAR*=*VALUE* argument is passed through to makes as a variable.
   Invalid patterns fail.
   Use **--** before a pattern starting with a dash.
 
-**--show** [*PATTERN*]
+**--show** [*TOOL*[@*VERSION*]...] | [*PATTERN*]
   Show installed tools in aligned columns: canonical tool name, version,
   disk usage, and absolute installation directory.
   Sort tool names alphabetically and their versions from most recently
@@ -201,10 +203,17 @@ Any *VAR*=*VALUE* argument is passed through to makes as a variable.
   The selected version follows the same links and markers used by **--prune**.
   Determine newest and selected versions before filtering the rows.
   Piped output is plain; *NO_COLOR* or *TERM=dumb* disables styling.
-  The optional pattern filters whole rows using case-sensitive **grep -E**
-  syntax, so names, versions, sizes and paths can all be matched.
-  Omit it to show everything, or use **--** before a pattern starting with
-  a dash.
+  Accept multiple tool names or aliases, optionally qualified with **@VERSION**.
+  For example, **in-1 --show bb jolt** lists both tools, and
+  **in-1 --show bb@1.13.226 jolt@0.8.20** lists those exact versions.
+  Selectors match exact tool names and versions; overlapping selectors show
+  each installation only once.
+  A single pattern can also filter whole rows using case-sensitive
+  **grep -E** syntax, so names, versions, sizes and paths can all be matched.
+  Installed tool names and known aliases take precedence over patterns.
+  Regex patterns cannot be combined with tool selectors.
+  Omit arguments to show everything, or use **--** before a pattern starting
+  with a dash.
   No matches produce no output and succeed; an invalid pattern fails.
   Prefix selection follows installation and **--uninstall**.
   *PREFIX*=*DIR* overrides the environment and default, except with **--temp**.

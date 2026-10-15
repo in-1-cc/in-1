@@ -61,12 +61,27 @@ is "$(bin/in-1 --show BABASHKA PREFIX="$pfx")" '' 'Matching is case sensitive'
 is "$(bin/in-1 --show PREFIX="$pfx" -- -missing)" '' 'Allows leading dash patterns'
 is "$(bin/in-1 --show PREFIX="$SCRATCH/missing")" '' 'Missing prefix is empty'
 is "$(bin/in-1 --show '' PREFIX="$pfx")" "$expected" 'Empty pattern matches all'
+is "$(bin/in-1 --show bb jq PREFIX="$pfx")" "$expected" \
+  'Multiple selectors accept aliases and canonical tool names'
+is "$(bin/in-1 --show jq bb bb babashka PREFIX="$pfx")" "$expected" \
+  'Overlapping selectors show each matching row once in alphabetical tool order'
+is "$(bin/in-1 --show bb@2.0 bb@1.0 jq@1.7 PREFIX="$pfx")" "$expected" \
+  'Multiple pinned selectors match exact versions'
+is "$(bin/in-1 --show bb@1.0 PREFIX="$pfx")" \
+  "$(printf 'babashka  1.0  %s  %s/share/babashka/1.0' "$bb1_size" "$pfx")" \
+  'Single pinned alias selects only its exact version'
+is "$(bin/in-1 --show bb PREFIX="$pfx")" \
+  "$(bin/in-1 --show '^babashka' PREFIX="$pfx")" \
+  'Single alias selects every version of its tool'
+is "$(bin/in-1 --show bb@missing no-such-tool PREFIX="$pfx")" '' \
+  'Uninstalled selectors produce a successful empty listing'
 
-for args in 'invalid' 'excess' 'update' 'reset'; do
+for args in 'invalid' 'version' 'mixed' 'update' 'reset'; do
   status=0
   case $args in
     invalid) out=$(bin/in-1 --show '[' PREFIX="$SCRATCH/missing" 2>&1) || status=$?;;
-    excess) out=$(bin/in-1 --show one two PREFIX="$pfx" 2>&1) || status=$?;;
+    version) out=$(bin/in-1 --show bb@../1 PREFIX="$pfx" 2>&1) || status=$?;;
+    mixed) out=$(bin/in-1 --show bb '^jq' PREFIX="$pfx" 2>&1) || status=$?;;
     update) out=$(bin/in-1 --update --show PREFIX="$pfx" 2>&1) || status=$?;;
     reset) out=$(bin/in-1 --show --reset PREFIX="$pfx" 2>&1) || status=$?;;
   esac
@@ -95,15 +110,25 @@ for shell in bash zsh fish; do
       'source "$ROOT/.rc"; in-1 -q --show PREFIX="$pfx"')
     encoded=$(bin/in-1 --env fish --show PREFIX="$pfx")
     decoded=$(fish --no-config -c "$encoded")
+    selected=$(fish --no-config -c \
+      'source "$ROOT/.rc"; in-1 --show bb@2.0 bb@1.0 jq PREFIX="$pfx"')
+    encoded=$(bin/in-1 --env fish --show bb jq PREFIX="$pfx")
+    selected_env=$(fish --no-config -c "$encoded")
   else
     out=$("$shell" -c '. "$ROOT/.rc"; in-1 --show')
     override=$("$shell" -c '. "$ROOT/.rc"; in-1 -q --show PREFIX="$pfx"')
     encoded=$(bin/in-1 --env "$shell" --show PREFIX="$pfx")
     decoded=$("$shell" -c "$encoded")
+    selected=$("$shell" -c \
+      '. "$ROOT/.rc"; in-1 --show bb@2.0 bb@1.0 jq PREFIX="$pfx"')
+    encoded=$(bin/in-1 --env "$shell" --show bb jq PREFIX="$pfx")
+    selected_env=$("$shell" -c "$encoded")
   fi
   is "$out" "$session" "$shell: shell function uses session prefix"
   is "$override" "$expected" "$shell: shell function supports quiet and PREFIX"
   is "$decoded" "$expected" "$shell: --env output is safely sourceable"
+  is "$selected" "$expected" "$shell: function supports multiple pinned selectors"
+  is "$selected_env" "$expected" "$shell: multiple selectors work through --env"
   is "$(bin/in-1 --env "$shell" --show nonexistent PREFIX="$pfx")" '' \
     "$shell: empty sourceable output stays empty"
   has "$(bin/in-1 --complete "$shell")" show "$shell: completion includes show"
@@ -160,6 +185,9 @@ hasnt "$filtered" $'\033[1;39m' \
 hasnt "$filtered" $'\033[90m' 'Filtered selected version remains at normal brightness'
 filtered=$(styled-show "$styled" '/1[.]10$')
 has "$filtered" $'\033[90m' 'Hidden selected version still identifies inactive rows'
+is "$(styled-show "$styled" bb@1.9)" \
+  "$(styled-show "$styled" '/1[.]9$')" \
+  'Pinned selector preserves newest and selected status from hidden versions'
 
 rm "$styled/bin/bb"
 ln -s bb-1.10 "$styled/bin/bb"
@@ -214,5 +242,17 @@ touch -t 202601010101 "$library/share/libys/0.3.1/.in-1-installed"
 touch -t 202601020101 "$library/share/libys/0.3.0/.in-1-installed"
 is "$(shown-versions "$library")" $'0.3.0\n0.3.1' \
   'Library versions also follow installation order'
+is "$(shown-versions "$library" libys@0.3.1 libys@0.3.0)" $'0.3.0\n0.3.1' \
+  'Pinned library selectors retain installation order'
+
+literal=$SCRATCH/literal
+fake-install "$literal" literal 1.0+build literal
+fake-install "$literal" literal 1x0build literal
+is "$(shown-versions "$literal" literal@1.0+build)" 1.0+build \
+  'Pinned versions treat dots and plus signs literally'
+fake-install "$literal" ys 1 ys
+fake-install "$literal" yamlscript 2 ys
+is "$(shown-versions "$literal" ys@1)" 1 \
+  'Installed direct tool takes precedence over alias metadata'
 
 done-testing

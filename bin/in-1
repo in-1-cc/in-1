@@ -196,7 +196,7 @@ Usage:
   in-1 --uninstall TOOL...     Remove tools from their install prefix
   in-1 --prune [TOOL...]       Remove versions except the current install
   in-1 --list [PATTERN]        List available tools and aliases
-  in-1 --show [PATTERN]        Show installed tool versions and locations
+  in-1 --show [TOOL...]        Show installed tool versions and locations
   in-1 --env SHELL TOOL...     Print env setup code for SHELL
                                (bash, zsh or fish)
   in-1 --complete SHELL        Print in-1 command completion for SHELL
@@ -212,8 +212,10 @@ command wrapper in <prefix>/bin, which is the single dir put on PATH.
 So `which <cmd>` is always <prefix>/bin/<cmd>.  The primary command
 of a tool also gets a version-specific wrapper, <cmd>-<version>.
 
---list and --show accept an optional grep -E pattern, matched against
-each output line. Quote patterns, e.g. 'in-1 --list "^(rust|node)$"'.
+--list accepts an optional grep -E pattern, matched against each output line.
+--show accepts tools or aliases, optionally pinned with @VERSION, e.g.
+'in-1 --show bb jolt@0.8.20'. With no selectors it shows everything.
+A single regex pattern is also accepted, e.g. 'in-1 --show "^(rust|node)"'.
 --show prints aligned tool, version, disk usage (du -sh), and directory columns.
 Tools are alphabetical; versions run from most recently installed to oldest.
 On a terminal, the highest installed version is bold and inactive versions
@@ -1788,17 +1790,47 @@ align-show-rows() (  # $1=pattern
 )
 
 do-show() (
-  local pattern='' have_pattern='' arg dir tool w
+  local pattern='' arg dir tool w name version_pin selector selector_mode=''
+  local -a filters=()
   for arg; do
     if [[ $arg == PREFIX=* ]]; then
       PREFIX=${arg#*=}
-    elif [[ -z $have_pattern ]]; then
-      pattern=$arg
-      have_pattern=1
     else
-      die "--show takes at most one pattern"
+      filters+=("$arg")
     fi
   done
+  if [[ ${#filters[@]} -gt 1 ]]; then
+    selector_mode=1
+  elif [[ ${#filters[@]} -eq 1 ]]; then
+    arg=${filters[0]}
+    name=${arg%%@*}
+    if [[ $arg =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]]; then
+      tool=$(alias-tool "$arg")
+      [[ ! -e $prefix/share/$arg && -z $tool ]] || selector_mode=1
+    elif [[ $arg == *@* && $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]]; then
+      selector_mode=1
+    fi
+    [[ $selector_mode ]] || pattern=$arg
+  fi
+  if [[ $selector_mode ]]; then
+    for arg in "${filters[@]}"; do
+      split-tool-version "$arg"
+      tool=$name
+      if [[ ! -e $prefix/share/$name ]]; then
+        tool=$(alias-tool "$name")
+        [[ -n $tool ]] || tool=$name
+      fi
+      # Valid names and version pins only contain two ERE metacharacters.
+      tool=${tool//./\\.}; tool=${tool//+/\\+}
+      selector=^$tool$'\t'
+      if [[ -n $version_pin ]]; then
+        version_pin=${version_pin//./\\.}
+        version_pin=${version_pin//+/\\+}
+        selector=$selector$version_pin$'\t'
+      fi
+      pattern=$pattern${pattern:+|}$selector
+    done
+  fi
   # Validate even when there are no installations to filter.
   validate-pattern --show "$pattern" || return $?
   {

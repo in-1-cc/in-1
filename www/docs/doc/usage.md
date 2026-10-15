@@ -182,10 +182,18 @@ Bare tool names still remove all versions of those tools.
 
 ```bash
 in-1 --show
+in-1 --show bb jolt
+in-1 --show bb@1.13.226 jolt@0.8.20 jolt@0.8.19
 in-1 --show '^(babashka|node)'
 ```
 
 The aligned columns show tool name, version, disk usage, and installation path.
+Pass tool names or aliases to select multiple tools, and append `@VERSION`
+to select exact installed versions.
+Rows matching any selector are shown once, even when selectors overlap.
+A single regex pattern can also filter whole rows; installed tool names and
+known aliases take precedence over patterns.
+Regex patterns cannot be combined with tool selectors.
 Tool names are alphabetical; each tool's versions run from most recently
 installed to oldest.
 Successful-install markers supply the timestamps, with managed wrapper
@@ -287,7 +295,7 @@ in-1 -T|--temp TOOL...       Use $TMPDIR/in-1, ignoring inherited PREFIX
 in-1 --uninstall TOOL...     Remove tools from their install prefix
 in-1 --prune [TOOL...]       Remove versions except the current install
 in-1 --list [PATTERN]        List available tools, optionally filtered
-in-1 --show [PATTERN]        Show installed versions and locations
+in-1 --show [TOOL...]        Show installed versions and locations
 in-1 --env SHELL TOOL...     Print env setup code for SHELL
 in-1 --complete SHELL        Print in-1 command completion for SHELL
 in-1 --rc                    Print the shell setup line (source it)
