@@ -40,7 +40,7 @@ Downloads stay cached, so asking again is fast.
 * Works on Linux and macOS, Intel and ARM
 * Works in Bash, Zsh and Fish
 * No root, no system packages, no dotfile edits
-* Version pinning: `source <(curl -sL in-1.cc) node NODE-VERSION=22.11.0`
+* Version pinning: `source <(curl -sL in-1.cc) node@22.11.0`
 
 ## Keep it around
 

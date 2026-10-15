@@ -25,18 +25,21 @@ source <(curl -sL in-1.cc) -q rust node
 Successful notes, progress and status output are suppressed.
 Failure diagnostics remain visible.
 
-Each bare argument is a tool name (or an [alias](#aliases)).  A
-`NAME=VALUE` argument is passed through to makes as a variable, so you
-pin a version with the tool's makes variable:
+Each bare argument is a tool name (or an [alias](#aliases)).
+Append `@VERSION` to select a specific version:
 
 ```bash
-source <(curl -sL in-1.cc) go GO-VERSION=1.23.4 jq
+source <(curl -sL in-1.cc) go@1.23.4 jq
+in-1 bb@1.13.220
+in-1 jolt@0.8.20 jolt@0.8.19
 ```
 
-An alias can abbreviate its tool's version variable, so
-`bb BB-VERSION=1.13.220` is equivalent to using
-`BABASHKA-VERSION=1.13.220`.
+Each pin applies only to that request, so several versions of the same tool
+can be installed together.
+Requests run in argument order; the last listed version becomes active.
+Other versions remain available through their versioned command wrappers.
 
+A `NAME=VALUE` argument is passed through to makes as a variable.
 `PREFIX=DIR` is the exception: it sets the
 [install prefix](#environment-variables) instead of going to makes.
 
@@ -51,7 +54,7 @@ environment (`CARGO_HOME`, ...), and your shell itself stays clean.
 Your shell also gets `MANPATH` entries and completions.
 
 Multiple versions coexist.  The primary command of a tool also gets a
-version-specific wrapper, so `go GO-VERSION=1.23.4` gives you both
+version-specific wrapper, so `go@1.23.4` gives you both
 `go` and `go-1.23.4` on `PATH`.
 
 Sourcing again is idempotent; `PATH` never collects duplicates.
@@ -161,6 +164,19 @@ An explicit `PREFIX` overrides normal and local defaults.
 Aliases work here too (`in-1 --uninstall bb` removes babashka), and
 `in-1 --uninstall in-1` removes the command itself.
 `--reset`, below, removes other managed tools while preserving in-1 itself.
+
+Remove specific versions with `@VERSION`:
+
+```bash
+in-1 --uninstall jolt@0.8.20
+in-1 --uninstall jolt@0.8.20 jolt@0.8.19
+```
+
+Other installed versions and their wrappers stay.
+If the active version is removed, its current command and shell support are
+removed too, without automatically activating another version.
+Reinstall a remaining version to select it again.
+Bare tool names still remove all versions of those tools.
 
 ## Showing installed versions
 
@@ -339,10 +355,6 @@ in-1 --env fish rust | source      # fish
 :   Set to `1` to stream the full install output instead of the
     quiet per-tool progress lines.
     `-q` and `--quiet` take precedence when either is used.
-
-Any makes version variable can also be passed in the environment,
-e.g. `NODE-VERSION=22.11.0 in-1 node` does what the `NAME=VALUE`
-argument does.
 
 ## Requirements
 

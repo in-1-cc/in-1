@@ -226,13 +226,15 @@ PREFIX=DIR overrides the environment and either default.
 -T|--temp always selects $TMPDIR/in-1, ignores inherited PREFIX, and cannot
 be combined with --local or a PREFIX=DIR argument.
 
-A NAME=VALUE argument is passed through to makes as a variable, so
-pin a version with its makes variable, e.g.
-'in-1 perl PERL-VERSION=5.42.0'.  PREFIX=DIR is the exception: it
-sets the install prefix, like the PREFIX environment variable.
-An alias can abbreviate its tool's version variable, so
-'in-1 bb BB-VERSION=1.13.220' is the same as using
-BABASHKA-VERSION=1.13.220.
+Use TOOL@VERSION to pin a version, e.g. 'in-1 perl@5.42.0'.
+Aliases work too, e.g. 'in-1 bb@1.13.220'. Install multiple versions with
+'in-1 jolt@0.8.20 jolt@0.8.19'; the last listed becomes active.
+'in-1 --uninstall jolt@0.8.20' removes only that version and its wrappers.
+Bare tool names with --uninstall still remove every version.
+
+A NAME=VALUE argument is passed through to makes as a variable.
+PREFIX=DIR is the exception: it sets the install prefix, like the
+PREFIX environment variable.
 
 in-1 is itself a tool: 'in-1' as a TOOL (the one-liner with in-1,
 say) installs the in-1 command for this shell session, with its
@@ -826,12 +828,29 @@ is-tool() {  # Exclude plumbing modules from direct requests too.
   [[ $filter != *" $1 "* ]]
 }
 
-# Parse args into req_name / req_tool (bare tool or alias names) and
-# make_args (any NAME=VALUE argument, passed through to make).  A pin
-# is just the tool's make variable, e.g. `perl PERL-VERSION=5.42.0`.
+# Split a tool or alias with an optional @version. The caller owns name and
+# version_pin; version pins must be safe as both directory names and Make data.
+split-tool-version() {
+  name=${1%%@*}
+  version_pin=''
+  [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
+    die "Invalid tool name '$name'"
+  if [[ $1 == *@* ]]; then
+    version_pin=${1#*@}
+    [[ $version_pin =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
+      die "Invalid version '$version_pin' in '$1'"
+    if [[ $name == in-1 ]]; then
+      case $version_pin in
+        active|local) die "Reserved in-1 state directory '$version_pin'";;
+      esac
+    fi
+  fi
+}
+
+# Keep @version pins per request, independently of shared NAME=VALUE args.
 parse-tool-args() {
-  req_name=(); req_tool=(); make_args=()
-  local arg name tool
+  req_name=(); req_tool=(); req_version=(); make_args=()
+  local arg name tool version_pin
   [[ $# -gt 0 ]] || die "No tools specified. Try: in-1 --help"
   for arg; do
     if [[ $arg == *=* ]]; then
@@ -848,9 +867,7 @@ parse-tool-args() {
       make_args+=("$arg")
       continue
     fi
-    name=$arg
-    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
-      die "Invalid tool name '$name'"
+    split-tool-version "$arg"
     if [[ -f $makes/$name.mk ]]; then
       tool=$name
     else
@@ -864,11 +881,12 @@ parse-tool-args() {
     is-tool "$tool" || die "'$name' is a Makes helper, not an installable tool"
     req_name+=("$name")
     req_tool+=("$tool")
+    req_version+=("$version_pin")
   done
   [[ ${#req_name[@]} -gt 0 ]] || {
     [[ ${#make_args[@]} -gt 0 ]] &&
       die "No tool named. A NAME=VALUE arg sets a make variable;" \
-        "add a tool too, e.g. 'perl PERL-VERSION=5.42.0'."
+        "add a tool too, e.g. 'perl@5.42.0'."
     die "No tools specified. Try: in-1 --help"
   }
 }
@@ -881,8 +899,8 @@ primary-of() (  # $1=name
   printf '%s' "$p"
 )
 
-gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
-  local alias alias_var tool_var artifact
+gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool $4=pin (optional)
+  local alias alias_var tool_var artifact primary_var pin=${4-}
   local -a aliases=()
   mkdir -p "${2%/*}"
   {
@@ -891,6 +909,13 @@ gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
     printf 'IN1-SHARE := %s/share\n' "$self_root"
     printf 'include %s/init.mk\n' "$makes"
     tool_var=$(uc "$3")
+    if [[ -n $pin ]]; then
+      printf 'override %s-VERSION := %s\n' "$tool_var" "$pin"
+      primary_var=$(uc "$(primary-of "$3")")
+      if [[ $primary_var != "$tool_var" ]]; then
+        printf 'override %s-VERSION := %s\n' "$primary_var" "$pin"
+      fi
+    fi
     read -ra aliases <<< "$(meta "$3-bin")" || true
     for alias in ${aliases[@]+"${aliases[@]}"}; do
       alias_var=$(uc "$alias")
@@ -931,9 +956,9 @@ gen-makefile() (  # $1=install-dir $2=makefile-path $3=tool
 # (<TOOL>-VERSION), after any NAME=VALUE make args are applied.  This
 # handles tools whose file name differs from their command, like
 # fortran.mk providing fpm (FPM-VERSION).
-tool-version() (  # $1=tool $2=primary
+tool-version() (  # $1=tool $2=primary $3=pin (optional)
   qf=$root/log/$1.ver.mk
-  gen-makefile "$root/log/.meta" "$qf" "$1"
+  gen-makefile "$root/log/.meta" "$qf" "$1" "${3-}"
   make -s -C "$root" -f "$qf" ${make_args[@]+"${make_args[@]}"} \
     in1-ver PRIMARY="$(uc "$2")" 2>/dev/null || true
 )
@@ -1241,11 +1266,11 @@ install-all() {  # $1=install-root
     name=${req_name[i]}
     tool=${req_tool[i]}
     primary=$(primary-of "$name")
-    version=$(tool-version "$tool" "$primary")
+    version=$(tool-version "$tool" "$primary" "${req_version[i]}")
     [[ -n $version ]] || version=current
     idir=$install_root/share/$tool/$version
     mf=$root/log/$tool.mk
-    gen-makefile "$idir" "$mf" "$tool"
+    gen-makefile "$idir" "$mf" "$tool" "${req_version[i]}"
     kind='command'
     if [[ -n $(meta "$tool-lib") ]]; then
       kind=library
@@ -1612,8 +1637,8 @@ do-local() (  # $1=shell ('' unless via --env); rest=tool args
 # Args for --uninstall: tool names (an alias resolves through
 # share/tools.mk, so no makes clone is needed) and PREFIX=DIR
 parse-uninstall-args() {
-  req_name=(); req_tool=()
-  local arg name tool
+  req_name=(); req_tool=(); req_version=()
+  local arg name tool version_pin
   for arg; do
     if [[ $arg == PREFIX=* ]]; then
       PREFIX=${arg#*=}
@@ -1621,12 +1646,11 @@ parse-uninstall-args() {
     fi
     [[ $arg == *=* ]] &&
       die "--uninstall takes no make variables ('$arg')"
-    name=$arg
-    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
-      die "Invalid tool name '$name'"
+    split-tool-version "$arg"
     tool=$(alias-tool "$name")
     req_name+=("$name")
     req_tool+=("${tool:-$name}")
+    req_version+=("$version_pin")
   done
   [[ ${#req_name[@]} -gt 0 ]] ||
     die "No tools specified. Try: in-1 --help"
@@ -1979,18 +2003,33 @@ do-prune() (
   [[ ! $failed ]]
 )
 
-# Undo --local installs: remove PREFIX/share/<tool>/ (every version)
-# and each in-1 wrapper in PREFIX/bin whose command lives under it.
+# Remove a tool or a single version and the wrappers pointing into it.
 # Needs neither a root nor makes.
 do-uninstall() (
   parse-uninstall-args "$@"
-  name='' tool='' sdir='' w='' n='' i='' missing=''
+  name='' tool='' version='' label='' sdir='' w='' n='' i='' missing=''
+  active='' clear_active=''
   for ((i=0; i<${#req_name[@]}; i++)); do
-    name=${req_name[i]}; tool=${req_tool[i]}
+    name=${req_name[i]}; tool=${req_tool[i]}; version=${req_version[i]}
+    label=$name${version:+@$version}
     # Install parsing prefers a direct Makes tool over a same-named alias.
     # Its install dir preserves that choice without needing the Makes clone.
     [[ -e $prefix/share/$name ]] && tool=$name
     sdir=$prefix/share/$tool
+    clear_active=1
+    if [[ -n $version ]]; then
+      sdir=$sdir/$version
+      if [[ -L $prefix/bin || -L $prefix/share ||
+            -L $prefix/share/$tool || -L $sdir ||
+            -L $prefix/share/in-1 || -L $prefix/share/in-1/active ]]; then
+        error "Linked installation directory for '$label'; not uninstalling"
+        missing=1
+        continue
+      fi
+      active=$prefix/share/in-1/active/$tool
+      clear_active=''
+      [[ ! -L $active || ! $active -ef $sdir ]] || clear_active=1
+    fi
     n=0
     wrappers=()
     for w in "$prefix"/bin/*; do
@@ -2002,15 +2041,15 @@ do-uninstall() (
       n=$((n + 1))
     done
     if [[ -e $sdir ]]; then
-      remove-tree "${prefix:?}/share/${tool:?}" ||
-        die "Failed to remove '$sdir'"
+      remove-tree "$sdir" || die "Failed to remove '$sdir'"
     elif [[ $n -eq 0 ]]; then
-      error "'$name' is not installed under '$prefix'"
+      error "'$label' is not installed under '$prefix'"
       missing=1
       continue
     fi
-    remove-active-install "$tool"
-    success "Uninstalled $name:" \
+    [[ ! $clear_active ]] || remove-active-install "$tool"
+    [[ -z $version ]] || rmdir "$prefix/share/$tool" 2>/dev/null || true
+    success "Uninstalled $label:" \
       "removed $n command wrappers from '$prefix/bin' and '$sdir'"
   done
   [[ -z $missing ]]

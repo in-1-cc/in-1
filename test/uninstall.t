@@ -4,12 +4,14 @@
 # wrappers in bin that point into it.  The prefix is faked here, so
 # this needs no network and no makes.
 
+# shellcheck disable=SC1091,SC2016
 source test/init
 
 pfx=$SCRATCH/pfx
 
 # A wrapper in the shape write-one-wrapper produces
 fake-wrapper() (  # $1=real command $2=wrapper path
+  rm -f "$2"
   {
     printf '#!/usr/bin/env bash\n# in-1 wrapper\n'
     printf 'export PATH=%q${PATH:+:$PATH}\n' "${1%/*}"
@@ -152,6 +154,64 @@ out=$(IN1_ROOT=$session_root run bin/in-1 --env bash --uninstall foo)
 has "$out" "from '$pfx/bin'" \
   "--env --uninstall defaults to the session prefix"
 gone share/foo "--env --uninstall"
+
+# Exact selectors leave other versions and their current shell support alone.
+fake-install pinned pinned 1 pinned pinned-helper
+fake-install pinned pinned 1.1 pinned pinned-helper
+fake-install pinned pinned 2 pinned pinned-helper
+fake-install pinned pinned 3 pinned pinned-helper
+mkdir -p "$pfx/share/in-1/active" "$pfx/share/pinned/2/cache/readonly"
+touch "$pfx/share/pinned/2/cache/readonly/file"
+chmod -R -w "$pfx/share/pinned/2/cache"
+ln -s ../../pinned/3 "$pfx/share/in-1/active/pinned"
+out=$(run bin/in-1 --uninstall pinned@2 PREFIX="$pfx")
+has "$out" 'Uninstalled pinned@2:' 'Exact uninstall reports its version'
+has "$out" 'status=0' 'Exact inactive uninstall succeeds'
+gone share/pinned/2 'Exact inactive uninstall'
+gone bin/pinned-2 'Exact inactive uninstall'
+kept bin/pinned 'Exact inactive uninstall'
+kept bin/pinned-helper 'Exact inactive uninstall'
+kept share/in-1/active/pinned 'Exact inactive uninstall'
+
+out=$(run bin/in-1 --uninstall pinned@3 pinned@1 PREFIX="$pfx")
+has "$out" 'status=0' 'Multiple exact uninstalls succeed'
+for path in share/pinned/3 share/pinned/1 bin/pinned bin/pinned-helper \
+  bin/pinned-3 bin/pinned-1 share/in-1/active/pinned; do
+  gone "$path" 'Multiple exact uninstalls'
+done
+kept share/pinned/1.1 'Version path boundary'
+kept bin/pinned-1.1 'Other versioned command'
+
+fake-install bb babashka 1 bb
+fake-install bb babashka 2 bb
+out=$(run bin/in-1 --uninstall bb@1 PREFIX="$pfx")
+has "$out" 'status=0' 'Exact alias uninstall succeeds'
+gone share/babashka/1 'Exact alias uninstall'
+kept share/babashka/2 'Exact alias uninstall'
+kept bin/bb 'Exact alias uninstall'
+
+out=$(run bin/in-1 --uninstall pinned@missing bb@2 PREFIX="$pfx")
+has "$out" "'pinned@missing' is not installed" 'Missing exact version is reported'
+has "$out" 'status=1' 'Missing exact version fails overall'
+gone share/babashka/2 'Missing version does not prevent other uninstalls'
+
+out=$(run bin/in-1 --uninstall pinned@1.1 pinned@../bad PREFIX="$pfx")
+has "$out" 'status=1' 'Malformed version is rejected'
+kept share/pinned/1.1 'All selectors validated before removal'
+
+outside=$SCRATCH/outside
+mkdir -p "$outside/1"
+touch "$outside/1/keep"
+ln -s "$outside" "$pfx/share/linked"
+out=$(run bin/in-1 --uninstall linked@1 PREFIX="$pfx")
+has "$out" 'status=1' 'Exact uninstall rejects a linked tool directory'
+is "$(cat "$outside/1/keep")" '' 'Linked installation target is preserved'
+
+mkdir -p "$pfx/share/in-1/local/cache"
+touch "$pfx/share/in-1/local/cache/keep"
+out=$(run bin/in-1 --uninstall in-1@local PREFIX="$pfx")
+has "$out" 'status=1' 'Reserved state directory is not an uninstallable version'
+kept share/in-1/local/cache/keep 'Exact uninstall preserves reserved state'
 
 # Argument errors
 out=$(bin/in-1 --uninstall foo JQ-VERSION=1 PREFIX="$pfx" 2>&1 || true)

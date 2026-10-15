@@ -109,15 +109,18 @@ rc file gives every new shell the same.
 the setup of the current shell in one go.
 
 .PP
+Append \fB@VERSION\fP to a tool or alias to pin its version, for example
+\fBin-1 perl@5.42.0\fP or \fBin-1 bb@1.13.220\fP\&.
+A pinned version installs alongside others and is reachable as both
+\fIperl\fP and its version-specific wrapper.
+Install multiple versions with \fBin-1 jolt@0.8.20 jolt@0.8.19\fP\&.
+Requests run in argument order; the last listed version becomes active.
+Each pin applies only to its own request.
+
+.PP
 Any \fIVAR\fP=\fIVALUE\fP argument is passed through to makes as a variable.
-Pin a version with the tool's makes variable, for example
-\fBin-1 perl PERL-VERSION=5.42.0\fP\&.  A pinned version installs
-alongside others and is reachable as both \fIperl\fP and its
-version-specific wrapper.  \fIPREFIX\fP=\fIDIR\fP is the exception: it sets
-the install prefix, like the \fIPREFIX\fP environment variable.
-An alias can abbreviate its tool's version variable, so
-\fBin-1 bb BB-VERSION=1.13.220\fP is equivalent to using
-\fBBABASHKA-VERSION=1.13.220\fP\&.
+\fIPREFIX\fP=\fIDIR\fP is the exception: it sets the install prefix, like the
+\fIPREFIX\fP environment variable.
 
 
 .SH OPTIONS
@@ -155,6 +158,14 @@ An alias can abbreviate its tool's version variable, so
   \fIPREFIX/share/\fP with every version in it, and every wrapper
   in \fIPREFIX/bin\fP that in-1 wrote for it.
   Files in \fIPREFIX/bin\fP that in-1 did not write stay.
+  Append \fB@VERSION\fP to remove only a specific version, for example
+  \fBin-1 --uninstall jolt@0.8.20\fP\&.
+  Multiple selectors work too:
+  \fBin-1 --uninstall jolt@0.8.20 jolt@0.8.19\fP\&.
+  Other versions and their wrappers remain installed.
+  Removing the active version also removes its current command and shell
+  support; another version is not automatically activated.
+  Reinstall a remaining version to select it again.
   Use the same prefix as installation, whether called directly or through
   the shell function.
   The curl one-liner rejects \fB--uninstall\fP; install the \fBin-1\fP
@@ -360,7 +371,7 @@ curl -sL in-1.cc | source - --temp rust node
 Pin a version (both \fBgo\fR and \fBgo-1.23.4\fR end up on PATH):
 
 .EX
-source <(curl -sL in-1.cc) go GO-VERSION=1.23.4
+source <(curl -sL in-1.cc) go@1.23.4
 .EE
 
 .PP

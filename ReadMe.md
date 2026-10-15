@@ -42,6 +42,12 @@ Use `-T` or `--temp` to force that temporary prefix, or `-L` or `--local`
 for a persistent installation (normally `~/.local`).
 Wrappers always go in `PREFIX/bin`, with versioned tools in `PREFIX/share`.
 
+Pin a version with `in-1 jolt@0.8.20`, or install several at once:
+`in-1 jolt@0.8.20 jolt@0.8.19`.
+The last listed version becomes active; the others remain available through
+their versioned commands.
+Use `in-1 --uninstall jolt@0.8.20` to remove just that version.
+
 Tools are installed by [makes](https://github.com/makeplus/makes);
 any tool with a `<tool>.mk` file there is available.
 That is over 100 languages and tools.

@@ -89,15 +89,17 @@ rc file gives every new shell the same.
 **source <(curl -sL in-1.cc) --local in-1** does both the install and
 the setup of the current shell in one go.
 
+Append **@VERSION** to a tool or alias to pin its version, for example
+**in-1 perl@5.42.0** or **in-1 bb@1.13.220**.
+A pinned version installs alongside others and is reachable as both
+*perl* and its version-specific wrapper.
+Install multiple versions with **in-1 jolt@0.8.20 jolt@0.8.19**.
+Requests run in argument order; the last listed version becomes active.
+Each pin applies only to its own request.
+
 Any *VAR*=*VALUE* argument is passed through to makes as a variable.
-Pin a version with the tool's makes variable, for example
-**in-1 perl PERL-VERSION=5.42.0**.  A pinned version installs
-alongside others and is reachable as both *perl* and its
-version-specific wrapper.  *PREFIX*=*DIR* is the exception: it sets
-the install prefix, like the *PREFIX* environment variable.
-An alias can abbreviate its tool's version variable, so
-**in-1 bb BB-VERSION=1.13.220** is equivalent to using
-**BABASHKA-VERSION=1.13.220**.
+*PREFIX*=*DIR* is the exception: it sets the install prefix, like the
+*PREFIX* environment variable.
 
 # OPTIONS
 
@@ -132,6 +134,14 @@ An alias can abbreviate its tool's version variable, so
   *PREFIX/share/<tool>* with every version in it, and every wrapper
   in *PREFIX/bin* that in-1 wrote for it.
   Files in *PREFIX/bin* that in-1 did not write stay.
+  Append **@VERSION** to remove only a specific version, for example
+  **in-1 --uninstall jolt@0.8.20**.
+  Multiple selectors work too:
+  **in-1 --uninstall jolt@0.8.20 jolt@0.8.19**.
+  Other versions and their wrappers remain installed.
+  Removing the active version also removes its current command and shell
+  support; another version is not automatically activated.
+  Reinstall a remaining version to select it again.
   Use the same prefix as installation, whether called directly or through
   the shell function.
   The curl one-liner rejects **--uninstall**; install the **in-1**
@@ -311,7 +321,7 @@ Same, from fish:
 
 Pin a version (both `go` and `go-1.23.4` end up on PATH):
 
-    source <(curl -sL in-1.cc) go GO-VERSION=1.23.4
+    source <(curl -sL in-1.cc) go@1.23.4
 
 Install a tool by an alias command name:
 

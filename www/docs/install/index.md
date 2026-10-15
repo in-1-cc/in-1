@@ -173,6 +173,7 @@ It updates makes automatically before installs.
 in-1 --uninstall rust node  # remove tools installed with --local
 in-1 --uninstall in-1       # remove the command and its state
 in-1 --temp --uninstall jq  # remove a temporary installation
+in-1 --uninstall jolt@0.8.20 # remove only one version
 ```
 
 That removes `~/.local/share/<tool>` and the wrappers in
