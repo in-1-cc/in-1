@@ -363,6 +363,11 @@ graalvm:
   desc: High performance polyglot Java development kit
   bin: native-image
   man: java
+gradle:
+  repo: https://github.com/gradle/gradle
+  auth: adammurdoch
+  desc: Build automation and dependency management for JVM projects
+  site: https://gradle.org
 grenadine:
   repo: https://github.com/clojurestar/grenadine
   auth: ingydotnet
@@ -464,6 +469,11 @@ kotlin:
   auth: udalov
   desc: Concise multiplatform language for modern applications
   site: https://kotlinlang.org
+kson:
+  repo: https://github.com/kson-org/kson
+  auth: dmarcotte
+  desc: Human friendly configuration language and tooling
+  site: https://kson.org
 lean:
   repo: https://github.com/leanprover/lean4
   auth: leodemoura

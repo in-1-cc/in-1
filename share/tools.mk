@@ -379,6 +379,11 @@ graalvm-desc := High performance polyglot Java development kit
 graalvm-man := java
 graalvm-repo := https://github.com/oracle/graal
 
+gradle-auth := adammurdoch
+gradle-desc := Build automation and dependency management for JVM projects
+gradle-repo := https://github.com/gradle/gradle
+gradle-site := https://gradle.org
+
 grenadine-auth := ingydotnet
 grenadine-desc := Clojure inspired language runtime for Go
 grenadine-repo := https://github.com/clojurestar/grenadine
@@ -479,6 +484,11 @@ kotlin-auth := udalov
 kotlin-desc := Concise multiplatform language for modern applications
 kotlin-repo := https://github.com/JetBrains/kotlin
 kotlin-site := https://kotlinlang.org
+
+kson-auth := dmarcotte
+kson-desc := Human friendly configuration language and tooling
+kson-repo := https://github.com/kson-org/kson
+kson-site := https://kson.org
 
 lean-auth := leodemoura
 lean-desc := Functional language and interactive theorem prover
