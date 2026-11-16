@@ -232,6 +232,8 @@ dotnet-man := dotnet
 dotnet-repo := https://github.com/dotnet/sdk
 dotnet-site := https://dotnet.microsoft.com/
 
+elixir-bin := elixir iex
+elixir-also := iex
 elixir-auth := josevalim
 elixir-desc := Functional concurrent language for the Erlang VM
 elixir-repo := https://github.com/elixir-lang/elixir
