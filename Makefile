@@ -35,11 +35,14 @@ share/tools.mk: config.yaml $(YS)
 	  $(YS) $< -- tools-make > "$$tmp"; \
 	  if cmp -s "$$tmp" $@; then touch $@; else mv "$$tmp" $@; fi
 
-test: share/tools.mk $(PERL) $(BPAN) shellcheck
+test: share/tools.mk $(PERL) $(BPAN) shellcheck test-repos
 	env -u BASH_ENV -u ENV prove -r$(if $v, -v,) $t
 
 shellcheck: $(SHELLCHECK)
 	shellcheck $(SHELL-FILES)
+
+test-repos:
+	$(MAKE) -f test/github-release.mk M=$(abspath $M) test
 
 manpage: man/man1/in-1.1
 

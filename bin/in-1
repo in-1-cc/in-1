@@ -19,7 +19,7 @@ GNUMAKEFLAGS MAKEOVERRIDES MAKES_QUIET MAKES_CACHE_DIR MAKES_LOCAL_DIR
 CMD SHLVL PWD OLDPWD _ SHELL SHELLOPTS BASHOPTS TMPDIR LANG LC_ALL
 HOME TERM PS1 COLUMNS LINES'
 
-tool_filter='agents clean claude docker docker-or-podman git help init
+tool_filter='agents clean claude docker docker-or-podman git github-release help init
 local makefile makes podman rlwrap shell system zild'
 
 self_root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
@@ -36,6 +36,7 @@ quiet=''
 # Prefix selection is independent of shell output mode and state storage.
 placement=normal
 prefix=''
+release_asset=''
 
 main() {
   local mode=run shell='' arg upd_flag='' show='' list='' output pattern
@@ -59,6 +60,9 @@ main() {
       -T|--temp)
         [[ $placement != local ]] || die "--local and --temp cannot be combined"
         placement=temp;;
+      --asset)
+        [[ $# -gt 0 && -n $1 ]] || die "--asset requires an exact asset name"
+        release_asset=$1; shift;;
       --show) show=1;;
       --) tools+=("$@"); break;;
       --list) list=1;;
@@ -93,6 +97,11 @@ main() {
       *) tools+=("$arg");;
     esac
   done
+
+  if [[ -n $release_asset && ($prune || $uninstall || $list || $show ||
+        $mode == shell-init) ]]; then
+    die "--asset is only supported when installing a repository"
+  fi
 
   if [[ $prune ]]; then
     [[ ! $uninstall && ! $reset && ! $upd_flag && ! $list && ! $show &&
@@ -229,6 +238,11 @@ PREFIX=DIR overrides the environment and either default.
 be combined with --local or a PREFIX=DIR argument.
 
 Use TOOL@VERSION to pin a version, e.g. 'in-1 perl@5.42.0'.
+Use OWNER/REPO for GitHub release binaries, e.g. 'in-1 junegunn/fzf'.
+Use OWNER/REPO@TAG for an exact release, e.g. 'junegunn/fzf@v0.75.0'.
+Repository installs always discover releases independently of the catalog.
+Use --asset NAME with one repository to select an exact release asset.
+Ambiguous assets prompt on a terminal; unattended installs need --asset.
 Aliases work too, e.g. 'in-1 bb@1.13.220'. Install multiple versions with
 'in-1 jolt@0.8.20 jolt@0.8.19'; the last listed becomes active.
 'in-1 --uninstall jolt@0.8.20' removes only that version and its wrappers.
@@ -835,8 +849,15 @@ is-tool() {  # Exclude plumbing modules from direct requests too.
 split-tool-version() {
   name=${1%%@*}
   version_pin=''
-  [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
-    die "Invalid tool name '$name'"
+  if [[ $name == */* ]]; then
+    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+      die "Invalid tool name '$name' (expected GitHub owner/repo)"
+    name=github+$(printf '%s' "$name" | tr '[:upper:]/' '[:lower:]+')
+  else
+    [[ $name != github+* ]] || die "Use owner/repo for GitHub installations"
+    [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
+      die "Invalid tool name '$name'"
+  fi
   if [[ $1 == *@* ]]; then
     version_pin=${1#*@}
     [[ $version_pin =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
@@ -852,7 +873,7 @@ split-tool-version() {
 # Keep @version pins per request, independently of shared NAME=VALUE args.
 parse-tool-args() {
   req_name=(); req_tool=(); req_version=(); make_args=()
-  local arg name tool version_pin
+  local arg name tool version_pin repo_count=0
   [[ $# -gt 0 ]] || die "No tools specified. Try: in-1 --help"
   for arg; do
     if [[ $arg == *=* ]]; then
@@ -870,7 +891,12 @@ parse-tool-args() {
       continue
     fi
     split-tool-version "$arg"
-    if [[ -f $makes/$name.mk ]]; then
+    if [[ $name == github+* ]]; then
+      tool=$name
+      repo_count=$((repo_count + 1))
+      [[ -f $makes/github-release.mk ]] ||
+        die "Makes lacks github-release.mk; update Makes before using repositories"
+    elif [[ -f $makes/$name.mk ]]; then
       tool=$name
     else
       tool=$(alias-tool "$name")
@@ -885,12 +911,95 @@ parse-tool-args() {
     req_tool+=("$tool")
     req_version+=("$version_pin")
   done
+  [[ -z $release_asset || $repo_count -eq 1 ]] ||
+    die "--asset requires exactly one repository selector"
   [[ ${#req_name[@]} -gt 0 ]] || {
     [[ ${#make_args[@]} -gt 0 ]] &&
       die "No tool named. A NAME=VALUE arg sets a make variable;" \
         "add a tool too, e.g. 'perl@5.42.0'."
     die "No tools specified. Try: in-1 --help"
   }
+}
+
+# Internal flat keys keep repository installations separate from catalog tools.
+tool-label() (
+  value=$1
+  if [[ $value == github+* ]]; then
+    value=${value#github+}
+    value=${value/+/\/}
+  fi
+  printf '%s' "$value"
+)
+
+# The helper runtime is private to in-1, never exposed through public wrappers.
+install-repository() {  # $1=repository key $2=tag, or empty for latest
+  local tool=$1 pin=$2 repo version idir mf manifest cmd relative target
+  local versioned first='' path_prefix='' start
+  local -a commands=() paths=()
+  repo=$(tool-label "$tool")
+  mf=$root/log/github-release.mk
+  manifest=$root/log/$tool.release.json
+  {
+    printf 'override MAKES-LOCAL-DIR := %s\n' "$root/log/.github-release"
+    printf 'include %s/init.mk\n' "$makes"
+    printf 'include %s/github-release.mk\n' "$makes"
+  } > "$mf"
+  export GITHUB_RELEASE_REPO=$repo GITHUB_RELEASE_TAG=$pin
+  export GITHUB_RELEASE_ASSET=$release_asset GITHUB_RELEASE_MANIFEST=$manifest
+  # Resolve outside progress-run so interactive prompts can use /dev/tty.
+  if ! make -s -C "$root" -f "$mf" github-release-resolve \
+      > "$root/log/$tool.resolve.log" 2>&1; then
+    cat "$root/log/$tool.resolve.log" >&2
+    die "Could not resolve a release for '$repo'"
+  fi
+  if [[ -n ${IN1_VERBOSE-} && -z $quiet ]]; then
+    cat "$root/log/$tool.resolve.log" >&2
+  fi
+  IFS= read -r version < "$manifest.tag"
+  [[ $version =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
+    die "Unsupported release tag '$version'"
+  idir=$install_root/share/$tool/$version
+  [[ ! -L $install_root/share && ! -L $install_root/share/$tool &&
+     ! -L $idir && ! -L $install_root/bin ]] ||
+    die "Linked installation directory for '$repo'"
+  export GITHUB_RELEASE_DEST=$idir
+  start=$(now)
+  progress-run "$repo $version" "$root/log/$tool.log" \
+    "$install_root/bin" '' '' \
+    make -s -C "$root" -f "$mf" github-release-install || return 1
+  while IFS=$'\t' read -r cmd relative; do
+    [[ $cmd =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ &&
+       $relative == payload/* && $relative != *../* &&
+       -x $idir/$relative ]] || die "Invalid installed command for '$repo'"
+    target=$idir/$relative
+    versioned=$install_root/bin/$cmd+$tool+$version
+    if ! can-write-wrapper "$versioned" ||
+       ! can-write-wrapper "$install_root/bin/$cmd"; then
+      die "Command '$cmd' conflicts with an unmanaged file"
+    fi
+    commands+=("$cmd"); paths+=("$target")
+    path_prefix=$path_prefix${path_prefix:+:}${target%/*}
+    [[ -n $first ]] || first=$cmd
+  done < "$idir/.github-release-commands"
+  [[ -n $first ]] || die "No commands were installed for '$repo'"
+  out_names=(); out_values=()
+  local index
+  for ((index=0; index<${#commands[@]}; index++)); do
+    cmd=${commands[index]}
+    versioned=$cmd+$tool+$version
+    write-one-wrapper "${paths[index]}" \
+      "$install_root/bin/$versioned" "$path_prefix" || return 1
+    rm -f "$install_root/bin/$cmd"
+    ln -s "$versioned" "$install_root/bin/$cmd"
+  done
+  printf 'in-1 command\n%s/bin/%s\n' "$install_root" "$first" \
+    > "$idir/.in-1-installed"
+  record-active-install "$tool" "$idir"
+  comp_dirs+=("$idir")
+  progress-line 0 "$repo $version" "$install_root/bin/$first" '' \
+    "$(elapsed "$start" "$(now)")"
+  unset GITHUB_RELEASE_REPO GITHUB_RELEASE_TAG GITHUB_RELEASE_ASSET \
+    GITHUB_RELEASE_MANIFEST GITHUB_RELEASE_DEST
 }
 
 # The primary command shown/versioned for a requested name
@@ -1127,11 +1236,12 @@ verify-support() {  # $1=install-dir $2=tool $3=primary-command
   done
 }
 
-# Record only tools with persistent shell support. The stable link lets a new
-# shell select the currently active version without running any tool.
+# Record shell-support selections and repository versions for pruning.
+# The stable link selects the current version without running installed code.
 record-active-install() {  # $1=tool $2=install-dir
   local tool=$1 idir=$2 active link version
-  [[ -n $(meta "$tool-comp") || -n $(meta "$tool-man") ]] || return 0
+  [[ $tool == github+* || -n $(meta "$tool-comp") ||
+     -n $(meta "$tool-man") ]] || return 0
   active=$install_root/share/in-1/active
   link=$active/$tool
   version=${idir##*/}
@@ -1267,6 +1377,10 @@ install-all() {  # $1=install-root
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}
     tool=${req_tool[i]}
+    if [[ $tool == github+* ]]; then
+      install-repository "$tool" "${req_version[i]}"
+      continue
+    fi
     primary=$(primary-of "$name")
     version=$(tool-version "$tool" "$primary" "${req_version[i]}")
     [[ -n $version ]] || version=current
@@ -1395,6 +1509,7 @@ emit-tools-var() (  # $1=sh|fish
   # After a reset only the tools just installed are active
   [[ $reset ]] && list=''
   for n in ${req_name[@]+"${req_name[@]}"}; do
+    n=$(tool-label "$n")
     case " $list " in *" $n "*) continue;; esac
     list=$list${list:+ }$n
   done
@@ -1752,7 +1867,9 @@ align-show-rows() (  # $1=pattern
       continue
     fi
     matches+=(1)
-    if [[ ${#name} -gt $name_width ]]; then name_width=${#name}; fi
+    local display
+    display=$(tool-label "$name")
+    if [[ ${#display} -gt $name_width ]]; then name_width=${#display}; fi
     if [[ ${#version} -gt $version_width ]]; then version_width=${#version}; fi
     if [[ ${#size} -gt $size_width ]]; then size_width=${#size}; fi
   done
@@ -1783,7 +1900,7 @@ align-show-rows() (  # $1=pattern
       [[ -z $row_color && -z $bold ]] || reset=$'\033[0m'
     fi
     printf '%s%-*s  %s%-*s%s  %*s  %s%s\n' \
-      "$row_color" "$name_width" "${names[i]}" \
+      "$row_color" "$name_width" "$(tool-label "${names[i]}")" \
       "$bold" "$version_width" "${versions[i]}" "$unbold" \
       "$size_width" "${sizes[i]}" "${locations[i]}" "$reset"
   done
@@ -1804,7 +1921,9 @@ do-show() (
   elif [[ ${#filters[@]} -eq 1 ]]; then
     arg=${filters[0]}
     name=${arg%%@*}
-    if [[ $arg =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]]; then
+    if [[ $name =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+      selector_mode=1
+    elif [[ $arg =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]]; then
       tool=$(alias-tool "$arg")
       [[ ! -e $prefix/share/$arg && -z $tool ]] || selector_mode=1
     elif [[ $arg == *@* && $name =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]]; then
@@ -1979,11 +2098,12 @@ plan-prune-tool() {  # $1=tool
     done
   done
   [[ $count -ne 1 ]] || noun=version
-  summaries+=("Pruned $tool: kept ${keeper##*/}, removed $count $noun")
+  summaries+=("Pruned $(tool-label "$tool"): kept ${keeper##*/}, removed $count $noun")
 }
 
 do-prune() (
-  local arg tool seen='' explicit='' failed='' state_dir cache_dir=''
+  local arg tool name='' version_pin='' seen='' explicit='' failed=''
+  local state_dir cache_dir=''
   local -a requested=() prune_dirs=() prune_wrappers=() summaries=()
   [[ ! -L $prefix/bin && ! -L $prefix/share &&
      ! -L $prefix/share/in-1 ]] ||
@@ -2000,8 +2120,11 @@ do-prune() (
   # Validate and resolve every argument before planning or deleting anything.
   for arg; do
     [[ $arg != *=* ]] || die "--prune takes no make variables ('$arg')"
-    [[ $arg =~ ^[A-Za-z0-9][A-Za-z0-9.+_-]*$ ]] ||
-      die "Invalid tool name '$arg'"
+    [[ $arg != *@* ]] || die "--prune takes repository or tool names, not versions"
+    split-tool-version "$arg"
+    # split-tool-version sets the caller-owned name.
+    # shellcheck disable=SC2031
+    arg=$name
     tool=$arg
     if [[ ! -e $prefix/share/$tool ]]; then
       tool=$(alias-tool "$arg")
@@ -2043,7 +2166,7 @@ do-uninstall() (
   active='' clear_active=''
   for ((i=0; i<${#req_name[@]}; i++)); do
     name=${req_name[i]}; tool=${req_tool[i]}; version=${req_version[i]}
-    label=$name${version:+@$version}
+    label=$(tool-label "$name")${version:+@$version}
     # Install parsing prefers a direct Makes tool over a same-named alias.
     # Its install dir preserves that choice without needing the Makes clone.
     [[ -e $prefix/share/$name ]] && tool=$name
@@ -2093,7 +2216,7 @@ do-complete() (
       cat <<'...'
 _in_1_complete() {
   local cur=${COMP_WORDS[COMP_CWORD]}
-  local opts='--env -L --local -T --temp --list --show --complete --rc
+  local opts='--asset --env -L --local -T --temp --list --show --complete --rc
     --uninstall --prune -q --quiet --update --reset --version --help'
   local entry name word
   local -a labels=()
@@ -2123,7 +2246,7 @@ complete -F _in_1_complete in-1
 _in_1_complete() {
   local -a opts names labels
   local entry name
-  opts=(--env -L --local -T --temp --list --show --complete --rc --uninstall
+  opts=(--asset --env -L --local -T --temp --list --show --complete --rc --uninstall
     --prune -q --quiet --update --reset --version --help)
   for name in "${opts[@]}"; do
     [[ $name == "$PREFIX"* ]] || continue
@@ -2177,6 +2300,7 @@ complete -c in-1 -s T -l temp -d 'Use the temporary in-1 prefix'
 complete -c in-1 -l uninstall -d 'Remove tools from their install prefix'
 complete -c in-1 -l prune -d 'Remove versions except the current install'
 complete -c in-1 -l list -d 'List available tools'
+complete -c in-1 -l asset -r -d 'Exact GitHub release asset filename'
 complete -c in-1 -l show -d 'Show installed tool versions and locations'
 complete -c in-1 -l complete -d 'Print command completion for a shell'
 complete -c in-1 -l rc -d 'Print the shell setup line (source it)'

@@ -55,6 +55,24 @@ Works on Linux and macOS, Intel and ARM, in bash, zsh and fish.
 
 Requirements: `git`, `curl`, GNU `make` and `bash`.
 
+You can also install public GitHub release binaries without a catalog entry:
+
+```bash
+source <(curl -sL in-1.cc) junegunn/fzf
+in-1 junegunn/fzf@v0.75.0
+```
+
+`owner/repo` always discovers GitHub release assets directly.
+An unpinned request uses the latest stable release; `@TAG` selects an exact tag.
+Ambiguous assets prompt for a choice on your terminal.
+For unattended use, select an exact filename with `--asset NAME` and one
+repository selector.
+All native command binaries in the selected asset are installed.
+Use `in-1 --show junegunn/fzf`, `in-1 --prune junegunn/fzf`, and
+`in-1 --uninstall junegunn/fzf@v0.75.0` to manage them.
+See [GitHub release installs](www/docs/doc/tools.md#github-release-installs)
+for formats and limitations.
+
 
 ## Installing the in-1 command
 

@@ -37,6 +37,45 @@ in-1 - instant dev tools for your current shell
 
 **in-1** **--reset** [*OPTIONS*] [*TOOL*...]
 
+# GITHUB RELEASE INSTALLS
+
+**in-1** [**--asset** *NAME*] *OWNER/REPO*[@*TAG*]...
+
+Repository selectors always discover public GitHub release assets directly,
+without catalog entries or dedicated Makes modules.
+An unpinned selector uses the latest stable release; **@TAG** selects an exact
+release, including prereleases.
+For example: **in-1 junegunn/fzf@v0.75.0**.
+Tags use letters, digits, periods, plus signs, underscores, and hyphens,
+starting with a letter or digit.
+
+Assets must contain native commands for Linux or macOS on x86-64 or ARM64.
+Tar archives, ZIP archives, standalone binaries, and gzip/xz-compressed binaries
+are supported.
+Ambiguous matches prompt on the controlling terminal.
+Without a terminal, use **--asset** with an exact filename and exactly one
+repository selector.
+Other catalog tools can be installed alongside it.
+
+All discovered native commands are exposed through wrappers.
+The last installation selects the active provider of a shared command.
+Unmanaged files are never replaced.
+Versioned wrappers include repository identity:
+**fzf+github+junegunn+fzf+v0.75.0**.
+Install trees use *PREFIX/share/github+OWNER+REPO/TAG*.
+**--show**, **--uninstall**, and **--prune** accept repository selectors and
+operate without GitHub access.
+**--reset** also removes managed repository installs.
+**--list** remains the curated catalog.
+
+Downloads and extraction finish before activation.
+The installer checks GitHub's SHA-256 digest when provided.
+Reinstalling a release reselects its existing payload; changed release assets
+require uninstalling that version first.
+Private repositories, package installers, script-only payloads, universal
+macOS binaries, and automatic completion/man-page discovery are unsupported.
+*IN1_OFFLINE* skips update checks, not release discovery.
+
 # DESCRIPTION
 
 **in-1** installs development tools and languages under a prefix and

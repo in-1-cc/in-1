@@ -90,10 +90,12 @@ eval "$(command in-1 --shell-init "$_in1_shell" 2>/dev/null)"
 # an update, reset, placement or quiet option decides whether this is a
 # session install.
 in-1() {
-  local first="" in1_status in1_shell=bash
+  local first="" in1_status in1_shell=bash in1_skip=""
   [ -n "${ZSH_VERSION-}" ] && in1_shell=zsh
   for first in "$@"; do
+    if [ -n "$in1_skip" ]; then in1_skip=""; continue; fi
     case $first in
+      --asset) in1_skip=1; continue;;
       --update|--reset|-L|--local|-T|--temp|-q|--quiet) continue;;
     esac
     break
@@ -168,7 +170,16 @@ command in-1 --shell-init fish 2>/dev/null | source
 
 function in-1
   set -l first ""
+  set -l in1_skip ""
   for first in $argv
+    if test -n "$in1_skip"
+      set in1_skip ""
+      continue
+    end
+    if test "$first" = --asset
+      set in1_skip 1
+      continue
+    end
     if not contains -- "$first" --update --reset -L --local -T --temp \
         -q --quiet
       break
